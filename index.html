@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Marvin Express - Pedidos 🥖</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore-compat.js"></script>
+    <style>
+        .tap-soft:active { transform: scale(0.96); transition: 0.1s; }
+        .input-cantidad:focus { border-color: #2563eb; background: white; }
+        input[type="number"]::-webkit-inner-spin-button, 
+        input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        body { -webkit-tap-highlight-color: transparent; }
+    </style>
+</head>
+<body class="bg-[#F8FAFC] font-sans antialiased text-slate-900">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useMemo } = React;
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyD7iqWBCoScuHSID15itaShi7dRQuQwkEo",
+            authDomain: "panaderia-marvin.firebaseapp.com",
+            projectId: "panaderia-marvin",
+            storageBucket: "panaderia-marvin.firebasestorage.app",
+            messagingSenderId: "908203563116",
+            appId: "1:908203563116:web:69995ce1866a536bf3e049"
+        };
+
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        const PRODUCTOS_MENU = [
+            { nombre: "Pirujitos 🥖", precio: 1 },
+            { nombre: "Pirujos Grande 🥖", precio: 1 },
+            { nombre: "Pastelitos 🥯", precio: 2 },
+            { nombre: "Dulce 🥐", precio: 1 },
+            { nombre: "Torta 🍪", precio: 10 },
+            { nombre: "Lagarto 🐊", precio: 15 }
+        ];
+
+        function QuickOrder() {
+            const [cliente, setCliente] = useState("");
+            const [nota, setNota] = useState("");
+            const [metodoPago, setMetodoPago] = useState("pendiente"); 
+            const [montoAnticipo, setMontoAnticipo] = useState("");
+            const [items, setItems] = useState(PRODUCTOS_MENU.map(p => ({ ...p, cantidad: 0 })));
+            const [enviando, setEnviando] = useState(false);
+
+            const totalCuenta = useMemo(() => {
+                return items.reduce((acc, it) => acc + (it.cantidad * it.precio), 0);
+            }, [items]);
+
+            const restaPendiente = useMemo(() => {
+                const anticipo = parseFloat(montoAnticipo) || 0;
+                return totalCuenta - anticipo;
+            }, [totalCuenta, montoAnticipo]);
+
+            const handleCantChange = (index, value) => {
+                const newItems = [...items];
+                const val = parseInt(value);
+                newItems[index].cantidad = isNaN(val) ? 0 : val;
+                setItems(newItems);
+            };
+
+            const enviarPedido = async () => {
+                const finalItems = items.filter(it => it.cantidad > 0);
+                if (!cliente) return alert("Por favor, ingresa el nombre del cliente");
+                if (finalItems.length === 0) return alert("Debes ingresar al menos un producto");
+                if (metodoPago === 'anticipo' && !montoAnticipo) return alert("Ingresa el monto del anticipo");
+
+                setEnviando(true);
+                try {
+                    const counterRef = db.collection("config").doc("counter");
+                    const docCounter = await counterRef.get();
+                    let nextCorrelativo = 1;
+                    if (docCounter.exists) nextCorrelativo = (Number(docCounter.data().last) || 0) + 1;
+
+                    // Fecha y hora local
+                    const ahora = new Date();
+                    const fechaString = ahora.toLocaleDateString('es-GT');
+                    const horaString = ahora.toLocaleTimeString('es-GT', { hour: '2-digit', minute: '2-digit' });
+
+                    await db.collection("pedidos").add({
+                        correlativo: nextCorrelativo,
+                        cliente: cliente.trim(),
+                        nota: nota.trim() || "Sin nota",
+                        items: finalItems,
+                        total: totalCuenta,
+                        estadoPago: metodoPago,
+                        anticipoValor: metodoPago === 'anticipo' ? Number(montoAnticipo) : 0,
+                        fechaRegistro: `${fechaString} ${horaString}`,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                        entregado: false,
+                        pagado: metodoPago === 'pagado'
+                    });
+                    
+                    await counterRef.set({ last: nextCorrelativo });
+
+                    confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+                    
+                    // Reset
+                    setCliente("");
+                    setNota("");
+                    setMetodoPago("pendiente");
+                    setMontoAnticipo("");
+                    setItems(PRODUCTOS_MENU.map(p => ({ ...p, cantidad: 0 })));
+                    alert("¡Pedido enviado y registrado! 🥖");
+
+                } catch (e) {
+                    console.error(e);
+                    alert("Error al conectar con la base de datos");
+                }
+                setEnviando(false);
+            };
+
+            return (
+                <div className="max-w-md mx-auto p-4 pb-40 min-h-screen">
+                    <header className="py-6 text-center">
+                        <h1 className="text-xl font-black text-slate-800 tracking-tighter uppercase italic">Marvin <span className="text-blue-600">Express</span></h1>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Panel de Toma de Pedidos</p>
+                    </header>
+
+                    <div className="space-y-4">
+                        {/* SECCIÓN CLIENTE Y PAGO */}
+                        <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
+                            <input 
+                                className="w-full text-lg font-bold outline-none border-b border-slate-100 focus:border-blue-500 pb-2 transition-all"
+                                placeholder="Nombre del Cliente"
+                                value={cliente}
+                                onChange={e => setCliente(e.target.value)}
+                            />
+
+                            <div className="grid grid-cols-3 gap-2 mt-5">
+                                {[
+                                    { id: 'pendiente', label: 'Deuda', icon: '⏳' },
+                                    { id: 'anticipo', label: 'Anticipo', icon: '💰' },
+                                    { id: 'pagado', label: 'Pagado', icon: '✅' }
+                                ].map((t) => (
+                                    <button
+                                        key={t.id}
+                                        onClick={() => setMetodoPago(t.id)}
+                                        className={`py-3 rounded-2xl text-[10px] font-black uppercase transition-all flex flex-col items-center gap-1 ${metodoPago === t.id ? 'bg-blue-600 text-white shadow-lg scale-105' : 'bg-slate-50 text-slate-400 border border-slate-100'}`}
+                                    >
+                                        <span className="text-base">{t.icon}</span>
+                                        {t.label}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {metodoPago === 'anticipo' && (
+                                <div className="mt-4 animate-pulse">
+                                    <input 
+                                        type="number"
+                                        className="w-full p-4 bg-blue-50 rounded-2xl text-blue-700 font-black outline-none border-2 border-blue-100 focus:border-blue-300"
+                                        placeholder="¿Cuánto dinero deja? Q"
+                                        value={montoAnticipo}
+                                        onChange={e => setMontoAnticipo(e.target.value)}
+                                    />
+                                </div>
+                            )}
+
+                            <input 
+                                className="w-full mt-4 text-sm font-medium outline-none text-slate-400 bg-slate-50 p-3 rounded-xl"
+                                placeholder="Nota: ej. Sin ajonjolí, para las 5pm..."
+                                value={nota}
+                                onChange={e => setNota(e.target.value)}
+                            />
+                        </div>
+
+                        {/* LISTA DE PRODUCTOS */}
+                        <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
+                            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Menú de Hoy</h3>
+                            <div className="space-y-4">
+                                {items.map((it, idx) => (
+                                    <div key={it.nombre} className="flex items-center justify-between">
+                                        <div>
+                                            <p className="font-bold text-slate-700 text-sm uppercase">{it.nombre}</p>
+                                            <p className="text-[10px] text-slate-400 font-bold">Q{it.precio}.00 c/u</p>
+                                        </div>
+                                        <input 
+                                            type="number"
+                                            inputMode="numeric"
+                                            className="w-14 h-12 bg-slate-50 rounded-2xl text-center font-black text-blue-600 outline-none border-2 border-transparent focus:border-blue-200 transition-all input-cantidad"
+                                            value={it.cantidad === 0 ? "" : it.cantidad}
+                                            onChange={e => handleCantChange(idx, e.target.value)}
+                                            placeholder="0"
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* BARRA INFERIOR FLOTANTE */}
+                    <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-xl border-t border-slate-100">
+                        <div className="max-w-md mx-auto flex items-center gap-4">
+                            <div className="flex-1 bg-slate-900 rounded-[2.5rem] px-6 py-4 flex justify-between items-center shadow-2xl">
+                                <div className="flex flex-col">
+                                    <span className="text-[9px] font-black text-slate-500 uppercase">Total</span>
+                                    <span className="text-xl font-black text-white">Q{totalCuenta.toFixed(2)}</span>
+                                </div>
+                                
+                                {metodoPago === 'anticipo' && (
+                                    <div className="text-right border-l border-slate-700 pl-4">
+                                        <span className="text-[9px] font-black text-orange-400 uppercase">Resta</span>
+                                        <span className="text-lg font-black text-white block leading-none">Q{restaPendiente.toFixed(2)}</span>
+                                    </div>
+                                )}
+                            </div>
+                            
+                            <button 
+                                onClick={enviarPedido}
+                                disabled={enviando || totalCuenta === 0}
+                                className={`w-16 h-16 rounded-full flex items-center justify-center shadow-xl tap-soft transition-all ${enviando || totalCuenta === 0 ? 'bg-slate-100 text-slate-300' : 'bg-blue-600 text-white'}`}
+                            >
+                                <i className={`fa-solid text-xl ${enviando ? 'fa-spinner fa-spin' : 'fa-check'}`}></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<QuickOrder />);
+    </script>
+</body>
+</html>
