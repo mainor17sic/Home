@@ -286,6 +286,42 @@
     }
     .modal-box .botones-modal button { flex: 1; }
 
+    /* Modal para tiempos de comida al salir */
+    .modal-comida {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.3);
+      backdrop-filter: blur(3px);
+      z-index: 1001;
+      justify-content: center;
+      align-items: center;
+    }
+    .modal-comida.active { display: flex; }
+    .modal-comida .modal-box {
+      background: white;
+      padding: 30px;
+      border-radius: 16px;
+      max-width: 400px;
+      width: 90%;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+      text-align: center;
+    }
+    .modal-comida .modal-box h3 { color: #1e3a8a; }
+    .modal-comida .modal-box select {
+      width: 100%;
+      padding: 10px;
+      margin: 16px 0;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 1.2rem;
+    }
+    .modal-comida .modal-box .botones-modal {
+      display: flex;
+      gap: 12px;
+    }
+    .modal-comida .modal-box .botones-modal button { flex: 1; }
+
     @media (max-width: 640px) {
       .container { padding: 12px; }
       .tab { padding: 8px 14px; font-size: 0.8rem; }
@@ -393,6 +429,8 @@
             <th>Horas</th>
             <th>Extras</th>
             <th>Descuento</th>
+            <th>Comidas</th>
+            <th>Desc. Comida</th>
             <th>Tipo</th>
             <th>Acciones</th>
           </tr>
@@ -441,6 +479,14 @@
       <input type="time" id="modalSalida" step="60" />
     </div>
     <div class="form-group">
+      <label>Tiempos de comida (0, 1 o 2)</label>
+      <select id="modalComidas">
+        <option value="0">0</option>
+        <option value="1">1 (descuenta 0.5h)</option>
+        <option value="2">2 (descuenta 1h)</option>
+      </select>
+    </div>
+    <div class="form-group">
       <label>Tipo de día</label>
       <select id="modalTipo">
         <option value="normal">Trabajado (normal)</option>
@@ -454,6 +500,23 @@
       <button onclick="cerrarModal()" class="btn-danger">❌ Cancelar</button>
     </div>
     <p id="modalMensaje" style="margin-top:12px; color:#dc2626; font-weight:500;"></p>
+  </div>
+</div>
+
+<!-- ===== MODAL PARA TIEMPOS DE COMIDA AL SALIR ===== -->
+<div class="modal-comida" id="modalComidaSalida">
+  <div class="modal-box">
+    <h3>🍽️ Tiempos de comida</h3>
+    <p style="color:#475569;">¿Cuántos tiempos de comida tomó el empleado?</p>
+    <select id="selectComidaSalida">
+      <option value="0">0</option>
+      <option value="1">1 (descuenta 0.5 horas)</option>
+      <option value="2">2 (descuenta 1 hora)</option>
+    </select>
+    <div class="botones-modal">
+      <button onclick="confirmarComidaSalida()" class="btn-success">✅ Confirmar</button>
+      <button onclick="cancelarComidaSalida()" class="btn-danger">❌ Cancelar</button>
+    </div>
   </div>
 </div>
 
@@ -489,6 +552,11 @@ const FERIADOS_POR_DEFECTO = [
 let editandoRegistroId = null;
 let editandoEmpleadoId = null;
 let editandoFecha = null;
+
+// Variable para almacenar datos temporales al marcar salida
+let salidaPendienteEmpleado = null;
+let salidaPendienteHora = null;
+let salidaPendienteRegistro = null;
 
 // ============================================================
 // FUNCIONES DE FECHA Y CÁLCULO
@@ -610,7 +678,7 @@ async function init() {
   actualizarCalendario();
 
   document.getElementById('btnEntradaP').addEventListener('click', marcarEntrada);
-  document.getElementById('btnSalidaP').addEventListener('click', marcarSalida);
+  document.getElementById('btnSalidaP').addEventListener('click', iniciarSalidaConComidas);
   document.getElementById('btnAhoraP').addEventListener('click', usarHoraActual);
 }
 
@@ -744,7 +812,7 @@ function actualizarCalendario() {
 }
 
 // ============================================================
-// MARCACIÓN
+// MARCACIÓN (ENTRADA)
 // ============================================================
 function obtenerEmpleadoSeleccionado() {
   const id = document.getElementById('selectEmpleadoPrincipal').value;
@@ -771,6 +839,7 @@ function marcarEntrada() {
     entrada: entrada,
     salida: null,
     tipo: 'normal',
+    tiemposComida: 0,
     timestamp: new Date().toISOString()
   };
 
@@ -791,7 +860,10 @@ function marcarEntrada() {
     });
 }
 
-function marcarSalida() {
+// ============================================================
+// MARCACIÓN (SALIDA) con selección de tiempos de comida
+// ============================================================
+function iniciarSalidaConComidas() {
   const emp = obtenerEmpleadoSeleccionado();
   if (!emp) { mostrarMensaje('⚠️ Selecciona un empleado.', 'rojo'); return; }
 
@@ -804,28 +876,71 @@ function marcarSalida() {
     return;
   }
 
+  // Guardar datos temporales
+  salidaPendienteEmpleado = emp;
+  salidaPendienteHora = salida;
+  salidaPendienteRegistro = registro;
+
+  // Mostrar modal para tiempos de comida
+  document.getElementById('modalComidaSalida').classList.add('active');
+}
+
+function confirmarComidaSalida() {
+  const tiempos = parseInt(document.getElementById('selectComidaSalida').value);
+  const emp = salidaPendienteEmpleado;
+  const salida = salidaPendienteHora;
+  const registro = salidaPendienteRegistro;
+
+  if (!emp || !registro) {
+    cancelarComidaSalida();
+    return;
+  }
+
   registro.salida = salida;
+  registro.tiemposComida = tiempos;
   registro.timestampSalida = new Date().toISOString();
 
   if (registro.id && !registro.id.startsWith('temp_')) {
-    db.collection("jornada_registros").doc(registro.id).update({ salida: salida, timestampSalida: new Date().toISOString() })
-      .then(() => {
-        guardarLocal();
-        mostrarMensaje(`✅ Salida registrada para ${emp.nombre} a las ${salida}`, 'verde');
-        actualizarHistorial();
-      })
-      .catch(() => {
-        guardarLocal();
-        mostrarMensaje(`⚠️ Salida guardada localmente (sin conexión) para ${emp.nombre}`, 'naranja');
-        actualizarHistorial();
-      });
+    db.collection("jornada_registros").doc(registro.id).update({
+      salida: salida,
+      tiemposComida: tiempos,
+      timestampSalida: new Date().toISOString()
+    })
+    .then(() => {
+      guardarLocal();
+      mostrarMensaje(`✅ Salida registrada para ${emp.nombre} a las ${salida} (${tiempos} tiempo(s) de comida)`, 'verde');
+      actualizarHistorial();
+      cerrarComidaSalida();
+    })
+    .catch(() => {
+      guardarLocal();
+      mostrarMensaje(`⚠️ Salida guardada localmente (sin conexión) para ${emp.nombre}`, 'naranja');
+      actualizarHistorial();
+      cerrarComidaSalida();
+    });
   } else {
     guardarLocal();
     mostrarMensaje(`✅ Salida registrada localmente para ${emp.nombre}`, 'verde');
     actualizarHistorial();
+    cerrarComidaSalida();
   }
 }
 
+function cancelarComidaSalida() {
+  cerrarComidaSalida();
+  mostrarMensaje('❌ Salida cancelada.', 'rojo');
+}
+
+function cerrarComidaSalida() {
+  document.getElementById('modalComidaSalida').classList.remove('active');
+  salidaPendienteEmpleado = null;
+  salidaPendienteHora = null;
+  salidaPendienteRegistro = null;
+}
+
+// ============================================================
+// USAR HORA ACTUAL
+// ============================================================
 function usarHoraActual() {
   const ahora = new Date().toLocaleTimeString('es-GT', { hour:'2-digit', minute:'2-digit' });
   document.getElementById('horaEntradaP').value = ahora;
@@ -891,16 +1006,14 @@ async function eliminarEmpleado(id) {
 }
 
 // ============================================================
-// HISTORIAL (MEJORADO) - CORREGIDO
+// HISTORIAL (MEJORADO con tiempos de comida)
 // ============================================================
 function llenarSelectHistorial() {
   const sel = document.getElementById('mesHistorial');
   sel.innerHTML = '';
   const ahora = new Date();
-  // Generar opciones para los últimos 12 meses
   for (let i = 0; i < 12; i++) {
     const d = new Date(ahora.getFullYear(), ahora.getMonth() - i, 1);
-    // Guardamos el mes que será el mes de inicio del período (el mes que contiene el día 11)
     const val = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
     const label = d.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
     const opt = document.createElement('option');
@@ -908,7 +1021,6 @@ function llenarSelectHistorial() {
     opt.textContent = label.charAt(0).toUpperCase() + label.slice(1);
     sel.appendChild(opt);
   }
-  // Seleccionar el mes actual (agosto si hoy es 31/08/2026)
   const actual = ahora.getFullYear() + '-' + String(ahora.getMonth() + 1).padStart(2, '0');
   sel.value = actual;
   actualizarHistorial();
@@ -918,13 +1030,11 @@ function actualizarHistorial() {
   const mesVal = document.getElementById('mesHistorial').value;
   if (!mesVal) return;
   const [year, month] = mesVal.split('-').map(Number);
-  // Período: del día 11 del mes seleccionado al día 10 del mes siguiente
   const fechaInicio = new Date(year, month - 1, 11);
   const fechaFin = new Date(year, month, 10);
   const inicioStr = fechaInicio.toISOString().split('T')[0];
   const finStr = fechaFin.toISOString().split('T')[0];
 
-  // Generar todos los días del período
   const dias = [];
   let cursor = new Date(fechaInicio);
   while (cursor <= fechaFin) {
@@ -937,10 +1047,7 @@ function actualizarHistorial() {
 
   empleados.forEach(emp => {
     dias.forEach(fecha => {
-      // Buscar registro existente
       let registro = registrosCache.find(r => r.empleadoId === emp.id && r.fecha === fecha);
-
-      // Si no existe, creamos uno virtual para mostrar
       if (!registro) {
         registro = {
           empleadoId: emp.id,
@@ -949,6 +1056,7 @@ function actualizarHistorial() {
           entrada: null,
           salida: null,
           tipo: 'normal',
+          tiemposComida: 0,
           id: null
         };
       }
@@ -956,9 +1064,9 @@ function actualizarHistorial() {
       const entrada = registro.entrada || '—';
       const salida = registro.salida || '—';
       const tipo = registro.tipo || 'normal';
+      const tiempos = registro.tiemposComida || 0;
 
-      // Calcular horas solo si tiene entrada y salida
-      let horas = 0, extras = 0, descuento = 0;
+      let horas = 0, extras = 0, descuento = 0, descComida = 0;
       let asistio = false;
       if (registro.entrada && registro.salida) {
         horas = calcularHoras(registro.entrada, registro.salida);
@@ -966,22 +1074,24 @@ function actualizarHistorial() {
         extras = calc.extras;
         descuento = calc.descuento;
         asistio = true;
+        descComida = tiempos * 0.5;
       } else if (tipo !== 'normal') {
-        // Vacaciones/personal/incapacidad: se considera asistencia sin horas
         asistio = true;
       } else {
-        // Normal sin horas: verificar si es sábado no trabajado
         if (diaSemana(fecha) === 6 && !esNoLaborable(fecha)) {
           descuento = 4;
         }
         asistio = false;
       }
 
-      const horasStr = (asistio && horas > 0) ? horas.toFixed(2) + 'h' : '—';
+      const horasBrutas = horas;
+      const horasNetas = Math.max(0, horas - descComida);
+      const horasStr = (asistio && horas > 0) ? horasNetas.toFixed(2) + 'h' : '—';
       const extrasStr = (asistio && extras > 0) ? extras.toFixed(2) + 'h' : '—';
       const descuentoStr = (descuento > 0) ? descuento.toFixed(2) + 'h' : '—';
+      const comidasStr = tiempos > 0 ? tiempos : '—';
+      const descComidaStr = descComida > 0 ? descComida.toFixed(2) + 'h' : '—';
 
-      // Determinar tipo para mostrar
       let tipoLabel = 'Normal';
       let badgeClass = 'badge-verde';
       if (tipo === 'vacaciones') { tipoLabel = 'Vacaciones'; badgeClass = 'badge-azul'; }
@@ -991,7 +1101,6 @@ function actualizarHistorial() {
       else if (!asistio && esNoLaborable(fecha)) { tipoLabel = 'No laborable'; badgeClass = 'badge-gris'; }
       else if (!asistio) { tipoLabel = 'Falta'; badgeClass = 'badge-rojo'; }
 
-      // Mostrar todas las filas, excepto si es domingo/feriado sin registro y sin descuento (para limpiar vista)
       const esDiaNoLab = esNoLaborable(fecha);
       if (asistio || descuento > 0 || !esDiaNoLab) {
         tbody.innerHTML += `
@@ -1003,6 +1112,8 @@ function actualizarHistorial() {
             <td>${horasStr}</td>
             <td>${extrasStr}</td>
             <td>${descuentoStr}</td>
+            <td>${comidasStr}</td>
+            <td>${descComidaStr}</td>
             <td><span class="badge ${badgeClass}">${tipoLabel}</span></td>
             <td><button class="btn-warning btn-sm" onclick="abrirModalEditar('${emp.id}','${fecha}')">✏️ Editar</button></td>
           </tr>
@@ -1012,12 +1123,12 @@ function actualizarHistorial() {
   });
 
   if (tbody.innerHTML === '') {
-    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:#94a3b8;">No hay registros para este período</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;color:#94a3b8;">No hay registros para este período</td></tr>`;
   }
 }
 
 // ============================================================
-// MODAL DE EDICIÓN
+// MODAL DE EDICIÓN (incluye tiempos de comida)
 // ============================================================
 function abrirModalEditar(empleadoId, fecha) {
   let registro = registrosCache.find(r => r.empleadoId === empleadoId && r.fecha === fecha);
@@ -1034,10 +1145,12 @@ function abrirModalEditar(empleadoId, fecha) {
   if (registro) {
     document.getElementById('modalEntrada').value = registro.entrada || '';
     document.getElementById('modalSalida').value = registro.salida || '';
+    document.getElementById('modalComidas').value = registro.tiemposComida || 0;
     document.getElementById('modalTipo').value = registro.tipo || 'normal';
   } else {
     document.getElementById('modalEntrada').value = '';
     document.getElementById('modalSalida').value = '';
+    document.getElementById('modalComidas').value = '0';
     document.getElementById('modalTipo').value = 'normal';
   }
 
@@ -1053,6 +1166,7 @@ function guardarEdicion() {
   const entrada = document.getElementById('modalEntrada').value;
   const salida = document.getElementById('modalSalida').value;
   const tipo = document.getElementById('modalTipo').value;
+  const tiempos = parseInt(document.getElementById('modalComidas').value);
 
   if (tipo === 'normal' && (!entrada || !salida)) {
     document.getElementById('modalMensaje').textContent = '⚠️ Para tipo "normal" debe tener entrada y salida.';
@@ -1072,6 +1186,7 @@ function guardarEdicion() {
     entrada: entrada || null,
     salida: salida || null,
     tipo: tipo,
+    tiemposComida: tiempos,
     timestamp: new Date().toISOString()
   };
 
@@ -1098,22 +1213,23 @@ function guardarEdicion() {
         entrada: entrada || null,
         salida: salida || null,
         tipo: tipo,
+        tiemposComida: tiempos,
         timestampSalida: new Date().toISOString()
       })
       .then(() => {
-        Object.assign(registro, { entrada: entrada || null, salida: salida || null, tipo });
+        Object.assign(registro, { entrada: entrada || null, salida: salida || null, tipo, tiemposComida: tiempos });
         guardarLocal();
         cerrarModal();
         actualizarHistorial();
       })
       .catch(() => {
-        Object.assign(registro, { entrada: entrada || null, salida: salida || null, tipo });
+        Object.assign(registro, { entrada: entrada || null, salida: salida || null, tipo, tiemposComida: tiempos });
         guardarLocal();
         cerrarModal();
         actualizarHistorial();
       });
     } else {
-      Object.assign(registro, { entrada: entrada || null, salida: salida || null, tipo });
+      Object.assign(registro, { entrada: entrada || null, salida: salida || null, tipo, tiemposComida: tiempos });
       guardarLocal();
       cerrarModal();
       actualizarHistorial();
