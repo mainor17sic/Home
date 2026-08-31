@@ -264,7 +264,7 @@
 <body>
 
 <div class="container">
-  <!-- Título general (visible en todas las pestañas) -->
+  <!-- Título general -->
   <h1>⏱️ Control de Jornada</h1>
   <p class="subtitulo">Guatemala • Período: 11 al 10 de cada mes • Feriados oficiales</p>
 
@@ -284,7 +284,6 @@
     <canvas id="relojCanvas"></canvas>
     <div class="overlay-controls">
       <div class="fecha-actual" id="fechaActual">
-        <!-- Se llena con JS -->
         <span id="diaSemana"></span>, <span id="diaNumero"></span> de <span id="mesNombre"></span> de <span id="anio"></span>
         <small id="infoFeriado"></small>
       </div>
@@ -504,13 +503,12 @@ async function init() {
   // Escuchar cambios en tiempo real
   db.collection("jornada_empleados").onSnapshot(() => { sincronizarEmpleados(); actualizarSelects(); mostrarEmpleados(); });
   db.collection("jornada_config").doc("feriados").onSnapshot(() => { sincronizarFeriados(); actualizarTablaFeriados(); });
-  db.collection("jornada_registros").onSnapshot(() => { sincronizarRegistros(); actualizarHistorial(); actualizarJornadaHoy(); });
+  db.collection("jornada_registros").onSnapshot(() => { sincronizarRegistros(); actualizarHistorial(); });
 
   actualizarSelects();
   mostrarEmpleados();
   actualizarTablaFeriados();
   actualizarHistorial();
-  actualizarJornadaHoy();
   llenarSelectMeses();
 
   // === RELOJ Y CALENDARIO ===
@@ -546,7 +544,7 @@ function iniciarReloj() {
 
     ctx.clearRect(0, 0, w, h);
 
-    // Fondo semi-transparente (para que el reloj se vea suave)
+    // Fondo semi-transparente
     ctx.fillStyle = 'rgba(255,255,255,0.15)';
     ctx.beginPath();
     ctx.arc(centroX, centroY, radio + 10, 0, 2*Math.PI);
@@ -639,7 +637,6 @@ function iniciarReloj() {
   }
   loop();
 
-  // Redibujar al cambiar tamaño
   window.addEventListener('resize', () => {
     resizeCanvas();
   });
@@ -700,7 +697,6 @@ function marcarEntrada() {
       guardarLocal();
       mostrarMensaje(`✅ Entrada registrada para ${emp.nombre} a las ${entrada}`, 'verde');
       actualizarHistorial();
-      actualizarJornadaHoy();
     })
     .catch(() => {
       // Offline
@@ -709,7 +705,6 @@ function marcarEntrada() {
       guardarLocal();
       mostrarMensaje(`⚠️ Entrada guardada localmente (sin conexión) para ${emp.nombre}`, 'naranja');
       actualizarHistorial();
-      actualizarJornadaHoy();
     });
 }
 
@@ -735,19 +730,16 @@ function marcarSalida() {
         guardarLocal();
         mostrarMensaje(`✅ Salida registrada para ${emp.nombre} a las ${salida}`, 'verde');
         actualizarHistorial();
-        actualizarJornadaHoy();
       })
       .catch(() => {
         guardarLocal();
         mostrarMensaje(`⚠️ Salida guardada localmente (sin conexión) para ${emp.nombre}`, 'naranja');
         actualizarHistorial();
-        actualizarJornadaHoy();
       });
   } else {
     guardarLocal();
     mostrarMensaje(`✅ Salida registrada localmente para ${emp.nombre}`, 'verde');
     actualizarHistorial();
-    actualizarJornadaHoy();
   }
 }
 
@@ -816,14 +808,6 @@ async function eliminarEmpleado(id) {
     actualizarSelects();
     mostrarEmpleados();
   } catch(e) { alert('Error al eliminar.'); }
-}
-
-// ============================================================
-// JORNADA DE HOY (se usa en la pestaña de historial, pero la mantenemos)
-// ============================================================
-function actualizarJornadaHoy() {
-  // No se usa directamente en la vista principal, pero se puede llamar si se necesita.
-  // La dejamos para compatibilidad.
 }
 
 // ============================================================
@@ -994,7 +978,7 @@ function generarReporte() {
   semanas.forEach((s, i) => {
     html += `<th>Semana ${i+1}<br><small>${s.label}</small></th>`;
   });
-  html += `<th>Totales<br><small>Extras / Desc / Asist</small></th></tr></thead><tbody>';
+  html += `<th>Totales<br><small>Extras / Desc / Asist</small></th></tr></thead><tbody>`;
 
   for (let empId in mapa) {
     const emp = mapa[empId];
