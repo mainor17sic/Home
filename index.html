@@ -416,6 +416,12 @@
     <h2>Historial de Asistencias</h2>
     <div class="form-row">
       <select id="mesHistorial"><option value="">Selecciona mes</option></select>
+      <select id="filtroTurno" style="flex:0 0 150px;">
+        <option value="todos">Todos los turnos</option>
+        <option value="Diurno">Diurno</option>
+        <option value="Mixto">Mixto</option>
+        <option value="Nocturno">Nocturno</option>
+      </select>
       <button onclick="actualizarHistorial()" class="btn-success">📅 Mostrar</button>
     </div>
     <div class="table-wrap">
@@ -430,7 +436,7 @@
             <th>Extras</th>
             <th>Descuento</th>
             <th>Comidas</th>
-            <th>Desc. Comida</th>
+            <th>Turno</th>
             <th>Tipo</th>
             <th>Acciones</th>
           </tr>
@@ -484,6 +490,14 @@
         <option value="0">0</option>
         <option value="1">1 (descuenta 0.5h)</option>
         <option value="2">2 (descuenta 1h)</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Turno</label>
+      <select id="modalTurno">
+        <option value="Diurno">Diurno</option>
+        <option value="Mixto">Mixto</option>
+        <option value="Nocturno">Nocturno</option>
       </select>
     </div>
     <div class="form-group">
@@ -553,13 +567,12 @@ let editandoRegistroId = null;
 let editandoEmpleadoId = null;
 let editandoFecha = null;
 
-// Variable para almacenar datos temporales al marcar salida
 let salidaPendienteEmpleado = null;
 let salidaPendienteHora = null;
 let salidaPendienteRegistro = null;
 
 // ============================================================
-// FUNCIONES DE FECHA Y CÁLCULO
+// FUNCIONES DE FECHA Y TURNOS
 // ============================================================
 function hoy() { return new Date().toISOString().split('T')[0]; }
 function esDomingo(f) { return new Date(f + 'T00:00:00').getDay() === 0; }
@@ -573,32 +586,79 @@ function horasDecimal(h) {
   return parseInt(p[0]) + parseInt(p[1])/60 + (parseInt(p[2])||0)/3600;
 }
 
-function calcularHoras(entrada, salida) {
+function calcularHorasBrutas(entrada, salida, tiemposComida) {
   if (!entrada || !salida) return 0;
   let e = horasDecimal(entrada);
   let s = horasDecimal(salida);
   if (s < e) s += 24;
-  return Math.round((s - e) * 100) / 100;
+  const brutas = s - e;
+  const descComida = (tiemposComida || 0) * 0.5;
+  return Math.round((brutas - descComida) * 100) / 100;
 }
 
-function calcularExtrasYDescuento(horas, fecha, tipo) {
+// ============================================================
+// DETERMINAR TURNO SEGÚN HORA DE ENTRADA
+// ============================================================
+function determinarTurno(horaEntrada) {
+  if (!horaEntrada) return 'Diurno';
+  const h = horasDecimal(horaEntrada);
+  // Rango 4:00 a 5:59 → Mixto
+  if (h >= 4 && h < 6) return 'Mixto';
+  // Rango 6:00 a 10:00 → Diurno
+  if (h >= 6 && h < 10) return 'Diurno';
+  // Rango 10:01 a 17:59 → Mixto
+  if (h >= 10 && h < 18) return 'Mixto';
+  // 18:00 en adelante → Nocturno
+  if (h >= 18) return 'Nocturno';
+  // Antes de las 4:00 → Nocturno (por defecto)
+  return 'Nocturno';
+}
+
+// ============================================================
+// JORNADA MÁXIMA SEGÚN DÍA Y TURNO
+// ============================================================
+function getJornadaMaxima(fecha, turno) {
+  const dia = diaSemana(fecha);
+  const noLab = esNoLaborable(fecha);
+  // Si es domingo o feriado → 0 (todo es extra)
+  if (noLab) return 0;
+  // Sábado
+  if (dia === 6) {
+    if (turno === 'Diurno') return 4;
+    if (turno === 'Mixto') return 7;
+    if (turno === 'Nocturno') return 6;
+    return 0;
+  }
+  // Lunes a viernes
+  if (turno === 'Diurno') return 8;
+  if (turno === 'Mixto') return 7;
+  if (turno === 'Nocturno') return 6;
+  return 0;
+}
+
+// ============================================================
+// CÁLCULO DE EXTRAS Y DESCUENTO (con la nueva lógica)
+// ============================================================
+function calcularExtrasYDescuento(horasBrutas, fecha, turno, tipo) {
+  // Si el tipo no es "normal", no se calculan extras ni descuentos (día pagado)
   if (tipo && tipo !== 'normal') {
     return { extras: 0, descuento: 0, asistio: true };
   }
-  const dia = diaSemana(fecha);
-  const noLab = esNoLaborable(fecha);
-  let extras = 0, descuento = 0, asistio = horas > 0;
-  if (noLab) {
-    extras = horas;
-  } else if (dia === 6) {
-    if (horas > 4) extras = horas - 4;
-    else descuento = Math.max(0, 4 - horas);
+  const jornada = getJornadaMaxima(fecha, turno);
+  let extras = 0, descuento = 0;
+  // Si jornada = 0 (domingo/feriado), todas las horas son extras
+  if (jornada === 0) {
+    extras = horasBrutas;
   } else {
-    if (horas > 8) extras = horas - 8;
+    extras = Math.max(0, horasBrutas - jornada);
+    // Descuento solo si es sábado y no es feriado (y trabajó menos de la jornada)
+    if (diaSemana(fecha) === 6 && !esNoLaborable(fecha)) {
+      descuento = Math.max(0, jornada - horasBrutas);
+    }
   }
   extras = Math.round(extras * 100) / 100;
   descuento = Math.round(descuento * 100) / 100;
-  return { extras, descuento, asistio };
+  return { extras, descuento, asistio: horasBrutas > 0 || (tipo && tipo !== 'normal') };
 }
 
 // ============================================================
@@ -704,7 +764,6 @@ function iniciarReloj() {
     const radio = Math.min(w, h) * 0.38;
 
     ctx.clearRect(0, 0, w, h);
-
     ctx.fillStyle = 'rgba(255,255,255,0.15)';
     ctx.beginPath();
     ctx.arc(centroX, centroY, radio + 10, 0, 2*Math.PI);
@@ -825,6 +884,7 @@ function marcarEntrada() {
 
   const fecha = hoy();
   const entrada = document.getElementById('horaEntradaP').value || new Date().toLocaleTimeString('es-GT', { hour:'2-digit', minute:'2-digit' });
+  const turno = determinarTurno(entrada);
 
   const activo = registrosCache.find(r => r.empleadoId === emp.id && r.fecha === fecha && !r.salida);
   if (activo) {
@@ -838,8 +898,9 @@ function marcarEntrada() {
     fecha: fecha,
     entrada: entrada,
     salida: null,
-    tipo: 'normal',
+    turno: turno,
     tiemposComida: 0,
+    tipo: 'normal',
     timestamp: new Date().toISOString()
   };
 
@@ -848,7 +909,7 @@ function marcarEntrada() {
       nuevo.id = docRef.id;
       registrosCache.push(nuevo);
       guardarLocal();
-      mostrarMensaje(`✅ Entrada registrada para ${emp.nombre} a las ${entrada}`, 'verde');
+      mostrarMensaje(`✅ Entrada registrada para ${emp.nombre} a las ${entrada} (Turno: ${turno})`, 'verde');
       actualizarHistorial();
     })
     .catch(() => {
@@ -876,12 +937,10 @@ function iniciarSalidaConComidas() {
     return;
   }
 
-  // Guardar datos temporales
   salidaPendienteEmpleado = emp;
   salidaPendienteHora = salida;
   salidaPendienteRegistro = registro;
 
-  // Mostrar modal para tiempos de comida
   document.getElementById('modalComidaSalida').classList.add('active');
 }
 
@@ -1006,7 +1065,7 @@ async function eliminarEmpleado(id) {
 }
 
 // ============================================================
-// HISTORIAL (MEJORADO con tiempos de comida)
+// HISTORIAL (con filtro por turno)
 // ============================================================
 function llenarSelectHistorial() {
   const sel = document.getElementById('mesHistorial');
@@ -1029,6 +1088,8 @@ function llenarSelectHistorial() {
 function actualizarHistorial() {
   const mesVal = document.getElementById('mesHistorial').value;
   if (!mesVal) return;
+  const filtroTurno = document.getElementById('filtroTurno').value;
+
   const [year, month] = mesVal.split('-').map(Number);
   const fechaInicio = new Date(year, month - 1, 11);
   const fechaFin = new Date(year, month, 10);
@@ -1055,42 +1116,46 @@ function actualizarHistorial() {
           fecha: fecha,
           entrada: null,
           salida: null,
-          tipo: 'normal',
+          turno: 'Diurno',
           tiemposComida: 0,
+          tipo: 'normal',
           id: null
         };
       }
 
+      // Aplicar filtro de turno
+      if (filtroTurno !== 'todos' && registro.turno !== filtroTurno) return;
+
       const entrada = registro.entrada || '—';
       const salida = registro.salida || '—';
-      const tipo = registro.tipo || 'normal';
+      const turno = registro.turno || 'Diurno';
       const tiempos = registro.tiemposComida || 0;
+      const tipo = registro.tipo || 'normal';
 
-      let horas = 0, extras = 0, descuento = 0, descComida = 0;
-      let asistio = false;
+      let horasBrutas = 0, extras = 0, descuento = 0, asistio = false;
       if (registro.entrada && registro.salida) {
-        horas = calcularHoras(registro.entrada, registro.salida);
-        const calc = calcularExtrasYDescuento(horas, fecha, tipo);
+        horasBrutas = calcularHorasBrutas(registro.entrada, registro.salida, tiempos);
+        const calc = calcularExtrasYDescuento(horasBrutas, fecha, turno, tipo);
         extras = calc.extras;
         descuento = calc.descuento;
         asistio = true;
-        descComida = tiempos * 0.5;
       } else if (tipo !== 'normal') {
         asistio = true;
       } else {
-        if (diaSemana(fecha) === 6 && !esNoLaborable(fecha)) {
+        if (diaSemana(fecha) === 6 && !esNoLaborable(fecha) && turno === 'Diurno') {
           descuento = 4;
+        } else if (diaSemana(fecha) === 6 && !esNoLaborable(fecha) && turno === 'Mixto') {
+          descuento = 7;
+        } else if (diaSemana(fecha) === 6 && !esNoLaborable(fecha) && turno === 'Nocturno') {
+          descuento = 6;
         }
         asistio = false;
       }
 
-      const horasBrutas = horas;
-      const horasNetas = Math.max(0, horas - descComida);
-      const horasStr = (asistio && horas > 0) ? horasNetas.toFixed(2) + 'h' : '—';
+      const horasStr = (asistio && horasBrutas > 0) ? horasBrutas.toFixed(2) + 'h' : '—';
       const extrasStr = (asistio && extras > 0) ? extras.toFixed(2) + 'h' : '—';
       const descuentoStr = (descuento > 0) ? descuento.toFixed(2) + 'h' : '—';
       const comidasStr = tiempos > 0 ? tiempos : '—';
-      const descComidaStr = descComida > 0 ? descComida.toFixed(2) + 'h' : '—';
 
       let tipoLabel = 'Normal';
       let badgeClass = 'badge-verde';
@@ -1113,7 +1178,7 @@ function actualizarHistorial() {
             <td>${extrasStr}</td>
             <td>${descuentoStr}</td>
             <td>${comidasStr}</td>
-            <td>${descComidaStr}</td>
+            <td><span class="badge badge-azul">${turno}</span></td>
             <td><span class="badge ${badgeClass}">${tipoLabel}</span></td>
             <td><button class="btn-warning btn-sm" onclick="abrirModalEditar('${emp.id}','${fecha}')">✏️ Editar</button></td>
           </tr>
@@ -1128,7 +1193,7 @@ function actualizarHistorial() {
 }
 
 // ============================================================
-// MODAL DE EDICIÓN (incluye tiempos de comida)
+// MODAL DE EDICIÓN (con turno)
 // ============================================================
 function abrirModalEditar(empleadoId, fecha) {
   let registro = registrosCache.find(r => r.empleadoId === empleadoId && r.fecha === fecha);
@@ -1146,11 +1211,13 @@ function abrirModalEditar(empleadoId, fecha) {
     document.getElementById('modalEntrada').value = registro.entrada || '';
     document.getElementById('modalSalida').value = registro.salida || '';
     document.getElementById('modalComidas').value = registro.tiemposComida || 0;
+    document.getElementById('modalTurno').value = registro.turno || 'Diurno';
     document.getElementById('modalTipo').value = registro.tipo || 'normal';
   } else {
     document.getElementById('modalEntrada').value = '';
     document.getElementById('modalSalida').value = '';
     document.getElementById('modalComidas').value = '0';
+    document.getElementById('modalTurno').value = 'Diurno';
     document.getElementById('modalTipo').value = 'normal';
   }
 
@@ -1167,6 +1234,7 @@ function guardarEdicion() {
   const salida = document.getElementById('modalSalida').value;
   const tipo = document.getElementById('modalTipo').value;
   const tiempos = parseInt(document.getElementById('modalComidas').value);
+  const turno = document.getElementById('modalTurno').value;
 
   if (tipo === 'normal' && (!entrada || !salida)) {
     document.getElementById('modalMensaje').textContent = '⚠️ Para tipo "normal" debe tener entrada y salida.';
@@ -1185,8 +1253,9 @@ function guardarEdicion() {
     fecha: editandoFecha,
     entrada: entrada || null,
     salida: salida || null,
-    tipo: tipo,
+    turno: turno,
     tiemposComida: tiempos,
+    tipo: tipo,
     timestamp: new Date().toISOString()
   };
 
@@ -1212,24 +1281,25 @@ function guardarEdicion() {
       db.collection("jornada_registros").doc(id).update({
         entrada: entrada || null,
         salida: salida || null,
-        tipo: tipo,
+        turno: turno,
         tiemposComida: tiempos,
+        tipo: tipo,
         timestampSalida: new Date().toISOString()
       })
       .then(() => {
-        Object.assign(registro, { entrada: entrada || null, salida: salida || null, tipo, tiemposComida: tiempos });
+        Object.assign(registro, { entrada: entrada || null, salida: salida || null, turno, tiemposComida: tiempos, tipo });
         guardarLocal();
         cerrarModal();
         actualizarHistorial();
       })
       .catch(() => {
-        Object.assign(registro, { entrada: entrada || null, salida: salida || null, tipo, tiemposComida: tiempos });
+        Object.assign(registro, { entrada: entrada || null, salida: salida || null, turno, tiemposComida: tiempos, tipo });
         guardarLocal();
         cerrarModal();
         actualizarHistorial();
       });
     } else {
-      Object.assign(registro, { entrada: entrada || null, salida: salida || null, tipo, tiemposComida: tiempos });
+      Object.assign(registro, { entrada: entrada || null, salida: salida || null, turno, tiemposComida: tiempos, tipo });
       guardarLocal();
       cerrarModal();
       actualizarHistorial();
@@ -1298,7 +1368,7 @@ async function eliminarFeriado(fecha) {
 }
 
 // ============================================================
-// REPORTE MENSUAL
+// REPORTE MENSUAL (con columna de turno)
 // ============================================================
 function llenarSelectMeses() {
   const sel = document.getElementById('mesReporte');
@@ -1335,7 +1405,7 @@ function generarReporte() {
   const mapa = {};
   registrosFiltrados.forEach(r => {
     const key = r.empleadoId;
-    if (!mapa[key]) mapa[key] = { empleadoId: key, nombre: r.nombre || 'Desconocido', registros: [] };
+    if (!mapa[key]) mapa[key] = { empleadoId: key, nombre: r.nombre || 'Desconocido', turno: r.turno || 'Diurno', registros: [] };
     mapa[key].registros.push(r);
   });
 
@@ -1354,7 +1424,7 @@ function generarReporte() {
     cursor.setDate(cursor.getDate() + 7);
   }
 
-  let html = '<table><thead><tr><th>Empleado</th>';
+  let html = '<table><thead><tr><th>Empleado (Turno)</th>';
   semanas.forEach((s, i) => {
     html += `<th>${s.label}</th>`;
   });
@@ -1362,9 +1432,9 @@ function generarReporte() {
 
   for (let empId in mapa) {
     const emp = mapa[empId];
-    const empObj = empleados.find(e => e.id === empId);
-    const nombre = empObj ? empObj.nombre : emp.nombre || 'Desconocido';
-    html += `<tr><td><strong>${nombre}</strong></td>`;
+    const nombre = emp.nombre;
+    const turno = emp.turno;
+    html += `<tr><td><strong>${nombre}</strong> (${turno})</td>`;
 
     let totalExtras = 0;
 
@@ -1372,8 +1442,8 @@ function generarReporte() {
       let extrasSem = 0;
       emp.registros.forEach(r => {
         if (r.fecha >= s.inicio && r.fecha <= s.fin) {
-          const horas = calcularHoras(r.entrada, r.salida);
-          const calc = calcularExtrasYDescuento(horas, r.fecha, r.tipo);
+          const horas = calcularHorasBrutas(r.entrada, r.salida, r.tiemposComida || 0);
+          const calc = calcularExtrasYDescuento(horas, r.fecha, r.turno || 'Diurno', r.tipo);
           extrasSem += calc.extras;
         }
       });
@@ -1424,7 +1494,7 @@ function generarPDF() {
     theme: 'grid',
     styles: { fontSize: 8, cellPadding: 2 },
     headStyles: { fillColor: [30, 58, 138], textColor: 255, fontSize: 9 },
-    columnStyles: { 0: { cellWidth: 30 } }
+    columnStyles: { 0: { cellWidth: 35 } }
   });
 
   pdf.save(`Reporte_Extras_${periodo.replace(/\s/g, '_')}.pdf`);
