@@ -217,6 +217,7 @@
     .badge-azul { background: #dbeafe; color: #1e40af; }
     .badge-naranja { background: #fef3c7; color: #92400e; }
     .badge-gris { background: #e2e8f0; color: #475569; }
+    .dia-azul { color: #1e3a8a; font-weight: 600; }
 
     .form-row {
       display: flex;
@@ -429,6 +430,7 @@
         <thead>
           <tr>
             <th>Fecha</th>
+            <th>Día</th>
             <th>Empleado</th>
             <th>Entrada</th>
             <th>Salida</th>
@@ -637,21 +639,18 @@ function getJornadaMaxima(fecha, turno) {
 }
 
 // ============================================================
-// CÁLCULO DE EXTRAS Y DESCUENTO (con la nueva lógica)
+// CÁLCULO DE EXTRAS Y DESCUENTO
 // ============================================================
 function calcularExtrasYDescuento(horasBrutas, fecha, turno, tipo) {
-  // Si el tipo no es "normal", no se calculan extras ni descuentos (día pagado)
   if (tipo && tipo !== 'normal') {
     return { extras: 0, descuento: 0, asistio: true };
   }
   const jornada = getJornadaMaxima(fecha, turno);
   let extras = 0, descuento = 0;
-  // Si jornada = 0 (domingo/feriado), todas las horas son extras
   if (jornada === 0) {
     extras = horasBrutas;
   } else {
     extras = Math.max(0, horasBrutas - jornada);
-    // Descuento solo si es sábado y no es feriado (y trabajó menos de la jornada)
     if (diaSemana(fecha) === 6 && !esNoLaborable(fecha)) {
       descuento = Math.max(0, jornada - horasBrutas);
     }
@@ -1065,7 +1064,7 @@ async function eliminarEmpleado(id) {
 }
 
 // ============================================================
-// HISTORIAL (con filtro por turno)
+// HISTORIAL (con columna "Día" en azul y todos los días mostrados)
 // ============================================================
 function llenarSelectHistorial() {
   const sel = document.getElementById('mesHistorial');
@@ -1106,6 +1105,8 @@ function actualizarHistorial() {
   const tbody = document.getElementById('tablaHistorial');
   tbody.innerHTML = '';
 
+  const nombreDias = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+
   empleados.forEach(emp => {
     dias.forEach(fecha => {
       let registro = registrosCache.find(r => r.empleadoId === emp.id && r.fecha === fecha);
@@ -1123,33 +1124,58 @@ function actualizarHistorial() {
         };
       }
 
-      // Aplicar filtro de turno
-      if (filtroTurno !== 'todos' && registro.turno !== filtroTurno) return;
+      // Aplicar filtro de turno (solo si hay registro o si el filtro es "todos")
+      if (filtroTurno !== 'todos' && registro.turno !== filtroTurno) {
+        // Si no hay registro y el filtro no coincide, omitimos esta fila
+        if (!registro.id) return;
+      }
 
+      const dia = diaSemana(fecha);
+      const nombreDia = nombreDias[dia];
       const entrada = registro.entrada || '—';
       const salida = registro.salida || '—';
       const turno = registro.turno || 'Diurno';
       const tiempos = registro.tiemposComida || 0;
       const tipo = registro.tipo || 'normal';
 
-      let horasBrutas = 0, extras = 0, descuento = 0, asistio = false;
+      let horasBrutas = 0, extras = 0, descuento = 0;
+      let asistio = false;
+      let esNoLab = esNoLaborable(fecha);
+      let tipoLabel = 'Normal';
+      let badgeClass = 'badge-verde';
+
       if (registro.entrada && registro.salida) {
         horasBrutas = calcularHorasBrutas(registro.entrada, registro.salida, tiempos);
         const calc = calcularExtrasYDescuento(horasBrutas, fecha, turno, tipo);
         extras = calc.extras;
         descuento = calc.descuento;
         asistio = true;
+        tipoLabel = 'Trabajado';
+        badgeClass = 'badge-verde';
       } else if (tipo !== 'normal') {
         asistio = true;
+        if (tipo === 'vacaciones') { tipoLabel = 'Vacaciones'; badgeClass = 'badge-azul'; }
+        else if (tipo === 'personal') { tipoLabel = 'Personal'; badgeClass = 'badge-naranja'; }
+        else if (tipo === 'incapacidad') { tipoLabel = 'Incapacidad'; badgeClass = 'badge-gris'; }
       } else {
-        if (diaSemana(fecha) === 6 && !esNoLaborable(fecha) && turno === 'Diurno') {
-          descuento = 4;
-        } else if (diaSemana(fecha) === 6 && !esNoLaborable(fecha) && turno === 'Mixto') {
-          descuento = 7;
-        } else if (diaSemana(fecha) === 6 && !esNoLaborable(fecha) && turno === 'Nocturno') {
-          descuento = 6;
-        }
+        // Día sin registro
         asistio = false;
+        if (dia === 0) {
+          tipoLabel = 'Domingo (no laborable)';
+          badgeClass = 'badge-gris';
+        } else if (esFeriado(fecha)) {
+          tipoLabel = 'Feriado (no laborable)';
+          badgeClass = 'badge-gris';
+        } else if (dia === 6) {
+          // Sábado no trabajado → descuento según turno
+          const jornada = getJornadaMaxima(fecha, turno);
+          descuento = jornada;
+          tipoLabel = 'Sábado no trabajado';
+          badgeClass = 'badge-rojo';
+        } else {
+          tipoLabel = 'Falta';
+          badgeClass = 'badge-rojo';
+        }
       }
 
       const horasStr = (asistio && horasBrutas > 0) ? horasBrutas.toFixed(2) + 'h' : '—';
@@ -1157,43 +1183,33 @@ function actualizarHistorial() {
       const descuentoStr = (descuento > 0) ? descuento.toFixed(2) + 'h' : '—';
       const comidasStr = tiempos > 0 ? tiempos : '—';
 
-      let tipoLabel = 'Normal';
-      let badgeClass = 'badge-verde';
-      if (tipo === 'vacaciones') { tipoLabel = 'Vacaciones'; badgeClass = 'badge-azul'; }
-      else if (tipo === 'personal') { tipoLabel = 'Personal'; badgeClass = 'badge-naranja'; }
-      else if (tipo === 'incapacidad') { tipoLabel = 'Incapacidad'; badgeClass = 'badge-gris'; }
-      else if (!asistio && diaSemana(fecha) === 6 && !esNoLaborable(fecha)) { tipoLabel = 'Sábado no trabajado'; badgeClass = 'badge-rojo'; }
-      else if (!asistio && esNoLaborable(fecha)) { tipoLabel = 'No laborable'; badgeClass = 'badge-gris'; }
-      else if (!asistio) { tipoLabel = 'Falta'; badgeClass = 'badge-rojo'; }
-
-      const esDiaNoLab = esNoLaborable(fecha);
-      if (asistio || descuento > 0 || !esDiaNoLab) {
-        tbody.innerHTML += `
-          <tr>
-            <td>${fecha}</td>
-            <td>${emp.nombre}</td>
-            <td>${entrada}</td>
-            <td>${salida}</td>
-            <td>${horasStr}</td>
-            <td>${extrasStr}</td>
-            <td>${descuentoStr}</td>
-            <td>${comidasStr}</td>
-            <td><span class="badge badge-azul">${turno}</span></td>
-            <td><span class="badge ${badgeClass}">${tipoLabel}</span></td>
-            <td><button class="btn-warning btn-sm" onclick="abrirModalEditar('${emp.id}','${fecha}')">✏️ Editar</button></td>
-          </tr>
-        `;
-      }
+      // Siempre mostrar la fila (incluyendo domingos y feriados)
+      tbody.innerHTML += `
+        <tr>
+          <td>${fecha}</td>
+          <td><span class="dia-azul">${nombreDia}</span></td>
+          <td>${emp.nombre}</td>
+          <td>${entrada}</td>
+          <td>${salida}</td>
+          <td>${horasStr}</td>
+          <td>${extrasStr}</td>
+          <td>${descuentoStr}</td>
+          <td>${comidasStr}</td>
+          <td><span class="badge badge-azul">${turno}</span></td>
+          <td><span class="badge ${badgeClass}">${tipoLabel}</span></td>
+          <td><button class="btn-warning btn-sm" onclick="abrirModalEditar('${emp.id}','${fecha}')">✏️ Editar</button></td>
+        </tr>
+      `;
     });
   });
 
   if (tbody.innerHTML === '') {
-    tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;color:#94a3b8;">No hay registros para este período</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="12" style="text-align:center;color:#94a3b8;">No hay registros para este período</td></tr>`;
   }
 }
 
 // ============================================================
-// MODAL DE EDICIÓN (con turno)
+// MODAL DE EDICIÓN
 // ============================================================
 function abrirModalEditar(empleadoId, fecha) {
   let registro = registrosCache.find(r => r.empleadoId === empleadoId && r.fecha === fecha);
@@ -1368,7 +1384,7 @@ async function eliminarFeriado(fecha) {
 }
 
 // ============================================================
-// REPORTE MENSUAL (con columna de turno)
+// REPORTE MENSUAL (semana: domingo a sábado)
 // ============================================================
 function llenarSelectMeses() {
   const sel = document.getElementById('mesReporte');
@@ -1409,8 +1425,14 @@ function generarReporte() {
     mapa[key].registros.push(r);
   });
 
+  // Generar semanas: domingo a sábado
   const semanas = [];
   let cursor = new Date(fechaInicio);
+  // Buscar el domingo más cercano hacia atrás
+  while (cursor.getDay() !== 0) {
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  // Ahora cursor es domingo. Si es anterior a fechaInicio, la primera semana empezará antes, pero solo se contarán días dentro del período.
   while (cursor <= fechaFin) {
     const ini = new Date(cursor);
     const fin = new Date(cursor);
