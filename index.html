@@ -1,257 +1,949 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Marvin Express - Pedidos 🥖</title>
-    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore-compat.js"></script>
-    <style>
-        .tap-soft:active { transform: scale(0.96); transition: 0.1s; }
-        .input-cantidad:focus { border-color: #2563eb; background: white; }
-        input[type="number"]::-webkit-inner-spin-button, 
-        input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-        body { -webkit-tap-highlight-color: transparent; }
-        /* Clases para ocultar la barra de scroll y mantener elegancia en escritorio */
-        .scrollbar-hide::-webkit-scrollbar { display: none; }
-        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Control de Jornada - Guatemala</title>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+  <!-- jsPDF para PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+
+  <style>
+    /* ===== TEMA AZUL CORPORATIVO (Opción 1) ===== */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f1f5f9;
+      padding: 12px;
+      display: flex;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 1300px;
+      width: 100%;
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+      padding: 20px;
+    }
+    h1 { color: #1e3a8a; font-size: 1.8rem; margin-bottom: 4px; }
+    .subtitulo { color: #475569; font-size: 0.95rem; margin-bottom: 20px; }
+
+    /* Pestañas */
+    .tabs {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      background: #f8fafc;
+      padding: 6px;
+      border-radius: 12px;
+      margin-bottom: 24px;
+      border: 1px solid #e2e8f0;
+    }
+    .tab {
+      background: transparent;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: #475569;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .tab:hover { background: #e2e8f0; }
+    .tab.active {
+      background: #1e3a8a;
+      color: white;
+      box-shadow: 0 2px 8px rgba(30,58,138,0.3);
+    }
+    .tab-content { display: none; animation: fade 0.25s ease; }
+    .tab-content.active { display: block; }
+    @keyframes fade { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+
+    /* Formularios */
+    .form-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      margin: 10px 0 16px;
+    }
+    .form-row > * { flex: 1 1 180px; }
+    input, select, button {
+      padding: 10px 14px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 15px;
+      background: white;
+      transition: 0.2s;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: #1e3a8a;
+      box-shadow: 0 0 0 3px rgba(30,58,138,0.15);
+    }
+    button {
+      background: #1e3a8a;
+      color: white;
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    button:hover { background: #2563eb; transform: translateY(-1px); }
+    button:active { transform: scale(0.98); }
+    .btn-success { background: #16a34a; }
+    .btn-success:hover { background: #15803d; }
+    .btn-danger { background: #dc2626; }
+    .btn-danger:hover { background: #b91c1c; }
+    .btn-warning { background: #f59e0b; }
+    .btn-warning:hover { background: #d97706; }
+    .btn-outline { background: transparent; color: #1e3a8a; border: 2px solid #1e3a8a; }
+    .btn-outline:hover { background: #1e3a8a; color: white; }
+    .btn-sm { padding: 6px 12px; font-size: 0.8rem; }
+
+    /* Tablas */
+    .table-wrap { overflow-x: auto; margin: 10px 0; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+    th, td {
+      padding: 10px 12px;
+      border: 1px solid #e2e8f0;
+      text-align: left;
+      white-space: nowrap;
+    }
+    th {
+      background: #f1f5f9;
+      color: #1e293b;
+      font-weight: 600;
+    }
+    td { background: white; }
+    .text-center { text-align: center; }
+    .badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 30px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .badge-verde { background: #dcfce7; color: #166534; }
+    .badge-rojo { background: #fee2e2; color: #991b1b; }
+    .badge-azul { background: #dbeafe; color: #1e40af; }
+    .badge-naranja { background: #fef3c7; color: #92400e; }
+
+    /* Tarjetas de resumen */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 16px;
+      margin: 16px 0;
+    }
+    .card {
+      background: #f8fafc;
+      padding: 16px;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+      text-align: center;
+    }
+    .card .numero { font-size: 2rem; font-weight: 700; color: #1e3a8a; }
+    .card .label { color: #475569; font-size: 0.85rem; }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+      .container { padding: 12px; }
+      .tab { padding: 8px 14px; font-size: 0.8rem; }
+      .form-row > * { flex: 1 1 100%; }
+      th, td { padding: 6px 8px; font-size: 0.8rem; white-space: normal; }
+    }
+  </style>
 </head>
-<body class="bg-[#F8FAFC] font-sans antialiased text-slate-900">
-    <div id="root"></div>
+<body>
 
-    <script type="text/babel">
-        const { useState, useMemo } = React;
+<div class="container">
+  <h1>⏱️ Control de Jornada</h1>
+  <p class="subtitulo">Guatemala • Período: 11 al 10 de cada mes • Feriados oficiales</p>
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyD7iqWBCoScuHSID15itaShi7dRQuQwkEo",
-            authDomain: "panaderia-marvin.firebaseapp.com",
-            projectId: "panaderia-marvin",
-            storageBucket: "panaderia-marvin.firebasestorage.app",
-            messagingSenderId: "908203563116",
-            appId: "1:908203563116:web:69995ce1866a536bf3e049"
-        };
+  <!-- PESTAÑAS -->
+  <div class="tabs">
+    <button class="tab active" data-tab="empleados">👤 Empleados</button>
+    <button class="tab" data-tab="marcar">🕒 Marcar</button>
+    <button class="tab" data-tab="jornada">📋 Jornada Hoy</button>
+    <button class="tab" data-tab="reporte">📊 Reporte Mensual</button>
+    <button class="tab" data-tab="historial">📜 Historial</button>
+    <button class="tab" data-tab="config">⚙️ Feriados</button>
+  </div>
 
-        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
+  <!-- ===== EMPLEADOS ===== -->
+  <div id="empleados" class="tab-content active">
+    <h2>Empleados</h2>
+    <div class="form-row">
+      <input type="text" id="nombreEmp" placeholder="Nombre completo" />
+      <input type="number" id="salarioEmp" placeholder="Salario/hora (Q, opcional)" step="0.01" />
+      <button onclick="agregarEmpleado()" class="btn-success">➕ Agregar</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Nombre</th><th>Salario/hora</th><th>Acciones</th></tr></thead>
+        <tbody id="tablaEmpleados"></tbody>
+      </table>
+    </div>
+  </div>
 
-        const PRODUCTOS_MENU = [
-            { nombre: "Pirujitos 🥖", precio: 1 },
-            { nombre: "Pirujos Grande 🥖", precio: 1 },
-            { nombre: "Pastelitos 🥯", precio: 2 },
-            { nombre: "Dulce 🥐", precio: 1 },
-            { nombre: "Torta 🍪", precio: 10 },
-            { nombre: "Lagarto 🐊", precio: 15 }
-        ];
+  <!-- ===== MARCAR ===== -->
+  <div id="marcar" class="tab-content">
+    <h2>Marcar Entrada / Salida</h2>
+    <div class="form-row">
+      <select id="selectEmpleado"><option value="">Selecciona empleado</option></select>
+    </div>
+    <div class="form-row">
+      <label>Entrada manual: <input type="time" id="horaEntrada" step="60" /></label>
+      <label>Salida manual: <input type="time" id="horaSalida" step="60" /></label>
+    </div>
+    <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:8px;">
+      <button onclick="marcarEntrada()" class="btn-success">✅ Marcar Entrada</button>
+      <button onclick="marcarSalida()" class="btn-danger">❌ Marcar Salida</button>
+      <button onclick="marcarConHoraActual()" class="btn-outline">🔄 Usar hora actual</button>
+    </div>
+    <p style="margin-top:14px; color:#475569; background:#f1f5f9; padding:10px; border-radius:8px;">
+      📌 <span id="ultimoMsg">Esperando acción...</span>
+    </p>
+  </div>
 
-        function QuickOrder() {
-            const [cliente, setCliente] = useState("");
-            const [nota, setNota] = useState("");
-            const [metodoPago, setMetodoPago] = useState("pendiente"); 
-            const [montoAnticipo, setMontoAnticipo] = useState("");
-            const [items, setItems] = useState(PRODUCTOS_MENU.map(p => ({ ...p, cantidad: 0 })));
-            const [enviando, setEnviando] = useState(false);
+  <!-- ===== JORNADA HOY ===== -->
+  <div id="jornada" class="tab-content">
+    <h2>Jornada de hoy <span id="fechaHoy" style="font-weight:400;font-size:0.9rem;color:#475569;"></span></h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Empleado</th><th>Entrada</th><th>Salida</th><th>Horas</th><th>Extras</th><th>Descuento</th><th>Asistió</th></tr></thead>
+        <tbody id="tablaJornada"></tbody>
+      </table>
+    </div>
+  </div>
 
-            const totalCuenta = useMemo(() => {
-                return items.reduce((acc, it) => acc + (it.cantidad * it.precio), 0);
-            }, [items]);
+  <!-- ===== REPORTE MENSUAL ===== -->
+  <div id="reporte" class="tab-content">
+    <h2>Reporte Mensual</h2>
+    <div class="form-row">
+      <select id="mesReporte"><option value="">Selecciona mes</option></select>
+      <button onclick="generarReporte()" class="btn-success">📊 Generar</button>
+      <button onclick="generarPDF()" class="btn-warning">📄 PDF</button>
+    </div>
+    <p style="font-size:0.9rem; color:#475569;">Período: <span id="periodoReporte">—</span></p>
+    <div id="contenedorReporte" class="table-wrap">
+      <p style="color:#94a3b8; text-align:center; padding:40px 0;">Selecciona un mes y genera el reporte.</p>
+    </div>
+  </div>
 
-            const restaPendiente = useMemo(() => {
-                const anticipo = parseFloat(montoAnticipo) || 0;
-                return totalCuenta - anticipo;
-            }, [totalCuenta, montoAnticipo]);
+  <!-- ===== HISTORIAL ===== -->
+  <div id="historial" class="tab-content">
+    <h2>Historial de registros</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Fecha</th><th>Empleado</th><th>Entrada</th><th>Salida</th><th>Horas</th><th>Extras</th><th>Descuento</th><th>Acciones</th></tr></thead>
+        <tbody id="tablaHistorial"></tbody>
+      </table>
+    </div>
+  </div>
 
-            const handleCantChange = (index, value) => {
-                const newItems = [...items];
-                const val = parseInt(value);
-                newItems[index].cantidad = isNaN(val) ? 0 : val;
-                setItems(newItems);
-            };
+  <!-- ===== CONFIGURACIÓN (FERIADOS) ===== -->
+  <div id="config" class="tab-content">
+    <h2>Feriados oficiales de Guatemala</h2>
+    <p style="color:#475569;">Los domingos son automáticamente no laborables. Agrega o elimina feriados.</p>
+    <div class="form-row">
+      <input type="date" id="nuevoFeriado" />
+      <input type="text" id="nombreFeriado" placeholder="Nombre (opcional)" />
+      <button onclick="agregarFeriado()" class="btn-success">➕ Agregar</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Fecha</th><th>Nombre</th><th>Acción</th></tr></thead>
+        <tbody id="tablaFeriados"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
 
-            const enviarPedido = async () => {
-                const finalItems = items.filter(it => it.cantidad > 0);
-                if (!cliente) return alert("Por favor, ingresa el nombre del cliente");
-                if (finalItems.length === 0) return alert("Debes ingresar al menos un producto");
-                if (metodoPago === 'anticipo' && !montoAnticipo) return alert("Ingresa el monto del anticipo");
+<script>
+// ============================================================
+// CONFIGURACIÓN FIREBASE (mismo proyecto, colecciones separadas)
+// ============================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyD7iqWBCoScuHSID15itaShi7dRQuQwkEo",
+  authDomain: "panaderia-marvin.firebaseapp.com",
+  projectId: "panaderia-marvin",
+  storageBucket: "panaderia-marvin.firebasestorage.app",
+  messagingSenderId: "908203563116",
+  appId: "1:908203563116:web:69995ce1866a536bf3e049"
+};
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
 
-                setEnviando(true);
-                try {
-                    const counterRef = db.collection("config").doc("counter");
-                    const docCounter = await counterRef.get();
-                    let nextCorrelativo = 1;
-                    if (docCounter.exists) nextCorrelativo = (Number(docCounter.data().last) || 0) + 1;
+// ============================================================
+// VARIABLES GLOBALES
+// ============================================================
+let empleados = [];
+let feriados = [];           // array de strings "YYYY-MM-DD"
+let registrosCache = [];     // todos los registros cargados
+let registrosHoy = [];
+const LS_KEY = 'jornada_local'; // para offline
 
-                    const ahora = new Date();
-                    const fechaString = ahora.toLocaleDateString('es-GT');
-                    const horaString = ahora.toLocaleTimeString('es-GT', { hour: '2-digit', minute: '2-digit' });
+// ============================================================
+// FERIADOS PREDEFINIDOS (Guatemala)
+// ============================================================
+const FERIADOS_POR_DEFECTO = [
+  "2026-01-01", // Año Nuevo
+  "2026-04-02", // Jueves Santo (2026)
+  "2026-04-03", // Viernes Santo (2026)
+  "2026-05-01", // Día del Trabajo
+  "2026-06-30", // Día del Ejército
+  "2026-08-15", // Asunción de la Virgen
+  "2026-09-15", // Independencia
+  "2026-10-20", // Revolución de 1944
+  "2026-11-01", // Día de Todos los Santos
+  "2026-12-25"  // Navidad
+];
 
-                    await db.collection("pedidos").add({
-                        correlativo: nextCorrelativo,
-                        cliente: cliente.trim(),
-                        nota: nota.trim() || "Sin nota",
-                        items: finalItems,
-                        total: totalCuenta,
-                        estadoPago: metodoPago,
-                        anticipoValor: metodoPago === 'anticipo' ? Number(montoAnticipo) : 0,
-                        fechaRegistro: `${fechaString} ${horaString}`,
-                        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                        entregado: false,
-                        pagado: metodoPago === 'pagado'
-                    });
+// ============================================================
+// FUNCIONES DE FECHA
+// ============================================================
+function hoy() { return new Date().toISOString().split('T')[0]; }
+function esDomingo(fechaStr) { return new Date(fechaStr + 'T00:00:00').getDay() === 0; }
+function esFeriado(fechaStr) { return feriados.includes(fechaStr); }
+function esDiaNoLaborable(fechaStr) { return esDomingo(fechaStr) || esFeriado(fechaStr); }
+function diaSemana(fechaStr) { return new Date(fechaStr + 'T00:00:00').getDay(); } // 0=domingo
 
-                    await counterRef.set({ last: nextCorrelativo });
+// ============================================================
+// CÁLCULO DE HORAS
+// ============================================================
+function horasDecimal(horaStr) {
+  // "HH:MM" o "HH:MM:SS" -> número decimal
+  const partes = horaStr.split(':');
+  return parseInt(partes[0]) + parseInt(partes[1]) / 60 + (parseInt(partes[2]) || 0) / 3600;
+}
 
-                    confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+function calcularHoras(entrada, salida) {
+  let e = horasDecimal(entrada);
+  let s = horasDecimal(salida);
+  if (s < e) s += 24; // cruza medianoche
+  return Math.round((s - e) * 100) / 100;
+}
 
-                    setCliente("");
-                    setNota("");
-                    setMetodoPago("pendiente");
-                    setMontoAnticipo("");
-                    setItems(PRODUCTOS_MENU.map(p => ({ ...p, cantidad: 0 })));
-                    alert("¡Pedido enviado y registrado! 🥖");
+function calcularExtrasYDescuento(horas, fechaStr) {
+  const dia = diaSemana(fechaStr);
+  const noLab = esDiaNoLaborable(fechaStr);
+  let extras = 0, descuento = 0, asistio = horas > 0;
 
-                } catch (e) {
-                    console.error(e);
-                    alert("Error al conectar con la base de datos");
-                }
-                setEnviando(false);
-            };
+  if (noLab) {
+    // Domingo o feriado: todo es extra
+    extras = horas;
+  } else if (dia === 6) { // Sábado
+    if (horas > 4) {
+      extras = horas - 4;
+    } else {
+      descuento = Math.max(0, 4 - horas);
+    }
+  } else { // Lunes a viernes
+    if (horas > 8) {
+      extras = horas - 8;
+    }
+  }
+  extras = Math.round(extras * 100) / 100;
+  descuento = Math.round(descuento * 100) / 100;
+  return { extras, descuento, asistio };
+}
 
-            return (
-                // Se amplió el max-w-md a max-w-6xl para pantallas grandes (lg)
-                <div className="max-w-md lg:max-w-6xl mx-auto p-4 pb-32 lg:pb-8 min-h-screen transition-all">
-                    
-                    <header className="py-6 text-center lg:text-left lg:mb-4 lg:px-2">
-                        <h1 className="text-2xl font-black text-slate-800 tracking-tighter uppercase italic">Marvin <span className="text-blue-600">Express</span></h1>
-                        <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Panel de Toma de Pedidos</p>
-                    </header>
+// ============================================================
+// OFFLINE: GUARDAR Y CARGAR LOCALSTORAGE
+// ============================================================
+function guardarLocal() {
+  const data = {
+    empleados,
+    feriados,
+    registros: registrosCache
+  };
+  try { localStorage.setItem(LS_KEY, JSON.stringify(data)); } catch(e) {}
+}
 
-                    {/* Contenedor Grid: 1 columna en móvil, 2 columnas en escritorio */}
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                        
-                        {/* COLUMNA IZQUIERDA: Formulario de Cliente */}
-                        <div className="lg:col-span-7 space-y-6">
-                            <div className="bg-white rounded-3xl p-6 lg:p-8 shadow-sm border border-slate-100 transition-all hover:shadow-md">
-                                <input 
-                                    className="w-full text-xl font-bold outline-none border-b-2 border-slate-100 focus:border-blue-500 pb-3 transition-all placeholder:text-slate-300"
-                                    placeholder="Nombre del Cliente"
-                                    value={cliente}
-                                    onChange={e => setCliente(e.target.value)}
-                                />
+function cargarLocal() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (raw) {
+      const data = JSON.parse(raw);
+      if (data.empleados) empleados = data.empleados;
+      if (data.feriados) feriados = data.feriados;
+      if (data.registros) registrosCache = data.registros;
+      return true;
+    }
+  } catch(e) {}
+  return false;
+}
 
-                                <div className="mt-8">
-                                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Estado del Pago</h3>
-                                    <div className="grid grid-cols-3 gap-3">
-                                        {[
-                                            { id: 'pendiente', label: 'Deuda', icon: '⏳' },
-                                            { id: 'anticipo', label: 'Anticipo', icon: '💰' },
-                                            { id: 'pagado', label: 'Pagado', icon: '✅' }
-                                        ].map((t) => (
-                                            <button
-                                                key={t.id}
-                                                onClick={() => setMetodoPago(t.id)}
-                                                className={`py-4 rounded-2xl text-[11px] lg:text-xs font-black uppercase transition-all flex flex-col items-center gap-2 ${metodoPago === t.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 scale-105' : 'bg-slate-50 text-slate-400 border border-slate-100 hover:bg-slate-100'}`}
-                                            >
-                                                <span className="text-2xl">{t.icon}</span>
-                                                {t.label}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
+// ============================================================
+// SINCRO CON FIREBASE
+// ============================================================
+async function sincronizarEmpleados() {
+  try {
+    const snap = await db.collection("jornada_empleados").orderBy("nombre").get();
+    const temp = [];
+    snap.forEach(doc => temp.push({ id: doc.id, ...doc.data() }));
+    if (temp.length > 0) {
+      empleados = temp;
+      guardarLocal();
+    }
+  } catch(e) { console.warn("Offline: usando localStorage para empleados"); }
+}
 
-                                {metodoPago === 'anticipo' && (
-                                    <div className="mt-6 animate-pulse">
-                                        <input 
-                                            type="number"
-                                            className="w-full p-4 bg-blue-50 rounded-2xl text-blue-700 font-black outline-none border-2 border-blue-100 focus:border-blue-300 text-lg placeholder:text-blue-300"
-                                            placeholder="¿Cuánto dinero deja? Q"
-                                            value={montoAnticipo}
-                                            onChange={e => setMontoAnticipo(e.target.value)}
-                                        />
-                                    </div>
-                                )}
+async function sincronizarFeriados() {
+  try {
+    const doc = await db.collection("jornada_config").doc("feriados").get();
+    if (doc.exists && doc.data().lista) {
+      feriados = doc.data().lista;
+      guardarLocal();
+    } else {
+      // Si no existe en Firebase, subir los predefinidos
+      await db.collection("jornada_config").doc("feriados").set({ lista: FERIADOS_POR_DEFECTO });
+      feriados = [...FERIADOS_POR_DEFECTO];
+      guardarLocal();
+    }
+  } catch(e) {
+    console.warn("Offline: usando feriados de localStorage");
+  }
+  actualizarTablaFeriados();
+}
 
-                                <div className="mt-8">
-                                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Notas Adicionales</h3>
-                                    <input 
-                                        className="w-full text-base font-medium outline-none text-slate-500 bg-slate-50 p-4 rounded-2xl border border-slate-100 focus:border-blue-300 focus:bg-white transition-all"
-                                        placeholder="Ej. Sin ajonjolí, para las 5pm..."
-                                        value={nota}
-                                        onChange={e => setNota(e.target.value)}
-                                    />
-                                </div>
-                            </div>
-                        </div>
+async function sincronizarRegistros() {
+  try {
+    const snap = await db.collection("jornada_registros")
+      .orderBy("fecha", "desc")
+      .orderBy("timestamp", "desc")
+      .get();
+    const temp = [];
+    snap.forEach(doc => temp.push({ id: doc.id, ...doc.data() }));
+    if (temp.length > 0) {
+      registrosCache = temp;
+      guardarLocal();
+    }
+  } catch(e) { console.warn("Offline: usando localStorage para registros"); }
+  actualizarHistorial();
+  actualizarJornadaHoy();
+}
 
-                        {/* COLUMNA DERECHA: Menú y Total (Sticky en escritorio) */}
-                        <div className="lg:col-span-5 space-y-6 lg:sticky lg:top-6">
-                            <div className="bg-white rounded-3xl p-6 lg:p-8 shadow-sm border border-slate-100 transition-all hover:shadow-md">
-                                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
-                                    <i className="fa-solid fa-bread-slice text-blue-500"></i> Menú de Hoy
-                                </h3>
-                                
-                                <div className="space-y-3 max-h-[45vh] lg:max-h-[55vh] overflow-y-auto pr-2 scrollbar-hide">
-                                    {items.map((it, idx) => (
-                                        <div key={it.nombre} className="flex items-center justify-between p-2 rounded-2xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100">
-                                            <div>
-                                                <p className="font-bold text-slate-700 text-sm lg:text-base uppercase">{it.nombre}</p>
-                                                <p className="text-[11px] text-slate-400 font-bold mt-0.5">Q{it.precio}.00 c/u</p>
-                                            </div>
-                                            <input 
-                                                type="number"
-                                                inputMode="numeric"
-                                                className="w-16 h-12 lg:h-14 bg-slate-100 rounded-xl text-center font-black text-blue-600 outline-none border-2 border-transparent focus:border-blue-300 transition-all input-cantidad text-lg shadow-inner"
-                                                value={it.cantidad === 0 ? "" : it.cantidad}
-                                                onChange={e => handleCantChange(idx, e.target.value)}
-                                                placeholder="0"
-                                            />
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
+// ============================================================
+// INICIALIZAR
+// ============================================================
+async function init() {
+  // Cargar desde localStorage primero (rápido)
+  cargarLocal();
 
-                            {/* BARRA INFERIOR DE TOTALES */}
-                            {/* Fija abajo en móvil, pero estática en el flujo normal en escritorio */}
-                            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-xl border-t border-slate-200 lg:static lg:p-0 lg:bg-transparent lg:border-none lg:backdrop-blur-none z-50">
-                                <div className="max-w-md mx-auto lg:max-w-none flex items-center gap-4">
-                                    <div className="flex-1 bg-slate-900 rounded-[2rem] px-6 py-4 lg:py-5 flex justify-between items-center shadow-2xl lg:shadow-xl shadow-slate-900/20 transition-all">
-                                        <div className="flex flex-col">
-                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Total</span>
-                                            <span className="text-2xl lg:text-3xl font-black text-white">Q{totalCuenta.toFixed(2)}</span>
-                                        </div>
+  // Luego sincronizar con Firebase
+  await sincronizarFeriados();
+  await sincronizarEmpleados();
+  await sincronizarRegistros();
 
-                                        {metodoPago === 'anticipo' && (
-                                            <div className="text-right border-l border-slate-700 pl-5 ml-2">
-                                                <span className="text-[10px] font-black text-orange-400 uppercase tracking-wider">Resta</span>
-                                                <span className="text-xl lg:text-2xl font-black text-white block leading-none mt-1">Q{restaPendiente.toFixed(2)}</span>
-                                            </div>
-                                        )}
-                                    </div>
+  // Escuchar cambios en tiempo real (Firebase)
+  db.collection("jornada_empleados").onSnapshot(() => { sincronizarEmpleados(); actualizarSelectEmpleados(); mostrarEmpleados(); });
+  db.collection("jornada_config").doc("feriados").onSnapshot(() => { sincronizarFeriados(); });
+  db.collection("jornada_registros").onSnapshot(() => { sincronizarRegistros(); });
 
-                                    <button 
-                                        onClick={enviarPedido}
-                                        disabled={enviando || totalCuenta === 0}
-                                        className={`w-16 h-16 lg:w-20 lg:h-20 rounded-[2rem] flex items-center justify-center shadow-xl tap-soft transition-all duration-300 ${enviando || totalCuenta === 0 ? 'bg-slate-200 text-slate-400 shadow-none' : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-blue-600/40 hover:-translate-y-1'}`}
-                                    >
-                                        <i className={`fa-solid ${enviando ? 'fa-spinner fa-spin text-2xl' : 'fa-check text-2xl lg:text-3xl'}`}></i>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                        
-                    </div>
-                </div>
-            );
+  actualizarSelectEmpleados();
+  mostrarEmpleados();
+  actualizarTablaFeriados();
+  actualizarJornadaHoy();
+  actualizarHistorial();
+  llenarSelectMeses();
+}
+
+// ============================================================
+// EMPLEADOS
+// ============================================================
+function mostrarEmpleados() {
+  const tbody = document.getElementById('tablaEmpleados');
+  tbody.innerHTML = '';
+  empleados.forEach(e => {
+    tbody.innerHTML += `
+      <tr>
+        <td>${e.nombre}</td>
+        <td>Q${(e.salarioHora || 0).toFixed(2)}</td>
+        <td><button class="btn-danger btn-sm" onclick="eliminarEmpleado('${e.id}')">Eliminar</button></td>
+      </tr>
+    `;
+  });
+}
+
+async function agregarEmpleado() {
+  const nombre = document.getElementById('nombreEmp').value.trim();
+  const salario = parseFloat(document.getElementById('salarioEmp').value) || 0;
+  if (!nombre) { alert('Ingresa el nombre.'); return; }
+  try {
+    const ref = await db.collection("jornada_empleados").add({ nombre, salarioHora: salario });
+    empleados.push({ id: ref.id, nombre, salarioHora: salario });
+    guardarLocal();
+    document.getElementById('nombreEmp').value = '';
+    document.getElementById('salarioEmp').value = '';
+    actualizarSelectEmpleados();
+    mostrarEmpleados();
+  } catch(e) { alert('Error al guardar.'); }
+}
+
+async function eliminarEmpleado(id) {
+  if (!confirm('¿Eliminar este empleado?')) return;
+  try {
+    await db.collection("jornada_empleados").doc(id).delete();
+    empleados = empleados.filter(e => e.id !== id);
+    guardarLocal();
+    actualizarSelectEmpleados();
+    mostrarEmpleados();
+  } catch(e) { alert('Error al eliminar.'); }
+}
+
+function actualizarSelectEmpleados() {
+  const sel = document.getElementById('selectEmpleado');
+  sel.innerHTML = '<option value="">Selecciona empleado</option>';
+  empleados.forEach(e => {
+    sel.innerHTML += `<option value="${e.id}">${e.nombre}</option>`;
+  });
+}
+
+// ============================================================
+// MARCAR (ENTRADA / SALIDA)
+// ============================================================
+function obtenerHoraInput(id) {
+  const val = document.getElementById(id).value;
+  if (val) return val; // "HH:MM"
+  return null;
+}
+
+function marcarEntrada() {
+  const empId = document.getElementById('selectEmpleado').value;
+  if (!empId) { alert('Selecciona un empleado.'); return; }
+  const emp = empleados.find(e => e.id === empId);
+  const fecha = hoy();
+  const hora = obtenerHoraInput('horaEntrada') || new Date().toLocaleTimeString('es-GT', { hour:'2-digit', minute:'2-digit' });
+
+  // Verificar si ya tiene entrada activa (sin salida)
+  const existente = registrosCache.find(r => r.empleadoId === empId && r.fecha === fecha && !r.salida);
+  if (existente) {
+    alert('Ya tiene entrada activa. Marque salida primero.');
+    return;
+  }
+
+  const nuevo = {
+    empleadoId: empId,
+    nombre: emp.nombre,
+    fecha: fecha,
+    entrada: hora,
+    salida: null,
+    timestamp: firebase.firestore.FieldValue.serverTimestamp ? firebase.firestore.FieldValue.serverTimestamp() : new Date().toISOString()
+  };
+
+  db.collection("jornada_registros").add(nuevo)
+    .then(docRef => {
+      nuevo.id = docRef.id;
+      registrosCache.push(nuevo);
+      guardarLocal();
+      document.getElementById('ultimoMsg').innerText = `✅ Entrada registrada para ${emp.nombre} a las ${hora}`;
+      actualizarJornadaHoy();
+      actualizarHistorial();
+    })
+    .catch(e => {
+      // Offline: guardar local con id temporal
+      nuevo.id = 'temp_' + Date.now();
+      registrosCache.push(nuevo);
+      guardarLocal();
+      document.getElementById('ultimoMsg').innerText = `⚠️ Entrada guardada localmente (sin conexión) para ${emp.nombre}`;
+      actualizarJornadaHoy();
+      actualizarHistorial();
+    });
+}
+
+function marcarSalida() {
+  const empId = document.getElementById('selectEmpleado').value;
+  if (!empId) { alert('Selecciona un empleado.'); return; }
+  const fecha = hoy();
+  const hora = obtenerHoraInput('horaSalida') || new Date().toLocaleTimeString('es-GT', { hour:'2-digit', minute:'2-digit' });
+
+  const registro = registrosCache.find(r => r.empleadoId === empId && r.fecha === fecha && !r.salida);
+  if (!registro) {
+    alert('No hay entrada activa para este empleado.');
+    return;
+  }
+
+  registro.salida = hora;
+  registro.timestampSalida = new Date().toISOString();
+
+  if (registro.id && !registro.id.startsWith('temp_')) {
+    db.collection("jornada_registros").doc(registro.id).update({ salida: hora, timestampSalida: firebase.firestore.FieldValue.serverTimestamp ? firebase.firestore.FieldValue.serverTimestamp() : new Date().toISOString() })
+      .then(() => {
+        guardarLocal();
+        document.getElementById('ultimoMsg').innerText = `✅ Salida registrada para ${registro.nombre} a las ${hora}`;
+        actualizarJornadaHoy();
+        actualizarHistorial();
+      })
+      .catch(() => {
+        guardarLocal();
+        document.getElementById('ultimoMsg').innerText = `⚠️ Salida guardada localmente (sin conexión) para ${registro.nombre}`;
+        actualizarJornadaHoy();
+        actualizarHistorial();
+      });
+  } else {
+    guardarLocal();
+    document.getElementById('ultimoMsg').innerText = `✅ Salida registrada localmente para ${registro.nombre}`;
+    actualizarJornadaHoy();
+    actualizarHistorial();
+  }
+}
+
+function marcarConHoraActual() {
+  const ahora = new Date().toLocaleTimeString('es-GT', { hour:'2-digit', minute:'2-digit' });
+  document.getElementById('horaEntrada').value = ahora;
+  document.getElementById('horaSalida').value = ahora;
+  document.getElementById('ultimoMsg').innerText = `🔄 Hora actual establecida: ${ahora}`;
+}
+
+// ============================================================
+// JORNADA DE HOY
+// ============================================================
+function actualizarJornadaHoy() {
+  const fecha = hoy();
+  document.getElementById('fechaHoy').innerText = `(${fecha})`;
+  const tbody = document.getElementById('tablaJornada');
+  tbody.innerHTML = '';
+
+  const hoyRegistros = registrosCache.filter(r => r.fecha === fecha);
+  // Agrupar por empleado (puede haber varios si se reabrió, pero tomamos el más reciente)
+  const map = {};
+  hoyRegistros.forEach(r => {
+    const key = r.empleadoId;
+    if (!map[key] || (r.timestamp && r.timestamp > map[key].timestamp)) {
+      map[key] = r;
+    }
+  });
+
+  for (let empId in map) {
+    const r = map[empId];
+    const emp = empleados.find(e => e.id === empId);
+    const nombre = emp ? emp.nombre : r.nombre || 'Desconocido';
+    let horas = '-', extras = '-', descuento = '-', asistio = '-';
+    if (r.entrada && r.salida) {
+      horas = calcularHoras(r.entrada, r.salida);
+      const calc = calcularExtrasYDescuento(horas, fecha);
+      extras = calc.extras;
+      descuento = calc.descuento;
+      asistio = calc.asistio ? '✅ Sí' : '❌ No';
+    }
+    tbody.innerHTML += `
+      <tr>
+        <td><strong>${nombre}</strong></td>
+        <td>${r.entrada || '—'}</td>
+        <td>${r.salida || '⏳'}</td>
+        <td>${typeof horas === 'number' ? horas.toFixed(2) + 'h' : '—'}</td>
+        <td class="text-center"><span class="badge badge-naranja">${typeof extras === 'number' ? extras.toFixed(2) + 'h' : '—'}</span></td>
+        <td class="text-center"><span class="badge badge-rojo">${typeof descuento === 'number' && descuento > 0 ? descuento.toFixed(2) + 'h' : '—'}</span></td>
+        <td>${asistio}</td>
+      </tr>
+    `;
+  }
+  if (tbody.innerHTML === '') {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#94a3b8;">No hay registros hoy</td></tr>`;
+  }
+}
+
+// ============================================================
+// HISTORIAL
+// ============================================================
+function actualizarHistorial() {
+  const tbody = document.getElementById('tablaHistorial');
+  tbody.innerHTML = '';
+  // Mostrar últimos 30 registros (ordenados por fecha desc)
+  const sorted = [...registrosCache].sort((a,b) => (b.fecha || '').localeCompare(a.fecha || ''));
+  const limit = sorted.slice(0, 50);
+  limit.forEach(r => {
+    if (!r.entrada || !r.salida) return;
+    const horas = calcularHoras(r.entrada, r.salida);
+    const calc = calcularExtrasYDescuento(horas, r.fecha);
+    const emp = empleados.find(e => e.id === r.empleadoId);
+    const nombre = emp ? emp.nombre : r.nombre || 'Desconocido';
+    tbody.innerHTML += `
+      <tr>
+        <td>${r.fecha}</td>
+        <td>${nombre}</td>
+        <td>${r.entrada}</td>
+        <td>${r.salida}</td>
+        <td>${horas.toFixed(2)}h</td>
+        <td>${calc.extras.toFixed(2)}h</td>
+        <td>${calc.descuento > 0 ? calc.descuento.toFixed(2) + 'h' : '—'}</td>
+        <td>
+          <button class="btn-warning btn-sm" onclick="editarRegistro('${r.id}')">✏️ Editar</button>
+        </td>
+      </tr>
+    `;
+  });
+  if (tbody.innerHTML === '') {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#94a3b8;">Sin registros</td></tr>`;
+  }
+}
+
+function editarRegistro(id) {
+  const reg = registrosCache.find(r => r.id === id);
+  if (!reg) return;
+  const nuevaEntrada = prompt('Nueva hora de entrada (HH:MM):', reg.entrada);
+  if (nuevaEntrada !== null) reg.entrada = nuevaEntrada;
+  const nuevaSalida = prompt('Nueva hora de salida (HH:MM):', reg.salida);
+  if (nuevaSalida !== null) reg.salida = nuevaSalida;
+  if (reg.id && !reg.id.startsWith('temp_')) {
+    db.collection("jornada_registros").doc(reg.id).update({ entrada: reg.entrada, salida: reg.salida })
+      .catch(() => { guardarLocal(); });
+  }
+  guardarLocal();
+  actualizarJornadaHoy();
+  actualizarHistorial();
+}
+
+// ============================================================
+// FERIADOS
+// ============================================================
+function actualizarTablaFeriados() {
+  const tbody = document.getElementById('tablaFeriados');
+  tbody.innerHTML = '';
+  feriados.sort().forEach(f => {
+    const nombre = FERIADOS_POR_DEFECTO.includes(f) ? 'Oficial' : 'Personalizado';
+    tbody.innerHTML += `
+      <tr>
+        <td>${f}</td>
+        <td>${nombre}</td>
+        <td><button class="btn-danger btn-sm" onclick="eliminarFeriado('${f}')">Eliminar</button></td>
+      </tr>
+    `;
+  });
+  if (tbody.innerHTML === '') {
+    tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;color:#94a3b8;">No hay feriados</td></tr>`;
+  }
+}
+
+async function agregarFeriado() {
+  const fecha = document.getElementById('nuevoFeriado').value;
+  if (!fecha) { alert('Selecciona una fecha.'); return; }
+  if (feriados.includes(fecha)) { alert('Ya está en la lista.'); return; }
+  try {
+    const docRef = db.collection("jornada_config").doc("feriados");
+    const doc = await docRef.get();
+    const lista = doc.exists ? doc.data().lista : [];
+    lista.push(fecha);
+    await docRef.set({ lista });
+    feriados = lista;
+    guardarLocal();
+    document.getElementById('nuevoFeriado').value = '';
+    actualizarTablaFeriados();
+  } catch(e) {
+    // Offline: guardar local
+    feriados.push(fecha);
+    guardarLocal();
+    actualizarTablaFeriados();
+  }
+}
+
+async function eliminarFeriado(fecha) {
+  if (!confirm(`¿Eliminar feriado ${fecha}?`)) return;
+  try {
+    const docRef = db.collection("jornada_config").doc("feriados");
+    const doc = await docRef.get();
+    const lista = doc.exists ? doc.data().lista : [];
+    const nueva = lista.filter(f => f !== fecha);
+    await docRef.set({ lista: nueva });
+    feriados = nueva;
+    guardarLocal();
+    actualizarTablaFeriados();
+  } catch(e) {
+    feriados = feriados.filter(f => f !== fecha);
+    guardarLocal();
+    actualizarTablaFeriados();
+  }
+}
+
+// ============================================================
+// REPORTE MENSUAL (con columnas por semana)
+// ============================================================
+function llenarSelectMeses() {
+  const sel = document.getElementById('mesReporte');
+  sel.innerHTML = '';
+  const ahora = new Date();
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(ahora.getFullYear(), ahora.getMonth() - i, 1);
+    const val = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    const label = d.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+    const opt = document.createElement('option');
+    opt.value = val;
+    opt.textContent = label.charAt(0).toUpperCase() + label.slice(1);
+    sel.appendChild(opt);
+  }
+  // Seleccionar mes actual
+  const actual = ahora.getFullYear() + '-' + String(ahora.getMonth() + 1).padStart(2, '0');
+  sel.value = actual;
+  generarReporte();
+}
+
+function generarReporte() {
+  const mesVal = document.getElementById('mesReporte').value;
+  if (!mesVal) return;
+  const [year, month] = mesVal.split('-').map(Number);
+  // Período: del 11 del mes anterior al 10 del mes seleccionado
+  const fechaInicio = new Date(year, month - 2, 11); // mes anterior, día 11
+  const fechaFin = new Date(year, month - 1, 10);   // mes actual, día 10
+  const inicioStr = fechaInicio.toISOString().split('T')[0];
+  const finStr = fechaFin.toISOString().split('T')[0];
+  document.getElementById('periodoReporte').innerText = `${inicioStr} al ${finStr}`;
+
+  // Filtrar registros
+  const registrosFiltrados = registrosCache.filter(r =>
+    r.fecha >= inicioStr && r.fecha <= finStr && r.entrada && r.salida
+  );
+
+  // Agrupar por empleado
+  const mapa = {};
+  registrosFiltrados.forEach(r => {
+    const key = r.empleadoId;
+    if (!mapa[key]) mapa[key] = { empleadoId: key, nombre: r.nombre || 'Desconocido', registros: [] };
+    mapa[key].registros.push(r);
+  });
+
+  // Generar semanas (lunes a domingo)
+  const semanas = [];
+  let cursor = new Date(fechaInicio);
+  while (cursor <= fechaFin) {
+    const ini = new Date(cursor);
+    const fin = new Date(cursor);
+    fin.setDate(cursor.getDate() + 6);
+    if (fin > fechaFin) fin.setTime(fechaFin.getTime());
+    semanas.push({
+      inicio: ini.toISOString().split('T')[0],
+      fin: fin.toISOString().split('T')[0],
+      label: `${ini.toISOString().split('T')[0]} al ${fin.toISOString().split('T')[0]}`
+    });
+    cursor.setDate(cursor.getDate() + 7);
+  }
+
+  // Construir tabla
+  let html = '<table><thead><tr><th>Empleado</th>';
+  semanas.forEach((s, i) => {
+    html += `<th>Semana ${i+1}<br><small>${s.label}</small></th>`;
+  });
+  html += `<th>Totales<br><small>Extras / Desc / Asist</small></th></tr></thead><tbody>';
+
+  for (let empId in mapa) {
+    const emp = mapa[empId];
+    const empObj = empleados.find(e => e.id === empId);
+    const nombre = empObj ? empObj.nombre : emp.nombre || 'Desconocido';
+    html += `<tr><td><strong>${nombre}</strong></td>`;
+
+    let totalExtras = 0, totalDesc = 0, totalAsist = 0;
+
+    semanas.forEach((s) => {
+      let extrasSem = 0, descSem = 0, asistSem = 0;
+      emp.registros.forEach(r => {
+        if (r.fecha >= s.inicio && r.fecha <= s.fin) {
+          const horas = calcularHoras(r.entrada, r.salida);
+          const calc = calcularExtrasYDescuento(horas, r.fecha);
+          extrasSem += calc.extras;
+          descSem += calc.descuento;
+          if (calc.asistio) asistSem++;
         }
+      });
+      extrasSem = Math.round(extrasSem * 100) / 100;
+      descSem = Math.round(descSem * 100) / 100;
+      totalExtras += extrasSem;
+      totalDesc += descSem;
+      totalAsist += asistSem;
+      html += `<td>${extrasSem.toFixed(2)}h / ${descSem > 0 ? descSem.toFixed(2)+'h' : '—'} / ${asistSem}d</td>`;
+    });
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<QuickOrder />);
-    </script>
+    totalExtras = Math.round(totalExtras * 100) / 100;
+    totalDesc = Math.round(totalDesc * 100) / 100;
+    html += `<td><strong>${totalExtras.toFixed(2)}h / ${totalDesc > 0 ? totalDesc.toFixed(2)+'h' : '—'} / ${totalAsist}d</strong></td>`;
+    html += `</tr>`;
+  }
+
+  html += '</tbody></table>';
+  document.getElementById('contenedorReporte').innerHTML = html;
+}
+
+// ============================================================
+// GENERAR PDF
+// ============================================================
+function generarPDF() {
+  const contenido = document.getElementById('contenedorReporte');
+  const tabla = contenido.querySelector('table');
+  if (!tabla) { alert('Genera el reporte primero.'); return; }
+
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF('landscape', 'mm', 'a4');
+  pdf.setFontSize(14);
+  pdf.text('Reporte de Jornada Laboral - Guatemala', 14, 15);
+  pdf.setFontSize(10);
+  const periodo = document.getElementById('periodoReporte').innerText;
+  pdf.text(`Período: ${periodo}`, 14, 22);
+
+  // Convertir tabla HTML a datos
+  const rows = [];
+  const headRow = tabla.querySelector('thead tr');
+  const headers = [];
+  headRow.querySelectorAll('th').forEach(th => {
+    // Limpiar texto
+    let txt = th.innerText.trim().replace(/\n/g, ' ').replace(/\s+/g, ' ');
+    headers.push(txt);
+  });
+
+  const bodyRows = tabla.querySelectorAll('tbody tr');
+  bodyRows.forEach(tr => {
+    const row = [];
+    tr.querySelectorAll('td').forEach(td => {
+      row.push(td.innerText.trim());
+    });
+    rows.push(row);
+  });
+
+  pdf.autoTable({
+    head: [headers],
+    body: rows,
+    startY: 30,
+    theme: 'grid',
+    styles: { fontSize: 7, cellPadding: 2 },
+    headStyles: { fillColor: [30, 58, 138], textColor: 255, fontSize: 8 },
+    columnStyles: { 0: { cellWidth: 30 } }
+  });
+
+  pdf.save(`Reporte_Jornada_${periodo.replace(/\s/g, '_')}.pdf`);
+}
+
+// ============================================================
+// EVENTOS DE PESTAÑAS
+// ============================================================
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', function() {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    this.classList.add('active');
+    const target = document.getElementById(this.dataset.tab);
+    if (target) target.classList.add('active');
+    if (this.dataset.tab === 'reporte') generarReporte();
+    if (this.dataset.tab === 'jornada') actualizarJornadaHoy();
+    if (this.dataset.tab === 'historial') actualizarHistorial();
+  });
+});
+
+// ============================================================
+// INICIO
+// ============================================================
+init();
+</script>
 </body>
 </html>
