@@ -9,12 +9,12 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
-  <!-- jsPDF para PDF -->
+  <!-- jsPDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 
   <style>
-    /* ===== TEMA AZUL CORPORATIVO (Opción 1) ===== */
+    /* ===== TEMA AZUL CORPORATIVO ===== */
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -31,6 +31,7 @@
       border-radius: 16px;
       box-shadow: 0 8px 30px rgba(0,0,0,0.08);
       padding: 20px;
+      position: relative;
     }
     h1 { color: #1e3a8a; font-size: 1.8rem; margin-bottom: 4px; }
     .subtitulo { color: #475569; font-size: 0.95rem; margin-bottom: 20px; }
@@ -67,49 +68,127 @@
     .tab-content.active { display: block; }
     @keyframes fade { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
 
-    /* Formularios */
-    .form-row {
+    /* ===== PANTALLA PRINCIPAL: RELOJ + CALENDARIO + MARCACIÓN ===== */
+    #principal {
+      position: relative;
+      min-height: 500px;
       display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
+      flex-direction: column;
       align-items: center;
-      margin: 10px 0 16px;
+      justify-content: center;
+      padding: 20px 0;
     }
-    .form-row > * { flex: 1 1 180px; }
-    input, select, button {
-      padding: 10px 14px;
+    #relojCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
+      border-radius: 12px;
+    }
+    .overlay-controls {
+      position: relative;
+      z-index: 1;
+      background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(6px);
+      border-radius: 20px;
+      padding: 30px 35px;
+      max-width: 600px;
+      width: 100%;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+      border: 1px solid rgba(255,255,255,0.3);
+      margin: 20px auto;
+    }
+    .overlay-controls .fecha-actual {
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: #1e3a8a;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+    .overlay-controls .fecha-actual small {
+      font-weight: 400;
+      color: #475569;
+      display: block;
+      font-size: 0.9rem;
+    }
+    .form-marcar {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .form-marcar select,
+    .form-marcar input {
+      padding: 12px 16px;
       border: 1px solid #cbd5e1;
-      border-radius: 8px;
-      font-size: 15px;
+      border-radius: 10px;
+      font-size: 1rem;
       background: white;
-      transition: 0.2s;
+      width: 100%;
     }
-    input:focus, select:focus {
+    .form-marcar select:focus,
+    .form-marcar input:focus {
       outline: none;
       border-color: #1e3a8a;
       box-shadow: 0 0 0 3px rgba(30,58,138,0.15);
     }
-    button {
-      background: #1e3a8a;
-      color: white;
-      border: none;
+    .hora-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .hora-row label {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      font-size: 0.85rem;
       font-weight: 600;
+      color: #1e293b;
+    }
+    .hora-row label input {
+      margin-top: 4px;
+    }
+    .botones-marcar {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 6px;
+    }
+    .botones-marcar button {
+      flex: 1;
+      padding: 14px 20px;
+      border: none;
+      border-radius: 12px;
+      font-size: 1.1rem;
+      font-weight: 700;
       cursor: pointer;
       transition: 0.2s;
+      min-width: 120px;
     }
-    button:hover { background: #2563eb; transform: translateY(-1px); }
-    button:active { transform: scale(0.98); }
-    .btn-success { background: #16a34a; }
-    .btn-success:hover { background: #15803d; }
-    .btn-danger { background: #dc2626; }
-    .btn-danger:hover { background: #b91c1c; }
-    .btn-warning { background: #f59e0b; }
-    .btn-warning:hover { background: #d97706; }
-    .btn-outline { background: transparent; color: #1e3a8a; border: 2px solid #1e3a8a; }
-    .btn-outline:hover { background: #1e3a8a; color: white; }
-    .btn-sm { padding: 6px 12px; font-size: 0.8rem; }
+    .botones-marcar button:hover { transform: translateY(-2px); }
+    .btn-entrada { background: #16a34a; color: white; }
+    .btn-entrada:hover { background: #15803d; }
+    .btn-salida { background: #dc2626; color: white; }
+    .btn-salida:hover { background: #b91c1c; }
+    .btn-ahora { background: #1e3a8a; color: white; }
+    .btn-ahora:hover { background: #2563eb; }
+    .mensaje-confirmacion {
+      margin-top: 16px;
+      padding: 12px;
+      background: #f1f5f9;
+      border-radius: 10px;
+      color: #1e293b;
+      text-align: center;
+      font-weight: 500;
+      min-height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
 
-    /* Tablas */
+    /* Tablas y resto */
     .table-wrap { overflow-x: auto; margin: 10px 0; }
     table {
       width: 100%;
@@ -141,50 +220,100 @@
     .badge-azul { background: #dbeafe; color: #1e40af; }
     .badge-naranja { background: #fef3c7; color: #92400e; }
 
-    /* Tarjetas de resumen */
-    .card-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-      gap: 16px;
-      margin: 16px 0;
+    .form-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      margin: 10px 0 16px;
     }
-    .card {
-      background: #f8fafc;
-      padding: 16px;
-      border-radius: 12px;
-      border: 1px solid #e2e8f0;
-      text-align: center;
+    .form-row > * { flex: 1 1 180px; }
+    input, select, button {
+      padding: 10px 14px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 15px;
+      background: white;
+      transition: 0.2s;
     }
-    .card .numero { font-size: 2rem; font-weight: 700; color: #1e3a8a; }
-    .card .label { color: #475569; font-size: 0.85rem; }
+    button {
+      background: #1e3a8a;
+      color: white;
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:hover { background: #2563eb; }
+    .btn-success { background: #16a34a; }
+    .btn-success:hover { background: #15803d; }
+    .btn-danger { background: #dc2626; }
+    .btn-danger:hover { background: #b91c1c; }
+    .btn-warning { background: #f59e0b; }
+    .btn-warning:hover { background: #d97706; }
+    .btn-sm { padding: 6px 12px; font-size: 0.8rem; }
 
-    /* Responsive */
     @media (max-width: 640px) {
       .container { padding: 12px; }
       .tab { padding: 8px 14px; font-size: 0.8rem; }
       .form-row > * { flex: 1 1 100%; }
       th, td { padding: 6px 8px; font-size: 0.8rem; white-space: normal; }
+      .overlay-controls { padding: 20px; }
     }
   </style>
 </head>
 <body>
 
 <div class="container">
+  <!-- Título general (visible en todas las pestañas) -->
   <h1>⏱️ Control de Jornada</h1>
   <p class="subtitulo">Guatemala • Período: 11 al 10 de cada mes • Feriados oficiales</p>
 
   <!-- PESTAÑAS -->
   <div class="tabs">
-    <button class="tab active" data-tab="empleados">👤 Empleados</button>
-    <button class="tab" data-tab="marcar">🕒 Marcar</button>
-    <button class="tab" data-tab="jornada">📋 Jornada Hoy</button>
+    <button class="tab active" data-tab="principal">🏠 Inicio</button>
+    <button class="tab" data-tab="empleados">👤 Empleados</button>
     <button class="tab" data-tab="reporte">📊 Reporte Mensual</button>
     <button class="tab" data-tab="historial">📜 Historial</button>
     <button class="tab" data-tab="config">⚙️ Feriados</button>
   </div>
 
+  <!-- ========================================================= -->
+  <!-- PESTAÑA PRINCIPAL: RELOJ + CALENDARIO + MARCACIÓN        -->
+  <!-- ========================================================= -->
+  <div id="principal" class="tab-content active">
+    <canvas id="relojCanvas"></canvas>
+    <div class="overlay-controls">
+      <div class="fecha-actual" id="fechaActual">
+        <!-- Se llena con JS -->
+        <span id="diaSemana"></span>, <span id="diaNumero"></span> de <span id="mesNombre"></span> de <span id="anio"></span>
+        <small id="infoFeriado"></small>
+      </div>
+
+      <div class="form-marcar">
+        <select id="selectEmpleadoPrincipal">
+          <option value="">Selecciona empleado</option>
+        </select>
+
+        <div class="hora-row">
+          <label>Entrada manual <input type="time" id="horaEntradaP" step="60" /></label>
+          <label>Salida manual <input type="time" id="horaSalidaP" step="60" /></label>
+        </div>
+
+        <div class="botones-marcar">
+          <button class="btn-entrada" id="btnEntradaP">✅ Entrada</button>
+          <button class="btn-salida" id="btnSalidaP">❌ Salida</button>
+          <button class="btn-ahora" id="btnAhoraP">🔄 Usar actual</button>
+        </div>
+
+        <div class="mensaje-confirmacion" id="mensajeP">
+          Esperando acción...
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ===== EMPLEADOS ===== -->
-  <div id="empleados" class="tab-content active">
+  <div id="empleados" class="tab-content">
     <h2>Empleados</h2>
     <div class="form-row">
       <input type="text" id="nombreEmp" placeholder="Nombre completo" />
@@ -195,37 +324,6 @@
       <table>
         <thead><tr><th>Nombre</th><th>Salario/hora</th><th>Acciones</th></tr></thead>
         <tbody id="tablaEmpleados"></tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- ===== MARCAR ===== -->
-  <div id="marcar" class="tab-content">
-    <h2>Marcar Entrada / Salida</h2>
-    <div class="form-row">
-      <select id="selectEmpleado"><option value="">Selecciona empleado</option></select>
-    </div>
-    <div class="form-row">
-      <label>Entrada manual: <input type="time" id="horaEntrada" step="60" /></label>
-      <label>Salida manual: <input type="time" id="horaSalida" step="60" /></label>
-    </div>
-    <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:8px;">
-      <button onclick="marcarEntrada()" class="btn-success">✅ Marcar Entrada</button>
-      <button onclick="marcarSalida()" class="btn-danger">❌ Marcar Salida</button>
-      <button onclick="marcarConHoraActual()" class="btn-outline">🔄 Usar hora actual</button>
-    </div>
-    <p style="margin-top:14px; color:#475569; background:#f1f5f9; padding:10px; border-radius:8px;">
-      📌 <span id="ultimoMsg">Esperando acción...</span>
-    </p>
-  </div>
-
-  <!-- ===== JORNADA HOY ===== -->
-  <div id="jornada" class="tab-content">
-    <h2>Jornada de hoy <span id="fechaHoy" style="font-weight:400;font-size:0.9rem;color:#475569;"></span></h2>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Empleado</th><th>Entrada</th><th>Salida</th><th>Horas</th><th>Extras</th><th>Descuento</th><th>Asistió</th></tr></thead>
-        <tbody id="tablaJornada"></tbody>
       </table>
     </div>
   </div>
@@ -255,7 +353,7 @@
     </div>
   </div>
 
-  <!-- ===== CONFIGURACIÓN (FERIADOS) ===== -->
+  <!-- ===== FERIADOS ===== -->
   <div id="config" class="tab-content">
     <h2>Feriados oficiales de Guatemala</h2>
     <p style="color:#475569;">Los domingos son automáticamente no laborables. Agrega o elimina feriados.</p>
@@ -275,7 +373,7 @@
 
 <script>
 // ============================================================
-// CONFIGURACIÓN FIREBASE (mismo proyecto, colecciones separadas)
+// CONFIGURACIÓN FIREBASE
 // ============================================================
 const firebaseConfig = {
   apiKey: "AIzaSyD7iqWBCoScuHSID15itaShi7dRQuQwkEo",
@@ -292,70 +390,48 @@ const db = firebase.firestore();
 // VARIABLES GLOBALES
 // ============================================================
 let empleados = [];
-let feriados = [];           // array de strings "YYYY-MM-DD"
-let registrosCache = [];     // todos los registros cargados
-let registrosHoy = [];
-const LS_KEY = 'jornada_local'; // para offline
+let feriados = [];
+let registrosCache = [];
+const LS_KEY = 'jornada_local';
 
-// ============================================================
-// FERIADOS PREDEFINIDOS (Guatemala)
-// ============================================================
 const FERIADOS_POR_DEFECTO = [
-  "2026-01-01", // Año Nuevo
-  "2026-04-02", // Jueves Santo (2026)
-  "2026-04-03", // Viernes Santo (2026)
-  "2026-05-01", // Día del Trabajo
-  "2026-06-30", // Día del Ejército
-  "2026-08-15", // Asunción de la Virgen
-  "2026-09-15", // Independencia
-  "2026-10-20", // Revolución de 1944
-  "2026-11-01", // Día de Todos los Santos
-  "2026-12-25"  // Navidad
+  "2026-01-01", "2026-04-02", "2026-04-03", "2026-05-01",
+  "2026-06-30", "2026-08-15", "2026-09-15", "2026-10-20",
+  "2026-11-01", "2026-12-25"
 ];
 
 // ============================================================
-// FUNCIONES DE FECHA
+// FUNCIONES DE FECHA Y CÁLCULO
 // ============================================================
 function hoy() { return new Date().toISOString().split('T')[0]; }
-function esDomingo(fechaStr) { return new Date(fechaStr + 'T00:00:00').getDay() === 0; }
-function esFeriado(fechaStr) { return feriados.includes(fechaStr); }
-function esDiaNoLaborable(fechaStr) { return esDomingo(fechaStr) || esFeriado(fechaStr); }
-function diaSemana(fechaStr) { return new Date(fechaStr + 'T00:00:00').getDay(); } // 0=domingo
+function esDomingo(f) { return new Date(f + 'T00:00:00').getDay() === 0; }
+function esFeriado(f) { return feriados.includes(f); }
+function esNoLaborable(f) { return esDomingo(f) || esFeriado(f); }
+function diaSemana(f) { return new Date(f + 'T00:00:00').getDay(); }
 
-// ============================================================
-// CÁLCULO DE HORAS
-// ============================================================
-function horasDecimal(horaStr) {
-  // "HH:MM" o "HH:MM:SS" -> número decimal
-  const partes = horaStr.split(':');
-  return parseInt(partes[0]) + parseInt(partes[1]) / 60 + (parseInt(partes[2]) || 0) / 3600;
+function horasDecimal(h) {
+  const p = h.split(':');
+  return parseInt(p[0]) + parseInt(p[1])/60 + (parseInt(p[2])||0)/3600;
 }
 
 function calcularHoras(entrada, salida) {
   let e = horasDecimal(entrada);
   let s = horasDecimal(salida);
-  if (s < e) s += 24; // cruza medianoche
+  if (s < e) s += 24;
   return Math.round((s - e) * 100) / 100;
 }
 
-function calcularExtrasYDescuento(horas, fechaStr) {
-  const dia = diaSemana(fechaStr);
-  const noLab = esDiaNoLaborable(fechaStr);
+function calcularExtrasYDescuento(horas, fecha) {
+  const dia = diaSemana(fecha);
+  const noLab = esNoLaborable(fecha);
   let extras = 0, descuento = 0, asistio = horas > 0;
-
   if (noLab) {
-    // Domingo o feriado: todo es extra
     extras = horas;
-  } else if (dia === 6) { // Sábado
-    if (horas > 4) {
-      extras = horas - 4;
-    } else {
-      descuento = Math.max(0, 4 - horas);
-    }
-  } else { // Lunes a viernes
-    if (horas > 8) {
-      extras = horas - 8;
-    }
+  } else if (dia === 6) { // sábado
+    if (horas > 4) extras = horas - 4;
+    else descuento = Math.max(0, 4 - horas);
+  } else {
+    if (horas > 8) extras = horas - 8;
   }
   extras = Math.round(extras * 100) / 100;
   descuento = Math.round(descuento * 100) / 100;
@@ -363,17 +439,13 @@ function calcularExtrasYDescuento(horas, fechaStr) {
 }
 
 // ============================================================
-// OFFLINE: GUARDAR Y CARGAR LOCALSTORAGE
+// OFFLINE: localStorage
 // ============================================================
 function guardarLocal() {
-  const data = {
-    empleados,
-    feriados,
-    registros: registrosCache
-  };
-  try { localStorage.setItem(LS_KEY, JSON.stringify(data)); } catch(e) {}
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify({ empleados, feriados, registros: registrosCache }));
+  } catch(e) {}
 }
-
 function cargarLocal() {
   try {
     const raw = localStorage.getItem(LS_KEY);
@@ -389,82 +461,322 @@ function cargarLocal() {
 }
 
 // ============================================================
-// SINCRO CON FIREBASE
+// SINCRONIZACIÓN CON FIREBASE
 // ============================================================
 async function sincronizarEmpleados() {
   try {
     const snap = await db.collection("jornada_empleados").orderBy("nombre").get();
     const temp = [];
-    snap.forEach(doc => temp.push({ id: doc.id, ...doc.data() }));
-    if (temp.length > 0) {
-      empleados = temp;
-      guardarLocal();
-    }
-  } catch(e) { console.warn("Offline: usando localStorage para empleados"); }
+    snap.forEach(d => temp.push({ id: d.id, ...d.data() }));
+    if (temp.length) { empleados = temp; guardarLocal(); }
+  } catch(e) {}
 }
-
 async function sincronizarFeriados() {
   try {
     const doc = await db.collection("jornada_config").doc("feriados").get();
     if (doc.exists && doc.data().lista) {
       feriados = doc.data().lista;
-      guardarLocal();
     } else {
-      // Si no existe en Firebase, subir los predefinidos
       await db.collection("jornada_config").doc("feriados").set({ lista: FERIADOS_POR_DEFECTO });
       feriados = [...FERIADOS_POR_DEFECTO];
-      guardarLocal();
     }
-  } catch(e) {
-    console.warn("Offline: usando feriados de localStorage");
-  }
-  actualizarTablaFeriados();
+    guardarLocal();
+  } catch(e) {}
 }
-
 async function sincronizarRegistros() {
   try {
-    const snap = await db.collection("jornada_registros")
-      .orderBy("fecha", "desc")
-      .orderBy("timestamp", "desc")
-      .get();
+    const snap = await db.collection("jornada_registros").orderBy("fecha","desc").orderBy("timestamp","desc").get();
     const temp = [];
-    snap.forEach(doc => temp.push({ id: doc.id, ...doc.data() }));
-    if (temp.length > 0) {
-      registrosCache = temp;
-      guardarLocal();
-    }
-  } catch(e) { console.warn("Offline: usando localStorage para registros"); }
-  actualizarHistorial();
-  actualizarJornadaHoy();
+    snap.forEach(d => temp.push({ id: d.id, ...d.data() }));
+    if (temp.length) { registrosCache = temp; guardarLocal(); }
+  } catch(e) {}
 }
 
 // ============================================================
-// INICIALIZAR
+// INICIALIZACIÓN
 // ============================================================
 async function init() {
-  // Cargar desde localStorage primero (rápido)
   cargarLocal();
-
-  // Luego sincronizar con Firebase
   await sincronizarFeriados();
   await sincronizarEmpleados();
   await sincronizarRegistros();
 
-  // Escuchar cambios en tiempo real (Firebase)
-  db.collection("jornada_empleados").onSnapshot(() => { sincronizarEmpleados(); actualizarSelectEmpleados(); mostrarEmpleados(); });
-  db.collection("jornada_config").doc("feriados").onSnapshot(() => { sincronizarFeriados(); });
-  db.collection("jornada_registros").onSnapshot(() => { sincronizarRegistros(); });
+  // Escuchar cambios en tiempo real
+  db.collection("jornada_empleados").onSnapshot(() => { sincronizarEmpleados(); actualizarSelects(); mostrarEmpleados(); });
+  db.collection("jornada_config").doc("feriados").onSnapshot(() => { sincronizarFeriados(); actualizarTablaFeriados(); });
+  db.collection("jornada_registros").onSnapshot(() => { sincronizarRegistros(); actualizarHistorial(); actualizarJornadaHoy(); });
 
-  actualizarSelectEmpleados();
+  actualizarSelects();
   mostrarEmpleados();
   actualizarTablaFeriados();
-  actualizarJornadaHoy();
   actualizarHistorial();
+  actualizarJornadaHoy();
   llenarSelectMeses();
+
+  // === RELOJ Y CALENDARIO ===
+  iniciarReloj();
+  actualizarCalendario();
+
+  // === EVENTOS DE BOTONES (con addEventListener) ===
+  document.getElementById('btnEntradaP').addEventListener('click', marcarEntrada);
+  document.getElementById('btnSalidaP').addEventListener('click', marcarSalida);
+  document.getElementById('btnAhoraP').addEventListener('click', usarHoraActual);
 }
 
 // ============================================================
-// EMPLEADOS
+// RELOJ ANALÓGICO (Canvas)
+// ============================================================
+function iniciarReloj() {
+  const canvas = document.getElementById('relojCanvas');
+  const ctx = canvas.getContext('2d');
+  let animId = null;
+
+  function resizeCanvas() {
+    const parent = canvas.parentElement;
+    canvas.width = parent.offsetWidth;
+    canvas.height = parent.offsetHeight || 500;
+  }
+  window.addEventListener('resize', resizeCanvas);
+  resizeCanvas();
+
+  function dibujarReloj() {
+    const w = canvas.width, h = canvas.height;
+    const centroX = w/2, centroY = h/2;
+    const radio = Math.min(w, h) * 0.38;
+
+    ctx.clearRect(0, 0, w, h);
+
+    // Fondo semi-transparente (para que el reloj se vea suave)
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    ctx.beginPath();
+    ctx.arc(centroX, centroY, radio + 10, 0, 2*Math.PI);
+    ctx.fill();
+
+    // Esfera
+    ctx.shadowColor = 'rgba(0,0,0,0.05)';
+    ctx.shadowBlur = 20;
+    ctx.beginPath();
+    ctx.arc(centroX, centroY, radio, 0, 2*Math.PI);
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = '#1e3a8a';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Números
+    ctx.fillStyle = '#1e3a8a';
+    ctx.font = `${radio * 0.15}px 'Segoe UI', sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (let i = 1; i <= 12; i++) {
+      const ang = (i / 12) * 2 * Math.PI - Math.PI/2;
+      const x = centroX + radio * 0.80 * Math.cos(ang);
+      const y = centroY + radio * 0.80 * Math.sin(ang);
+      ctx.fillText(i, x, y);
+    }
+
+    // Marcas de minutos
+    for (let i = 0; i < 60; i++) {
+      const ang = (i / 60) * 2 * Math.PI - Math.PI/2;
+      const len = (i % 5 === 0) ? radio * 0.08 : radio * 0.04;
+      const x1 = centroX + (radio - len) * Math.cos(ang);
+      const y1 = centroY + (radio - len) * Math.sin(ang);
+      const x2 = centroX + radio * Math.cos(ang);
+      const y2 = centroY + radio * Math.sin(ang);
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.strokeStyle = (i % 5 === 0) ? '#1e3a8a' : '#94a3b8';
+      ctx.lineWidth = (i % 5 === 0) ? 2 : 1;
+      ctx.stroke();
+    }
+
+    // Hora actual
+    const ahora = new Date();
+    let horas = ahora.getHours() % 12;
+    const minutos = ahora.getMinutes();
+    const segundos = ahora.getSeconds();
+
+    // Manecilla de hora
+    const angHora = (horas / 12) * 2 * Math.PI + (minutos / 60) * (2 * Math.PI / 12) - Math.PI/2;
+    ctx.beginPath();
+    ctx.moveTo(centroX, centroY);
+    ctx.lineTo(centroX + radio * 0.50 * Math.cos(angHora), centroY + radio * 0.50 * Math.sin(angHora));
+    ctx.strokeStyle = '#1e3a8a';
+    ctx.lineWidth = 5;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    // Manecilla de minuto
+    const angMin = (minutos / 60) * 2 * Math.PI - Math.PI/2;
+    ctx.beginPath();
+    ctx.moveTo(centroX, centroY);
+    ctx.lineTo(centroX + radio * 0.68 * Math.cos(angMin), centroY + radio * 0.68 * Math.sin(angMin));
+    ctx.strokeStyle = '#2563eb';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // Manecilla de segundo
+    const angSeg = (segundos / 60) * 2 * Math.PI - Math.PI/2;
+    ctx.beginPath();
+    ctx.moveTo(centroX, centroY);
+    ctx.lineTo(centroX + radio * 0.75 * Math.cos(angSeg), centroY + radio * 0.75 * Math.sin(angSeg));
+    ctx.strokeStyle = '#dc2626';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Centro
+    ctx.beginPath();
+    ctx.arc(centroX, centroY, 6, 0, 2*Math.PI);
+    ctx.fillStyle = '#1e3a8a';
+    ctx.fill();
+  }
+
+  function loop() {
+    dibujarReloj();
+    animId = requestAnimationFrame(loop);
+  }
+  loop();
+
+  // Redibujar al cambiar tamaño
+  window.addEventListener('resize', () => {
+    resizeCanvas();
+  });
+}
+
+// ============================================================
+// CALENDARIO ACTUAL
+// ============================================================
+function actualizarCalendario() {
+  const ahora = new Date();
+  const dias = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  document.getElementById('diaSemana').textContent = dias[ahora.getDay()];
+  document.getElementById('diaNumero').textContent = ahora.getDate();
+  document.getElementById('mesNombre').textContent = meses[ahora.getMonth()];
+  document.getElementById('anio').textContent = ahora.getFullYear();
+
+  const hoyStr = hoy();
+  const feriadoInfo = esFeriado(hoyStr) ? '🔴 Hoy es feriado' : (esDomingo(hoyStr) ? '🔵 Domingo (no laborable)' : '🟢 Día laborable');
+  document.getElementById('infoFeriado').textContent = feriadoInfo;
+}
+
+// ============================================================
+// MARCACIÓN (ENTRADA / SALIDA) con event listeners
+// ============================================================
+function obtenerEmpleadoSeleccionado() {
+  const id = document.getElementById('selectEmpleadoPrincipal').value;
+  return empleados.find(e => e.id === id);
+}
+
+function marcarEntrada() {
+  const emp = obtenerEmpleadoSeleccionado();
+  if (!emp) { mostrarMensaje('⚠️ Selecciona un empleado.', 'rojo'); return; }
+
+  const fecha = hoy();
+  const entrada = document.getElementById('horaEntradaP').value || new Date().toLocaleTimeString('es-GT', { hour:'2-digit', minute:'2-digit' });
+
+  // Verificar si ya tiene entrada activa
+  const activo = registrosCache.find(r => r.empleadoId === emp.id && r.fecha === fecha && !r.salida);
+  if (activo) {
+    mostrarMensaje(`⚠️ ${emp.nombre} ya tiene entrada activa. Marque salida primero.`, 'rojo');
+    return;
+  }
+
+  const nuevo = {
+    empleadoId: emp.id,
+    nombre: emp.nombre,
+    fecha: fecha,
+    entrada: entrada,
+    salida: null,
+    timestamp: new Date().toISOString()
+  };
+
+  db.collection("jornada_registros").add(nuevo)
+    .then(docRef => {
+      nuevo.id = docRef.id;
+      registrosCache.push(nuevo);
+      guardarLocal();
+      mostrarMensaje(`✅ Entrada registrada para ${emp.nombre} a las ${entrada}`, 'verde');
+      actualizarHistorial();
+      actualizarJornadaHoy();
+    })
+    .catch(() => {
+      // Offline
+      nuevo.id = 'temp_' + Date.now();
+      registrosCache.push(nuevo);
+      guardarLocal();
+      mostrarMensaje(`⚠️ Entrada guardada localmente (sin conexión) para ${emp.nombre}`, 'naranja');
+      actualizarHistorial();
+      actualizarJornadaHoy();
+    });
+}
+
+function marcarSalida() {
+  const emp = obtenerEmpleadoSeleccionado();
+  if (!emp) { mostrarMensaje('⚠️ Selecciona un empleado.', 'rojo'); return; }
+
+  const fecha = hoy();
+  const salida = document.getElementById('horaSalidaP').value || new Date().toLocaleTimeString('es-GT', { hour:'2-digit', minute:'2-digit' });
+
+  const registro = registrosCache.find(r => r.empleadoId === emp.id && r.fecha === fecha && !r.salida);
+  if (!registro) {
+    mostrarMensaje(`⚠️ No hay entrada activa para ${emp.nombre}.`, 'rojo');
+    return;
+  }
+
+  registro.salida = salida;
+  registro.timestampSalida = new Date().toISOString();
+
+  if (registro.id && !registro.id.startsWith('temp_')) {
+    db.collection("jornada_registros").doc(registro.id).update({ salida: salida, timestampSalida: new Date().toISOString() })
+      .then(() => {
+        guardarLocal();
+        mostrarMensaje(`✅ Salida registrada para ${emp.nombre} a las ${salida}`, 'verde');
+        actualizarHistorial();
+        actualizarJornadaHoy();
+      })
+      .catch(() => {
+        guardarLocal();
+        mostrarMensaje(`⚠️ Salida guardada localmente (sin conexión) para ${emp.nombre}`, 'naranja');
+        actualizarHistorial();
+        actualizarJornadaHoy();
+      });
+  } else {
+    guardarLocal();
+    mostrarMensaje(`✅ Salida registrada localmente para ${emp.nombre}`, 'verde');
+    actualizarHistorial();
+    actualizarJornadaHoy();
+  }
+}
+
+function usarHoraActual() {
+  const ahora = new Date().toLocaleTimeString('es-GT', { hour:'2-digit', minute:'2-digit' });
+  document.getElementById('horaEntradaP').value = ahora;
+  document.getElementById('horaSalidaP').value = ahora;
+  mostrarMensaje(`🔄 Hora actual establecida: ${ahora}`, 'azul');
+}
+
+function mostrarMensaje(texto, tipo) {
+  const el = document.getElementById('mensajeP');
+  el.textContent = texto;
+  el.style.color = tipo === 'rojo' ? '#dc2626' : tipo === 'verde' ? '#16a34a' : tipo === 'naranja' ? '#f59e0b' : '#1e3a8a';
+}
+
+// ============================================================
+// ACTUALIZAR SELECTORES
+// ============================================================
+function actualizarSelects() {
+  const sel = document.getElementById('selectEmpleadoPrincipal');
+  sel.innerHTML = '<option value="">Selecciona empleado</option>';
+  empleados.forEach(e => {
+    sel.innerHTML += `<option value="${e.id}">${e.nombre}</option>`;
+  });
+}
+
+// ============================================================
+// EMPLEADOS (ABM)
 // ============================================================
 function mostrarEmpleados() {
   const tbody = document.getElementById('tablaEmpleados');
@@ -490,7 +802,7 @@ async function agregarEmpleado() {
     guardarLocal();
     document.getElementById('nombreEmp').value = '';
     document.getElementById('salarioEmp').value = '';
-    actualizarSelectEmpleados();
+    actualizarSelects();
     mostrarEmpleados();
   } catch(e) { alert('Error al guardar.'); }
 }
@@ -501,161 +813,17 @@ async function eliminarEmpleado(id) {
     await db.collection("jornada_empleados").doc(id).delete();
     empleados = empleados.filter(e => e.id !== id);
     guardarLocal();
-    actualizarSelectEmpleados();
+    actualizarSelects();
     mostrarEmpleados();
   } catch(e) { alert('Error al eliminar.'); }
 }
 
-function actualizarSelectEmpleados() {
-  const sel = document.getElementById('selectEmpleado');
-  sel.innerHTML = '<option value="">Selecciona empleado</option>';
-  empleados.forEach(e => {
-    sel.innerHTML += `<option value="${e.id}">${e.nombre}</option>`;
-  });
-}
-
 // ============================================================
-// MARCAR (ENTRADA / SALIDA)
-// ============================================================
-function obtenerHoraInput(id) {
-  const val = document.getElementById(id).value;
-  if (val) return val; // "HH:MM"
-  return null;
-}
-
-function marcarEntrada() {
-  const empId = document.getElementById('selectEmpleado').value;
-  if (!empId) { alert('Selecciona un empleado.'); return; }
-  const emp = empleados.find(e => e.id === empId);
-  const fecha = hoy();
-  const hora = obtenerHoraInput('horaEntrada') || new Date().toLocaleTimeString('es-GT', { hour:'2-digit', minute:'2-digit' });
-
-  // Verificar si ya tiene entrada activa (sin salida)
-  const existente = registrosCache.find(r => r.empleadoId === empId && r.fecha === fecha && !r.salida);
-  if (existente) {
-    alert('Ya tiene entrada activa. Marque salida primero.');
-    return;
-  }
-
-  const nuevo = {
-    empleadoId: empId,
-    nombre: emp.nombre,
-    fecha: fecha,
-    entrada: hora,
-    salida: null,
-    timestamp: firebase.firestore.FieldValue.serverTimestamp ? firebase.firestore.FieldValue.serverTimestamp() : new Date().toISOString()
-  };
-
-  db.collection("jornada_registros").add(nuevo)
-    .then(docRef => {
-      nuevo.id = docRef.id;
-      registrosCache.push(nuevo);
-      guardarLocal();
-      document.getElementById('ultimoMsg').innerText = `✅ Entrada registrada para ${emp.nombre} a las ${hora}`;
-      actualizarJornadaHoy();
-      actualizarHistorial();
-    })
-    .catch(e => {
-      // Offline: guardar local con id temporal
-      nuevo.id = 'temp_' + Date.now();
-      registrosCache.push(nuevo);
-      guardarLocal();
-      document.getElementById('ultimoMsg').innerText = `⚠️ Entrada guardada localmente (sin conexión) para ${emp.nombre}`;
-      actualizarJornadaHoy();
-      actualizarHistorial();
-    });
-}
-
-function marcarSalida() {
-  const empId = document.getElementById('selectEmpleado').value;
-  if (!empId) { alert('Selecciona un empleado.'); return; }
-  const fecha = hoy();
-  const hora = obtenerHoraInput('horaSalida') || new Date().toLocaleTimeString('es-GT', { hour:'2-digit', minute:'2-digit' });
-
-  const registro = registrosCache.find(r => r.empleadoId === empId && r.fecha === fecha && !r.salida);
-  if (!registro) {
-    alert('No hay entrada activa para este empleado.');
-    return;
-  }
-
-  registro.salida = hora;
-  registro.timestampSalida = new Date().toISOString();
-
-  if (registro.id && !registro.id.startsWith('temp_')) {
-    db.collection("jornada_registros").doc(registro.id).update({ salida: hora, timestampSalida: firebase.firestore.FieldValue.serverTimestamp ? firebase.firestore.FieldValue.serverTimestamp() : new Date().toISOString() })
-      .then(() => {
-        guardarLocal();
-        document.getElementById('ultimoMsg').innerText = `✅ Salida registrada para ${registro.nombre} a las ${hora}`;
-        actualizarJornadaHoy();
-        actualizarHistorial();
-      })
-      .catch(() => {
-        guardarLocal();
-        document.getElementById('ultimoMsg').innerText = `⚠️ Salida guardada localmente (sin conexión) para ${registro.nombre}`;
-        actualizarJornadaHoy();
-        actualizarHistorial();
-      });
-  } else {
-    guardarLocal();
-    document.getElementById('ultimoMsg').innerText = `✅ Salida registrada localmente para ${registro.nombre}`;
-    actualizarJornadaHoy();
-    actualizarHistorial();
-  }
-}
-
-function marcarConHoraActual() {
-  const ahora = new Date().toLocaleTimeString('es-GT', { hour:'2-digit', minute:'2-digit' });
-  document.getElementById('horaEntrada').value = ahora;
-  document.getElementById('horaSalida').value = ahora;
-  document.getElementById('ultimoMsg').innerText = `🔄 Hora actual establecida: ${ahora}`;
-}
-
-// ============================================================
-// JORNADA DE HOY
+// JORNADA DE HOY (se usa en la pestaña de historial, pero la mantenemos)
 // ============================================================
 function actualizarJornadaHoy() {
-  const fecha = hoy();
-  document.getElementById('fechaHoy').innerText = `(${fecha})`;
-  const tbody = document.getElementById('tablaJornada');
-  tbody.innerHTML = '';
-
-  const hoyRegistros = registrosCache.filter(r => r.fecha === fecha);
-  // Agrupar por empleado (puede haber varios si se reabrió, pero tomamos el más reciente)
-  const map = {};
-  hoyRegistros.forEach(r => {
-    const key = r.empleadoId;
-    if (!map[key] || (r.timestamp && r.timestamp > map[key].timestamp)) {
-      map[key] = r;
-    }
-  });
-
-  for (let empId in map) {
-    const r = map[empId];
-    const emp = empleados.find(e => e.id === empId);
-    const nombre = emp ? emp.nombre : r.nombre || 'Desconocido';
-    let horas = '-', extras = '-', descuento = '-', asistio = '-';
-    if (r.entrada && r.salida) {
-      horas = calcularHoras(r.entrada, r.salida);
-      const calc = calcularExtrasYDescuento(horas, fecha);
-      extras = calc.extras;
-      descuento = calc.descuento;
-      asistio = calc.asistio ? '✅ Sí' : '❌ No';
-    }
-    tbody.innerHTML += `
-      <tr>
-        <td><strong>${nombre}</strong></td>
-        <td>${r.entrada || '—'}</td>
-        <td>${r.salida || '⏳'}</td>
-        <td>${typeof horas === 'number' ? horas.toFixed(2) + 'h' : '—'}</td>
-        <td class="text-center"><span class="badge badge-naranja">${typeof extras === 'number' ? extras.toFixed(2) + 'h' : '—'}</span></td>
-        <td class="text-center"><span class="badge badge-rojo">${typeof descuento === 'number' && descuento > 0 ? descuento.toFixed(2) + 'h' : '—'}</span></td>
-        <td>${asistio}</td>
-      </tr>
-    `;
-  }
-  if (tbody.innerHTML === '') {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#94a3b8;">No hay registros hoy</td></tr>`;
-  }
+  // No se usa directamente en la vista principal, pero se puede llamar si se necesita.
+  // La dejamos para compatibilidad.
 }
 
 // ============================================================
@@ -664,7 +832,6 @@ function actualizarJornadaHoy() {
 function actualizarHistorial() {
   const tbody = document.getElementById('tablaHistorial');
   tbody.innerHTML = '';
-  // Mostrar últimos 30 registros (ordenados por fecha desc)
   const sorted = [...registrosCache].sort((a,b) => (b.fecha || '').localeCompare(a.fecha || ''));
   const limit = sorted.slice(0, 50);
   limit.forEach(r => {
@@ -681,10 +848,8 @@ function actualizarHistorial() {
         <td>${r.salida}</td>
         <td>${horas.toFixed(2)}h</td>
         <td>${calc.extras.toFixed(2)}h</td>
-        <td>${calc.descuento > 0 ? calc.descuento.toFixed(2) + 'h' : '—'}</td>
-        <td>
-          <button class="btn-warning btn-sm" onclick="editarRegistro('${r.id}')">✏️ Editar</button>
-        </td>
+        <td>${calc.descuento > 0 ? calc.descuento.toFixed(2)+'h' : '—'}</td>
+        <td><button class="btn-warning btn-sm" onclick="editarRegistro('${r.id}')">✏️ Editar</button></td>
       </tr>
     `;
   });
@@ -705,7 +870,6 @@ function editarRegistro(id) {
       .catch(() => { guardarLocal(); });
   }
   guardarLocal();
-  actualizarJornadaHoy();
   actualizarHistorial();
 }
 
@@ -745,7 +909,6 @@ async function agregarFeriado() {
     document.getElementById('nuevoFeriado').value = '';
     actualizarTablaFeriados();
   } catch(e) {
-    // Offline: guardar local
     feriados.push(fecha);
     guardarLocal();
     actualizarTablaFeriados();
@@ -771,7 +934,7 @@ async function eliminarFeriado(fecha) {
 }
 
 // ============================================================
-// REPORTE MENSUAL (con columnas por semana)
+// REPORTE MENSUAL
 // ============================================================
 function llenarSelectMeses() {
   const sel = document.getElementById('mesReporte');
@@ -786,7 +949,6 @@ function llenarSelectMeses() {
     opt.textContent = label.charAt(0).toUpperCase() + label.slice(1);
     sel.appendChild(opt);
   }
-  // Seleccionar mes actual
   const actual = ahora.getFullYear() + '-' + String(ahora.getMonth() + 1).padStart(2, '0');
   sel.value = actual;
   generarReporte();
@@ -796,19 +958,16 @@ function generarReporte() {
   const mesVal = document.getElementById('mesReporte').value;
   if (!mesVal) return;
   const [year, month] = mesVal.split('-').map(Number);
-  // Período: del 11 del mes anterior al 10 del mes seleccionado
-  const fechaInicio = new Date(year, month - 2, 11); // mes anterior, día 11
-  const fechaFin = new Date(year, month - 1, 10);   // mes actual, día 10
+  const fechaInicio = new Date(year, month - 2, 11);
+  const fechaFin = new Date(year, month - 1, 10);
   const inicioStr = fechaInicio.toISOString().split('T')[0];
   const finStr = fechaFin.toISOString().split('T')[0];
   document.getElementById('periodoReporte').innerText = `${inicioStr} al ${finStr}`;
 
-  // Filtrar registros
   const registrosFiltrados = registrosCache.filter(r =>
     r.fecha >= inicioStr && r.fecha <= finStr && r.entrada && r.salida
   );
 
-  // Agrupar por empleado
   const mapa = {};
   registrosFiltrados.forEach(r => {
     const key = r.empleadoId;
@@ -816,7 +975,6 @@ function generarReporte() {
     mapa[key].registros.push(r);
   });
 
-  // Generar semanas (lunes a domingo)
   const semanas = [];
   let cursor = new Date(fechaInicio);
   while (cursor <= fechaFin) {
@@ -832,7 +990,6 @@ function generarReporte() {
     cursor.setDate(cursor.getDate() + 7);
   }
 
-  // Construir tabla
   let html = '<table><thead><tr><th>Empleado</th>';
   semanas.forEach((s, i) => {
     html += `<th>Semana ${i+1}<br><small>${s.label}</small></th>`;
@@ -876,9 +1033,6 @@ function generarReporte() {
   document.getElementById('contenedorReporte').innerHTML = html;
 }
 
-// ============================================================
-// GENERAR PDF
-// ============================================================
 function generarPDF() {
   const contenido = document.getElementById('contenedorReporte');
   const tabla = contenido.querySelector('table');
@@ -892,22 +1046,16 @@ function generarPDF() {
   const periodo = document.getElementById('periodoReporte').innerText;
   pdf.text(`Período: ${periodo}`, 14, 22);
 
-  // Convertir tabla HTML a datos
-  const rows = [];
-  const headRow = tabla.querySelector('thead tr');
   const headers = [];
+  const headRow = tabla.querySelector('thead tr');
   headRow.querySelectorAll('th').forEach(th => {
-    // Limpiar texto
-    let txt = th.innerText.trim().replace(/\n/g, ' ').replace(/\s+/g, ' ');
-    headers.push(txt);
+    headers.push(th.innerText.trim().replace(/\n/g, ' ').replace(/\s+/g, ' '));
   });
 
-  const bodyRows = tabla.querySelectorAll('tbody tr');
-  bodyRows.forEach(tr => {
+  const rows = [];
+  tabla.querySelectorAll('tbody tr').forEach(tr => {
     const row = [];
-    tr.querySelectorAll('td').forEach(td => {
-      row.push(td.innerText.trim());
-    });
+    tr.querySelectorAll('td').forEach(td => row.push(td.innerText.trim()));
     rows.push(row);
   });
 
@@ -925,18 +1073,20 @@ function generarPDF() {
 }
 
 // ============================================================
-// EVENTOS DE PESTAÑAS
+// PESTAÑAS (con event listeners)
 // ============================================================
-document.querySelectorAll('.tab').forEach(tab => {
-  tab.addEventListener('click', function() {
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-    this.classList.add('active');
-    const target = document.getElementById(this.dataset.tab);
-    if (target) target.classList.add('active');
-    if (this.dataset.tab === 'reporte') generarReporte();
-    if (this.dataset.tab === 'jornada') actualizarJornadaHoy();
-    if (this.dataset.tab === 'historial') actualizarHistorial();
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', function() {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      this.classList.add('active');
+      const target = document.getElementById(this.dataset.tab);
+      if (target) target.classList.add('active');
+      if (this.dataset.tab === 'reporte') generarReporte();
+      if (this.dataset.tab === 'historial') actualizarHistorial();
+      if (this.dataset.tab === 'principal') actualizarCalendario();
+    });
   });
 });
 
