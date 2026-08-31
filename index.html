@@ -36,7 +36,6 @@
     h1 { color: #1e3a8a; font-size: 1.8rem; margin-bottom: 4px; }
     .subtitulo { color: #475569; font-size: 0.95rem; margin-bottom: 20px; }
 
-    /* Pestañas */
     .tabs {
       display: flex;
       gap: 6px;
@@ -188,7 +187,6 @@
       justify-content: center;
     }
 
-    /* Tablas y resto */
     .table-wrap { overflow-x: auto; margin: 10px 0; }
     table {
       width: 100%;
@@ -264,7 +262,6 @@
 <body>
 
 <div class="container">
-  <!-- Título general -->
   <h1>⏱️ Control de Jornada</h1>
   <p class="subtitulo">Guatemala • Período: 11 al 10 de cada mes • Feriados oficiales</p>
 
@@ -327,9 +324,9 @@
     </div>
   </div>
 
-  <!-- ===== REPORTE MENSUAL ===== -->
+  <!-- ===== REPORTE MENSUAL (MODIFICADO) ===== -->
   <div id="reporte" class="tab-content">
-    <h2>Reporte Mensual</h2>
+    <h2>Reporte Mensual de Horas Extras</h2>
     <div class="form-row">
       <select id="mesReporte"><option value="">Selecciona mes</option></select>
       <button onclick="generarReporte()" class="btn-success">📊 Generar</button>
@@ -343,10 +340,25 @@
 
   <!-- ===== HISTORIAL ===== -->
   <div id="historial" class="tab-content">
-    <h2>Historial de registros</h2>
+    <h2>Historial de Asistencias</h2>
+    <div class="form-row">
+      <select id="mesHistorial"><option value="">Selecciona mes</option></select>
+      <button onclick="actualizarHistorial()" class="btn-success">📅 Mostrar</button>
+    </div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Fecha</th><th>Empleado</th><th>Entrada</th><th>Salida</th><th>Horas</th><th>Extras</th><th>Descuento</th><th>Acciones</th></tr></thead>
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Empleado</th>
+            <th>Entrada</th>
+            <th>Salida</th>
+            <th>Horas</th>
+            <th>Extras</th>
+            <th>Descuento</th>
+            <th>Asistió</th>
+          </tr>
+        </thead>
         <tbody id="tablaHistorial"></tbody>
       </table>
     </div>
@@ -500,7 +512,6 @@ async function init() {
   await sincronizarEmpleados();
   await sincronizarRegistros();
 
-  // Escuchar cambios en tiempo real
   db.collection("jornada_empleados").onSnapshot(() => { sincronizarEmpleados(); actualizarSelects(); mostrarEmpleados(); });
   db.collection("jornada_config").doc("feriados").onSnapshot(() => { sincronizarFeriados(); actualizarTablaFeriados(); });
   db.collection("jornada_registros").onSnapshot(() => { sincronizarRegistros(); actualizarHistorial(); });
@@ -508,21 +519,19 @@ async function init() {
   actualizarSelects();
   mostrarEmpleados();
   actualizarTablaFeriados();
-  actualizarHistorial();
   llenarSelectMeses();
+  llenarSelectHistorial();
 
-  // === RELOJ Y CALENDARIO ===
   iniciarReloj();
   actualizarCalendario();
 
-  // === EVENTOS DE BOTONES (con addEventListener) ===
   document.getElementById('btnEntradaP').addEventListener('click', marcarEntrada);
   document.getElementById('btnSalidaP').addEventListener('click', marcarSalida);
   document.getElementById('btnAhoraP').addEventListener('click', usarHoraActual);
 }
 
 // ============================================================
-// RELOJ ANALÓGICO (Canvas)
+// RELOJ ANALÓGICO
 // ============================================================
 function iniciarReloj() {
   const canvas = document.getElementById('relojCanvas');
@@ -544,13 +553,11 @@ function iniciarReloj() {
 
     ctx.clearRect(0, 0, w, h);
 
-    // Fondo semi-transparente
     ctx.fillStyle = 'rgba(255,255,255,0.15)';
     ctx.beginPath();
     ctx.arc(centroX, centroY, radio + 10, 0, 2*Math.PI);
     ctx.fill();
 
-    // Esfera
     ctx.shadowColor = 'rgba(0,0,0,0.05)';
     ctx.shadowBlur = 20;
     ctx.beginPath();
@@ -562,7 +569,6 @@ function iniciarReloj() {
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Números
     ctx.fillStyle = '#1e3a8a';
     ctx.font = `${radio * 0.15}px 'Segoe UI', sans-serif`;
     ctx.textAlign = 'center';
@@ -574,7 +580,6 @@ function iniciarReloj() {
       ctx.fillText(i, x, y);
     }
 
-    // Marcas de minutos
     for (let i = 0; i < 60; i++) {
       const ang = (i / 60) * 2 * Math.PI - Math.PI/2;
       const len = (i % 5 === 0) ? radio * 0.08 : radio * 0.04;
@@ -590,13 +595,11 @@ function iniciarReloj() {
       ctx.stroke();
     }
 
-    // Hora actual
     const ahora = new Date();
     let horas = ahora.getHours() % 12;
     const minutos = ahora.getMinutes();
     const segundos = ahora.getSeconds();
 
-    // Manecilla de hora
     const angHora = (horas / 12) * 2 * Math.PI + (minutos / 60) * (2 * Math.PI / 12) - Math.PI/2;
     ctx.beginPath();
     ctx.moveTo(centroX, centroY);
@@ -606,7 +609,6 @@ function iniciarReloj() {
     ctx.lineCap = 'round';
     ctx.stroke();
 
-    // Manecilla de minuto
     const angMin = (minutos / 60) * 2 * Math.PI - Math.PI/2;
     ctx.beginPath();
     ctx.moveTo(centroX, centroY);
@@ -615,7 +617,6 @@ function iniciarReloj() {
     ctx.lineWidth = 3;
     ctx.stroke();
 
-    // Manecilla de segundo
     const angSeg = (segundos / 60) * 2 * Math.PI - Math.PI/2;
     ctx.beginPath();
     ctx.moveTo(centroX, centroY);
@@ -624,7 +625,6 @@ function iniciarReloj() {
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Centro
     ctx.beginPath();
     ctx.arc(centroX, centroY, 6, 0, 2*Math.PI);
     ctx.fillStyle = '#1e3a8a';
@@ -660,7 +660,7 @@ function actualizarCalendario() {
 }
 
 // ============================================================
-// MARCACIÓN (ENTRADA / SALIDA) con event listeners
+// MARCACIÓN
 // ============================================================
 function obtenerEmpleadoSeleccionado() {
   const id = document.getElementById('selectEmpleadoPrincipal').value;
@@ -674,7 +674,6 @@ function marcarEntrada() {
   const fecha = hoy();
   const entrada = document.getElementById('horaEntradaP').value || new Date().toLocaleTimeString('es-GT', { hour:'2-digit', minute:'2-digit' });
 
-  // Verificar si ya tiene entrada activa
   const activo = registrosCache.find(r => r.empleadoId === emp.id && r.fecha === fecha && !r.salida);
   if (activo) {
     mostrarMensaje(`⚠️ ${emp.nombre} ya tiene entrada activa. Marque salida primero.`, 'rojo');
@@ -699,7 +698,6 @@ function marcarEntrada() {
       actualizarHistorial();
     })
     .catch(() => {
-      // Offline
       nuevo.id = 'temp_' + Date.now();
       registrosCache.push(nuevo);
       guardarLocal();
@@ -756,9 +754,6 @@ function mostrarMensaje(texto, tipo) {
   el.style.color = tipo === 'rojo' ? '#dc2626' : tipo === 'verde' ? '#16a34a' : tipo === 'naranja' ? '#f59e0b' : '#1e3a8a';
 }
 
-// ============================================================
-// ACTUALIZAR SELECTORES
-// ============================================================
 function actualizarSelects() {
   const sel = document.getElementById('selectEmpleadoPrincipal');
   sel.innerHTML = '<option value="">Selecciona empleado</option>';
@@ -768,7 +763,7 @@ function actualizarSelects() {
 }
 
 // ============================================================
-// EMPLEADOS (ABM)
+// EMPLEADOS
 // ============================================================
 function mostrarEmpleados() {
   const tbody = document.getElementById('tablaEmpleados');
@@ -811,50 +806,93 @@ async function eliminarEmpleado(id) {
 }
 
 // ============================================================
-// HISTORIAL
+// HISTORIAL (con check de asistencia y descuento sábado)
 // ============================================================
-function actualizarHistorial() {
-  const tbody = document.getElementById('tablaHistorial');
-  tbody.innerHTML = '';
-  const sorted = [...registrosCache].sort((a,b) => (b.fecha || '').localeCompare(a.fecha || ''));
-  const limit = sorted.slice(0, 50);
-  limit.forEach(r => {
-    if (!r.entrada || !r.salida) return;
-    const horas = calcularHoras(r.entrada, r.salida);
-    const calc = calcularExtrasYDescuento(horas, r.fecha);
-    const emp = empleados.find(e => e.id === r.empleadoId);
-    const nombre = emp ? emp.nombre : r.nombre || 'Desconocido';
-    tbody.innerHTML += `
-      <tr>
-        <td>${r.fecha}</td>
-        <td>${nombre}</td>
-        <td>${r.entrada}</td>
-        <td>${r.salida}</td>
-        <td>${horas.toFixed(2)}h</td>
-        <td>${calc.extras.toFixed(2)}h</td>
-        <td>${calc.descuento > 0 ? calc.descuento.toFixed(2)+'h' : '—'}</td>
-        <td><button class="btn-warning btn-sm" onclick="editarRegistro('${r.id}')">✏️ Editar</button></td>
-      </tr>
-    `;
-  });
-  if (tbody.innerHTML === '') {
-    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#94a3b8;">Sin registros</td></tr>`;
+function llenarSelectHistorial() {
+  const sel = document.getElementById('mesHistorial');
+  sel.innerHTML = '';
+  const ahora = new Date();
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(ahora.getFullYear(), ahora.getMonth() - i, 1);
+    const val = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    const label = d.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+    const opt = document.createElement('option');
+    opt.value = val;
+    opt.textContent = label.charAt(0).toUpperCase() + label.slice(1);
+    sel.appendChild(opt);
   }
+  const actual = ahora.getFullYear() + '-' + String(ahora.getMonth() + 1).padStart(2, '0');
+  sel.value = actual;
+  actualizarHistorial();
 }
 
-function editarRegistro(id) {
-  const reg = registrosCache.find(r => r.id === id);
-  if (!reg) return;
-  const nuevaEntrada = prompt('Nueva hora de entrada (HH:MM):', reg.entrada);
-  if (nuevaEntrada !== null) reg.entrada = nuevaEntrada;
-  const nuevaSalida = prompt('Nueva hora de salida (HH:MM):', reg.salida);
-  if (nuevaSalida !== null) reg.salida = nuevaSalida;
-  if (reg.id && !reg.id.startsWith('temp_')) {
-    db.collection("jornada_registros").doc(reg.id).update({ entrada: reg.entrada, salida: reg.salida })
-      .catch(() => { guardarLocal(); });
+function actualizarHistorial() {
+  const mesVal = document.getElementById('mesHistorial').value;
+  if (!mesVal) return;
+  const [year, month] = mesVal.split('-').map(Number);
+  const fechaInicio = new Date(year, month - 1, 1);
+  const fechaFin = new Date(year, month, 0);
+  const inicioStr = fechaInicio.toISOString().split('T')[0];
+  const finStr = fechaFin.toISOString().split('T')[0];
+
+  const dias = [];
+  let cursor = new Date(fechaInicio);
+  while (cursor <= fechaFin) {
+    dias.push(cursor.toISOString().split('T')[0]);
+    cursor.setDate(cursor.getDate() + 1);
   }
-  guardarLocal();
-  actualizarHistorial();
+
+  const tbody = document.getElementById('tablaHistorial');
+  tbody.innerHTML = '';
+
+  empleados.forEach(emp => {
+    dias.forEach(fecha => {
+      const registro = registrosCache.find(r => r.empleadoId === emp.id && r.fecha === fecha);
+      const esSab = diaSemana(fecha) === 6;
+      const esNoLab = esNoLaborable(fecha);
+
+      let entrada = '—', salida = '—', horas = 0, extras = 0, descuento = 0, asistio = false;
+
+      if (registro && registro.entrada && registro.salida) {
+        entrada = registro.entrada;
+        salida = registro.salida;
+        horas = calcularHoras(entrada, salida);
+        const calc = calcularExtrasYDescuento(horas, fecha);
+        extras = calc.extras;
+        descuento = calc.descuento;
+        asistio = true;
+      } else {
+        if (esSab && !esNoLab) {
+          descuento = 4;
+        }
+        asistio = false;
+      }
+
+      const asistenciaStr = asistio ? '✅ Sí' : '❌ No';
+      const horasStr = asistio ? horas.toFixed(2) + 'h' : '—';
+      const extrasStr = asistio ? extras.toFixed(2) + 'h' : '—';
+      const descuentoStr = descuento > 0 ? descuento.toFixed(2) + 'h' : '—';
+
+      if (asistio || descuento > 0 || (!asistio && diaSemana(fecha) >= 1 && diaSemana(fecha) <= 5)) {
+        tbody.innerHTML += `
+          <tr>
+            <td>${fecha}</td>
+            <td>${emp.nombre}</td>
+            <td>${entrada}</td>
+            <td>${salida}</td>
+            <td>${horasStr}</td>
+            <td>${extrasStr}</td>
+            <td>${descuentoStr}</td>
+            <td>${asistenciaStr}</td>
+          </tr>
+        `;
+      }
+    });
+  });
+
+  if (tbody.innerHTML === '') {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#94a3b8;">No hay registros para este período</td></tr>`;
+  }
 }
 
 // ============================================================
@@ -918,7 +956,7 @@ async function eliminarFeriado(fecha) {
 }
 
 // ============================================================
-// REPORTE MENSUAL
+// REPORTE MENSUAL (MODIFICADO: solo horas extras por semana)
 // ============================================================
 function llenarSelectMeses() {
   const sel = document.getElementById('mesReporte');
@@ -948,10 +986,12 @@ function generarReporte() {
   const finStr = fechaFin.toISOString().split('T')[0];
   document.getElementById('periodoReporte').innerText = `${inicioStr} al ${finStr}`;
 
+  // Filtrar registros con entrada y salida
   const registrosFiltrados = registrosCache.filter(r =>
     r.fecha >= inicioStr && r.fecha <= finStr && r.entrada && r.salida
   );
 
+  // Agrupar por empleado
   const mapa = {};
   registrosFiltrados.forEach(r => {
     const key = r.empleadoId;
@@ -959,6 +999,7 @@ function generarReporte() {
     mapa[key].registros.push(r);
   });
 
+  // Calcular semanas del período
   const semanas = [];
   let cursor = new Date(fechaInicio);
   while (cursor <= fechaFin) {
@@ -969,16 +1010,17 @@ function generarReporte() {
     semanas.push({
       inicio: ini.toISOString().split('T')[0],
       fin: fin.toISOString().split('T')[0],
-      label: `${ini.toISOString().split('T')[0]} al ${fin.toISOString().split('T')[0]}`
+      label: `Semana ${semanas.length + 1}`
     });
     cursor.setDate(cursor.getDate() + 7);
   }
 
+  // Construir tabla: columna empleado + una columna por semana (solo horas extras) + columna total
   let html = '<table><thead><tr><th>Empleado</th>';
   semanas.forEach((s, i) => {
-    html += `<th>Semana ${i+1}<br><small>${s.label}</small></th>`;
+    html += `<th>${s.label}</th>`;
   });
-  html += `<th>Totales<br><small>Extras / Desc / Asist</small></th></tr></thead><tbody>`;
+  html += `<th>Total Extras</th></tr></thead><tbody>`;
 
   for (let empId in mapa) {
     const emp = mapa[empId];
@@ -986,30 +1028,24 @@ function generarReporte() {
     const nombre = empObj ? empObj.nombre : emp.nombre || 'Desconocido';
     html += `<tr><td><strong>${nombre}</strong></td>`;
 
-    let totalExtras = 0, totalDesc = 0, totalAsist = 0;
+    let totalExtras = 0;
 
     semanas.forEach((s) => {
-      let extrasSem = 0, descSem = 0, asistSem = 0;
+      let extrasSem = 0;
       emp.registros.forEach(r => {
         if (r.fecha >= s.inicio && r.fecha <= s.fin) {
           const horas = calcularHoras(r.entrada, r.salida);
           const calc = calcularExtrasYDescuento(horas, r.fecha);
           extrasSem += calc.extras;
-          descSem += calc.descuento;
-          if (calc.asistio) asistSem++;
         }
       });
       extrasSem = Math.round(extrasSem * 100) / 100;
-      descSem = Math.round(descSem * 100) / 100;
       totalExtras += extrasSem;
-      totalDesc += descSem;
-      totalAsist += asistSem;
-      html += `<td>${extrasSem.toFixed(2)}h / ${descSem > 0 ? descSem.toFixed(2)+'h' : '—'} / ${asistSem}d</td>`;
+      html += `<td>${extrasSem.toFixed(2)}</td>`;
     });
 
     totalExtras = Math.round(totalExtras * 100) / 100;
-    totalDesc = Math.round(totalDesc * 100) / 100;
-    html += `<td><strong>${totalExtras.toFixed(2)}h / ${totalDesc > 0 ? totalDesc.toFixed(2)+'h' : '—'} / ${totalAsist}d</strong></td>`;
+    html += `<td><strong>${totalExtras.toFixed(2)}</strong></td>`;
     html += `</tr>`;
   }
 
@@ -1017,6 +1053,9 @@ function generarReporte() {
   document.getElementById('contenedorReporte').innerHTML = html;
 }
 
+// ============================================================
+// PDF (actualizado para reflejar el nuevo formato)
+// ============================================================
 function generarPDF() {
   const contenido = document.getElementById('contenedorReporte');
   const tabla = contenido.querySelector('table');
@@ -1025,7 +1064,7 @@ function generarPDF() {
   const { jsPDF } = window.jspdf;
   const pdf = new jsPDF('landscape', 'mm', 'a4');
   pdf.setFontSize(14);
-  pdf.text('Reporte de Jornada Laboral - Guatemala', 14, 15);
+  pdf.text('Reporte Mensual de Horas Extras - Guatemala', 14, 15);
   pdf.setFontSize(10);
   const periodo = document.getElementById('periodoReporte').innerText;
   pdf.text(`Período: ${periodo}`, 14, 22);
@@ -1048,16 +1087,16 @@ function generarPDF() {
     body: rows,
     startY: 30,
     theme: 'grid',
-    styles: { fontSize: 7, cellPadding: 2 },
-    headStyles: { fillColor: [30, 58, 138], textColor: 255, fontSize: 8 },
+    styles: { fontSize: 8, cellPadding: 2 },
+    headStyles: { fillColor: [30, 58, 138], textColor: 255, fontSize: 9 },
     columnStyles: { 0: { cellWidth: 30 } }
   });
 
-  pdf.save(`Reporte_Jornada_${periodo.replace(/\s/g, '_')}.pdf`);
+  pdf.save(`Reporte_Extras_${periodo.replace(/\s/g, '_')}.pdf`);
 }
 
 // ============================================================
-// PESTAÑAS (con event listeners)
+// PESTAÑAS
 // ============================================================
 document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.tab').forEach(tab => {
