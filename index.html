@@ -205,7 +205,6 @@
       font-weight: 600;
     }
     td { background: white; }
-    .text-center { text-align: center; }
     .badge {
       display: inline-block;
       padding: 2px 10px;
@@ -487,7 +486,6 @@ const FERIADOS_POR_DEFECTO = [
   "2026-11-01", "2026-12-25"
 ];
 
-// Variable para saber qué registro estamos editando en el modal
 let editandoRegistroId = null;
 let editandoEmpleadoId = null;
 let editandoFecha = null;
@@ -516,17 +514,15 @@ function calcularHoras(entrada, salida) {
 }
 
 function calcularExtrasYDescuento(horas, fecha, tipo) {
-  // Si el tipo no es "normal", se considera día pagado sin exigencia de horas
   if (tipo && tipo !== 'normal') {
     return { extras: 0, descuento: 0, asistio: true };
   }
-
   const dia = diaSemana(fecha);
   const noLab = esNoLaborable(fecha);
   let extras = 0, descuento = 0, asistio = horas > 0;
   if (noLab) {
     extras = horas;
-  } else if (dia === 6) { // sábado
+  } else if (dia === 6) {
     if (horas > 4) extras = horas - 4;
     else descuento = Math.max(0, 4 - horas);
   } else {
@@ -608,7 +604,7 @@ async function init() {
   mostrarEmpleados();
   actualizarTablaFeriados();
   llenarSelectMeses();
-  llenarSelectHistorial();
+  llenarSelectHistorial();  // Esto también llama a actualizarHistorial con el período actual
 
   iniciarReloj();
   actualizarCalendario();
@@ -901,8 +897,10 @@ function llenarSelectHistorial() {
   const sel = document.getElementById('mesHistorial');
   sel.innerHTML = '';
   const ahora = new Date();
+  // Generar opciones para los últimos 12 meses
   for (let i = 0; i < 12; i++) {
     const d = new Date(ahora.getFullYear(), ahora.getMonth() - i, 1);
+    // Guardamos el mes como YYYY-MM, pero el período será del 11 del mes anterior al 10 de este mes
     const val = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
     const label = d.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
     const opt = document.createElement('option');
@@ -910,6 +908,7 @@ function llenarSelectHistorial() {
     opt.textContent = label.charAt(0).toUpperCase() + label.slice(1);
     sel.appendChild(opt);
   }
+  // Seleccionar el período actual: mes actual (para que muestre del 11 anterior al 10 actual)
   const actual = ahora.getFullYear() + '-' + String(ahora.getMonth() + 1).padStart(2, '0');
   sel.value = actual;
   actualizarHistorial();
@@ -919,7 +918,7 @@ function actualizarHistorial() {
   const mesVal = document.getElementById('mesHistorial').value;
   if (!mesVal) return;
   const [year, month] = mesVal.split('-').map(Number);
-  // Período: del 11 del mes anterior al 10 del mes seleccionado
+  // Período: del día 11 del mes ANTERIOR al día 10 del mes SELECCIONADO
   const fechaInicio = new Date(year, month - 2, 11);
   const fechaFin = new Date(year, month - 1, 10);
   const inicioStr = fechaInicio.toISOString().split('T')[0];
@@ -968,10 +967,10 @@ function actualizarHistorial() {
         descuento = calc.descuento;
         asistio = true;
       } else if (tipo !== 'normal') {
-        // Si es vacaciones/personal, se considera asistencia sin horas
+        // Vacaciones/personal/incapacidad: se considera asistencia sin horas
         asistio = true;
       } else {
-        // Si es normal y no tiene horas, puede ser sábado no trabajado
+        // Normal sin horas: verificar si es sábado no trabajado
         if (diaSemana(fecha) === 6 && !esNoLaborable(fecha)) {
           descuento = 4;
         }
@@ -982,18 +981,19 @@ function actualizarHistorial() {
       const extrasStr = (asistio && extras > 0) ? extras.toFixed(2) + 'h' : '—';
       const descuentoStr = (descuento > 0) ? descuento.toFixed(2) + 'h' : '—';
 
-      // Mostrar tipo
+      // Determinar tipo para mostrar
       let tipoLabel = 'Normal';
       let badgeClass = 'badge-verde';
       if (tipo === 'vacaciones') { tipoLabel = 'Vacaciones'; badgeClass = 'badge-azul'; }
       else if (tipo === 'personal') { tipoLabel = 'Personal'; badgeClass = 'badge-naranja'; }
       else if (tipo === 'incapacidad') { tipoLabel = 'Incapacidad'; badgeClass = 'badge-gris'; }
       else if (!asistio && diaSemana(fecha) === 6 && !esNoLaborable(fecha)) { tipoLabel = 'Sábado no trabajado'; badgeClass = 'badge-rojo'; }
+      else if (!asistio && esNoLaborable(fecha)) { tipoLabel = 'No laborable'; badgeClass = 'badge-gris'; }
       else if (!asistio) { tipoLabel = 'Falta'; badgeClass = 'badge-rojo'; }
 
-      // Solo mostrar filas si hay algún dato relevante (o es día laborable)
-      const esLaborable = diaSemana(fecha) >= 1 && diaSemana(fecha) <= 5;
-      if (asistio || descuento > 0 || tipo !== 'normal' || esLaborable || diaSemana(fecha) === 6) {
+      // Mostrar todas las filas, excepto si es domingo/feriado sin registro y sin descuento (para limpiar vista)
+      const esDiaNoLab = esNoLaborable(fecha);
+      if (asistio || descuento > 0 || !esDiaNoLab) {
         tbody.innerHTML += `
           <tr>
             <td>${fecha}</td>
@@ -1020,7 +1020,6 @@ function actualizarHistorial() {
 // MODAL DE EDICIÓN
 // ============================================================
 function abrirModalEditar(empleadoId, fecha) {
-  // Buscar el registro existente
   let registro = registrosCache.find(r => r.empleadoId === empleadoId && r.fecha === fecha);
   const emp = empleados.find(e => e.id === empleadoId);
   if (!emp) { alert('Empleado no encontrado'); return; }
@@ -1055,7 +1054,6 @@ function guardarEdicion() {
   const salida = document.getElementById('modalSalida').value;
   const tipo = document.getElementById('modalTipo').value;
 
-  // Validar: si tipo es normal, debe tener entrada y salida
   if (tipo === 'normal' && (!entrada || !salida)) {
     document.getElementById('modalMensaje').textContent = '⚠️ Para tipo "normal" debe tener entrada y salida.';
     return;
@@ -1064,7 +1062,6 @@ function guardarEdicion() {
   const emp = empleados.find(e => e.id === editandoEmpleadoId);
   if (!emp) { alert('Empleado no encontrado'); return; }
 
-  // Buscar si ya existe
   let registro = registrosCache.find(r => r.empleadoId === editandoEmpleadoId && r.fecha === editandoFecha);
   const esNuevo = !registro;
 
@@ -1079,7 +1076,6 @@ function guardarEdicion() {
   };
 
   if (esNuevo) {
-    // Crear nuevo
     db.collection("jornada_registros").add(datos)
       .then(docRef => {
         datos.id = docRef.id;
@@ -1096,7 +1092,6 @@ function guardarEdicion() {
         actualizarHistorial();
       });
   } else {
-    // Actualizar existente
     const id = registro.id;
     if (id && !id.startsWith('temp_')) {
       db.collection("jornada_registros").doc(id).update({
@@ -1106,7 +1101,6 @@ function guardarEdicion() {
         timestampSalida: new Date().toISOString()
       })
       .then(() => {
-        // Actualizar cache
         Object.assign(registro, { entrada: entrada || null, salida: salida || null, tipo });
         guardarLocal();
         cerrarModal();
@@ -1119,7 +1113,6 @@ function guardarEdicion() {
         actualizarHistorial();
       });
     } else {
-      // Local
       Object.assign(registro, { entrada: entrada || null, salida: salida || null, tipo });
       guardarLocal();
       cerrarModal();
