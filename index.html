@@ -67,7 +67,7 @@
     .tab-content.active { display: block; }
     @keyframes fade { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
 
-    /* ===== PANTALLA PRINCIPAL: RELOJ + CALENDARIO + MARCACIÓN ===== */
+    /* ===== PANTALLA PRINCIPAL ===== */
     #principal {
       position: relative;
       min-height: 500px;
@@ -217,6 +217,7 @@
     .badge-rojo { background: #fee2e2; color: #991b1b; }
     .badge-azul { background: #dbeafe; color: #1e40af; }
     .badge-naranja { background: #fef3c7; color: #92400e; }
+    .badge-gris { background: #e2e8f0; color: #475569; }
 
     .form-row {
       display: flex;
@@ -250,12 +251,49 @@
     .btn-warning:hover { background: #d97706; }
     .btn-sm { padding: 6px 12px; font-size: 0.8rem; }
 
+    /* Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.3);
+      backdrop-filter: blur(3px);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal-box {
+      background: white;
+      padding: 30px;
+      border-radius: 16px;
+      max-width: 500px;
+      width: 90%;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+    .modal-box h3 { margin-bottom: 20px; color: #1e3a8a; }
+    .modal-box .form-group { margin-bottom: 16px; }
+    .modal-box label { display: block; font-weight: 600; margin-bottom: 4px; color: #1e293b; }
+    .modal-box input, .modal-box select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+    }
+    .modal-box .botones-modal {
+      display: flex;
+      gap: 12px;
+      margin-top: 20px;
+    }
+    .modal-box .botones-modal button { flex: 1; }
+
     @media (max-width: 640px) {
       .container { padding: 12px; }
       .tab { padding: 8px 14px; font-size: 0.8rem; }
       .form-row > * { flex: 1 1 100%; }
       th, td { padding: 6px 8px; font-size: 0.8rem; white-space: normal; }
       .overlay-controls { padding: 20px; }
+      .modal-box { padding: 20px; }
     }
   </style>
 </head>
@@ -275,7 +313,7 @@
   </div>
 
   <!-- ========================================================= -->
-  <!-- PESTAÑA PRINCIPAL: RELOJ + CALENDARIO + MARCACIÓN        -->
+  <!-- PESTAÑA PRINCIPAL                                         -->
   <!-- ========================================================= -->
   <div id="principal" class="tab-content active">
     <canvas id="relojCanvas"></canvas>
@@ -324,7 +362,7 @@
     </div>
   </div>
 
-  <!-- ===== REPORTE MENSUAL (MODIFICADO) ===== -->
+  <!-- ===== REPORTE MENSUAL ===== -->
   <div id="reporte" class="tab-content">
     <h2>Reporte Mensual de Horas Extras</h2>
     <div class="form-row">
@@ -338,7 +376,7 @@
     </div>
   </div>
 
-  <!-- ===== HISTORIAL ===== -->
+  <!-- ===== HISTORIAL (MEJORADO) ===== -->
   <div id="historial" class="tab-content">
     <h2>Historial de Asistencias</h2>
     <div class="form-row">
@@ -356,7 +394,8 @@
             <th>Horas</th>
             <th>Extras</th>
             <th>Descuento</th>
-            <th>Asistió</th>
+            <th>Tipo</th>
+            <th>Acciones</th>
           </tr>
         </thead>
         <tbody id="tablaHistorial"></tbody>
@@ -379,6 +418,43 @@
         <tbody id="tablaFeriados"></tbody>
       </table>
     </div>
+  </div>
+</div>
+
+<!-- ===== MODAL DE EDICIÓN ===== -->
+<div class="modal-overlay" id="modalEditar">
+  <div class="modal-box">
+    <h3>✏️ Editar registro</h3>
+    <div class="form-group">
+      <label>Empleado</label>
+      <span id="modalEmpleado" style="font-weight:600;"></span>
+    </div>
+    <div class="form-group">
+      <label>Fecha</label>
+      <span id="modalFecha" style="font-weight:600;"></span>
+    </div>
+    <div class="form-group">
+      <label>Entrada (HH:MM)</label>
+      <input type="time" id="modalEntrada" step="60" />
+    </div>
+    <div class="form-group">
+      <label>Salida (HH:MM)</label>
+      <input type="time" id="modalSalida" step="60" />
+    </div>
+    <div class="form-group">
+      <label>Tipo de día</label>
+      <select id="modalTipo">
+        <option value="normal">Trabajado (normal)</option>
+        <option value="vacaciones">Vacaciones</option>
+        <option value="personal">Personal / Permiso</option>
+        <option value="incapacidad">Incapacidad</option>
+      </select>
+    </div>
+    <div class="botones-modal">
+      <button onclick="guardarEdicion()" class="btn-success">💾 Guardar</button>
+      <button onclick="cerrarModal()" class="btn-danger">❌ Cancelar</button>
+    </div>
+    <p id="modalMensaje" style="margin-top:12px; color:#dc2626; font-weight:500;"></p>
   </div>
 </div>
 
@@ -411,6 +487,11 @@ const FERIADOS_POR_DEFECTO = [
   "2026-11-01", "2026-12-25"
 ];
 
+// Variable para saber qué registro estamos editando en el modal
+let editandoRegistroId = null;
+let editandoEmpleadoId = null;
+let editandoFecha = null;
+
 // ============================================================
 // FUNCIONES DE FECHA Y CÁLCULO
 // ============================================================
@@ -421,18 +502,25 @@ function esNoLaborable(f) { return esDomingo(f) || esFeriado(f); }
 function diaSemana(f) { return new Date(f + 'T00:00:00').getDay(); }
 
 function horasDecimal(h) {
+  if (!h) return 0;
   const p = h.split(':');
   return parseInt(p[0]) + parseInt(p[1])/60 + (parseInt(p[2])||0)/3600;
 }
 
 function calcularHoras(entrada, salida) {
+  if (!entrada || !salida) return 0;
   let e = horasDecimal(entrada);
   let s = horasDecimal(salida);
   if (s < e) s += 24;
   return Math.round((s - e) * 100) / 100;
 }
 
-function calcularExtrasYDescuento(horas, fecha) {
+function calcularExtrasYDescuento(horas, fecha, tipo) {
+  // Si el tipo no es "normal", se considera día pagado sin exigencia de horas
+  if (tipo && tipo !== 'normal') {
+    return { extras: 0, descuento: 0, asistio: true };
+  }
+
   const dia = diaSemana(fecha);
   const noLab = esNoLaborable(fecha);
   let extras = 0, descuento = 0, asistio = horas > 0;
@@ -450,7 +538,7 @@ function calcularExtrasYDescuento(horas, fecha) {
 }
 
 // ============================================================
-// OFFLINE: localStorage
+// OFFLINE
 // ============================================================
 function guardarLocal() {
   try {
@@ -686,6 +774,7 @@ function marcarEntrada() {
     fecha: fecha,
     entrada: entrada,
     salida: null,
+    tipo: 'normal',
     timestamp: new Date().toISOString()
   };
 
@@ -806,7 +895,7 @@ async function eliminarEmpleado(id) {
 }
 
 // ============================================================
-// HISTORIAL (con check de asistencia y descuento sábado)
+// HISTORIAL (MEJORADO)
 // ============================================================
 function llenarSelectHistorial() {
   const sel = document.getElementById('mesHistorial');
@@ -830,11 +919,13 @@ function actualizarHistorial() {
   const mesVal = document.getElementById('mesHistorial').value;
   if (!mesVal) return;
   const [year, month] = mesVal.split('-').map(Number);
-  const fechaInicio = new Date(year, month - 1, 1);
-  const fechaFin = new Date(year, month, 0);
+  // Período: del 11 del mes anterior al 10 del mes seleccionado
+  const fechaInicio = new Date(year, month - 2, 11);
+  const fechaFin = new Date(year, month - 1, 10);
   const inicioStr = fechaInicio.toISOString().split('T')[0];
   const finStr = fechaFin.toISOString().split('T')[0];
 
+  // Generar todos los días del período
   const dias = [];
   let cursor = new Date(fechaInicio);
   while (cursor <= fechaFin) {
@@ -847,33 +938,62 @@ function actualizarHistorial() {
 
   empleados.forEach(emp => {
     dias.forEach(fecha => {
-      const registro = registrosCache.find(r => r.empleadoId === emp.id && r.fecha === fecha);
-      const esSab = diaSemana(fecha) === 6;
-      const esNoLab = esNoLaborable(fecha);
+      // Buscar registro existente
+      let registro = registrosCache.find(r => r.empleadoId === emp.id && r.fecha === fecha);
 
-      let entrada = '—', salida = '—', horas = 0, extras = 0, descuento = 0, asistio = false;
+      // Si no existe, creamos uno virtual para mostrar
+      if (!registro) {
+        registro = {
+          empleadoId: emp.id,
+          nombre: emp.nombre,
+          fecha: fecha,
+          entrada: null,
+          salida: null,
+          tipo: 'normal',
+          id: null
+        };
+      }
 
-      if (registro && registro.entrada && registro.salida) {
-        entrada = registro.entrada;
-        salida = registro.salida;
-        horas = calcularHoras(entrada, salida);
-        const calc = calcularExtrasYDescuento(horas, fecha);
+      const entrada = registro.entrada || '—';
+      const salida = registro.salida || '—';
+      const tipo = registro.tipo || 'normal';
+
+      // Calcular horas solo si tiene entrada y salida
+      let horas = 0, extras = 0, descuento = 0;
+      let asistio = false;
+      if (registro.entrada && registro.salida) {
+        horas = calcularHoras(registro.entrada, registro.salida);
+        const calc = calcularExtrasYDescuento(horas, fecha, tipo);
         extras = calc.extras;
         descuento = calc.descuento;
         asistio = true;
+      } else if (tipo !== 'normal') {
+        // Si es vacaciones/personal, se considera asistencia sin horas
+        asistio = true;
       } else {
-        if (esSab && !esNoLab) {
+        // Si es normal y no tiene horas, puede ser sábado no trabajado
+        if (diaSemana(fecha) === 6 && !esNoLaborable(fecha)) {
           descuento = 4;
         }
         asistio = false;
       }
 
-      const asistenciaStr = asistio ? '✅ Sí' : '❌ No';
-      const horasStr = asistio ? horas.toFixed(2) + 'h' : '—';
-      const extrasStr = asistio ? extras.toFixed(2) + 'h' : '—';
-      const descuentoStr = descuento > 0 ? descuento.toFixed(2) + 'h' : '—';
+      const horasStr = (asistio && horas > 0) ? horas.toFixed(2) + 'h' : '—';
+      const extrasStr = (asistio && extras > 0) ? extras.toFixed(2) + 'h' : '—';
+      const descuentoStr = (descuento > 0) ? descuento.toFixed(2) + 'h' : '—';
 
-      if (asistio || descuento > 0 || (!asistio && diaSemana(fecha) >= 1 && diaSemana(fecha) <= 5)) {
+      // Mostrar tipo
+      let tipoLabel = 'Normal';
+      let badgeClass = 'badge-verde';
+      if (tipo === 'vacaciones') { tipoLabel = 'Vacaciones'; badgeClass = 'badge-azul'; }
+      else if (tipo === 'personal') { tipoLabel = 'Personal'; badgeClass = 'badge-naranja'; }
+      else if (tipo === 'incapacidad') { tipoLabel = 'Incapacidad'; badgeClass = 'badge-gris'; }
+      else if (!asistio && diaSemana(fecha) === 6 && !esNoLaborable(fecha)) { tipoLabel = 'Sábado no trabajado'; badgeClass = 'badge-rojo'; }
+      else if (!asistio) { tipoLabel = 'Falta'; badgeClass = 'badge-rojo'; }
+
+      // Solo mostrar filas si hay algún dato relevante (o es día laborable)
+      const esLaborable = diaSemana(fecha) >= 1 && diaSemana(fecha) <= 5;
+      if (asistio || descuento > 0 || tipo !== 'normal' || esLaborable || diaSemana(fecha) === 6) {
         tbody.innerHTML += `
           <tr>
             <td>${fecha}</td>
@@ -883,7 +1003,8 @@ function actualizarHistorial() {
             <td>${horasStr}</td>
             <td>${extrasStr}</td>
             <td>${descuentoStr}</td>
-            <td>${asistenciaStr}</td>
+            <td><span class="badge ${badgeClass}">${tipoLabel}</span></td>
+            <td><button class="btn-warning btn-sm" onclick="abrirModalEditar('${emp.id}','${fecha}')">✏️ Editar</button></td>
           </tr>
         `;
       }
@@ -891,7 +1012,119 @@ function actualizarHistorial() {
   });
 
   if (tbody.innerHTML === '') {
-    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#94a3b8;">No hay registros para este período</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:#94a3b8;">No hay registros para este período</td></tr>`;
+  }
+}
+
+// ============================================================
+// MODAL DE EDICIÓN
+// ============================================================
+function abrirModalEditar(empleadoId, fecha) {
+  // Buscar el registro existente
+  let registro = registrosCache.find(r => r.empleadoId === empleadoId && r.fecha === fecha);
+  const emp = empleados.find(e => e.id === empleadoId);
+  if (!emp) { alert('Empleado no encontrado'); return; }
+
+  editandoRegistroId = registro ? registro.id : null;
+  editandoEmpleadoId = empleadoId;
+  editandoFecha = fecha;
+
+  document.getElementById('modalEmpleado').textContent = emp.nombre;
+  document.getElementById('modalFecha').textContent = fecha;
+
+  if (registro) {
+    document.getElementById('modalEntrada').value = registro.entrada || '';
+    document.getElementById('modalSalida').value = registro.salida || '';
+    document.getElementById('modalTipo').value = registro.tipo || 'normal';
+  } else {
+    document.getElementById('modalEntrada').value = '';
+    document.getElementById('modalSalida').value = '';
+    document.getElementById('modalTipo').value = 'normal';
+  }
+
+  document.getElementById('modalMensaje').textContent = '';
+  document.getElementById('modalEditar').classList.add('active');
+}
+
+function cerrarModal() {
+  document.getElementById('modalEditar').classList.remove('active');
+}
+
+function guardarEdicion() {
+  const entrada = document.getElementById('modalEntrada').value;
+  const salida = document.getElementById('modalSalida').value;
+  const tipo = document.getElementById('modalTipo').value;
+
+  // Validar: si tipo es normal, debe tener entrada y salida
+  if (tipo === 'normal' && (!entrada || !salida)) {
+    document.getElementById('modalMensaje').textContent = '⚠️ Para tipo "normal" debe tener entrada y salida.';
+    return;
+  }
+
+  const emp = empleados.find(e => e.id === editandoEmpleadoId);
+  if (!emp) { alert('Empleado no encontrado'); return; }
+
+  // Buscar si ya existe
+  let registro = registrosCache.find(r => r.empleadoId === editandoEmpleadoId && r.fecha === editandoFecha);
+  const esNuevo = !registro;
+
+  const datos = {
+    empleadoId: editandoEmpleadoId,
+    nombre: emp.nombre,
+    fecha: editandoFecha,
+    entrada: entrada || null,
+    salida: salida || null,
+    tipo: tipo,
+    timestamp: new Date().toISOString()
+  };
+
+  if (esNuevo) {
+    // Crear nuevo
+    db.collection("jornada_registros").add(datos)
+      .then(docRef => {
+        datos.id = docRef.id;
+        registrosCache.push(datos);
+        guardarLocal();
+        cerrarModal();
+        actualizarHistorial();
+      })
+      .catch(() => {
+        datos.id = 'temp_' + Date.now();
+        registrosCache.push(datos);
+        guardarLocal();
+        cerrarModal();
+        actualizarHistorial();
+      });
+  } else {
+    // Actualizar existente
+    const id = registro.id;
+    if (id && !id.startsWith('temp_')) {
+      db.collection("jornada_registros").doc(id).update({
+        entrada: entrada || null,
+        salida: salida || null,
+        tipo: tipo,
+        timestampSalida: new Date().toISOString()
+      })
+      .then(() => {
+        // Actualizar cache
+        Object.assign(registro, { entrada: entrada || null, salida: salida || null, tipo });
+        guardarLocal();
+        cerrarModal();
+        actualizarHistorial();
+      })
+      .catch(() => {
+        Object.assign(registro, { entrada: entrada || null, salida: salida || null, tipo });
+        guardarLocal();
+        cerrarModal();
+        actualizarHistorial();
+      });
+    } else {
+      // Local
+      Object.assign(registro, { entrada: entrada || null, salida: salida || null, tipo });
+      guardarLocal();
+      cerrarModal();
+      actualizarHistorial();
+    }
   }
 }
 
@@ -956,7 +1189,7 @@ async function eliminarFeriado(fecha) {
 }
 
 // ============================================================
-// REPORTE MENSUAL (MODIFICADO: solo horas extras por semana)
+// REPORTE MENSUAL
 // ============================================================
 function llenarSelectMeses() {
   const sel = document.getElementById('mesReporte');
@@ -986,12 +1219,10 @@ function generarReporte() {
   const finStr = fechaFin.toISOString().split('T')[0];
   document.getElementById('periodoReporte').innerText = `${inicioStr} al ${finStr}`;
 
-  // Filtrar registros con entrada y salida
   const registrosFiltrados = registrosCache.filter(r =>
     r.fecha >= inicioStr && r.fecha <= finStr && r.entrada && r.salida
   );
 
-  // Agrupar por empleado
   const mapa = {};
   registrosFiltrados.forEach(r => {
     const key = r.empleadoId;
@@ -999,7 +1230,6 @@ function generarReporte() {
     mapa[key].registros.push(r);
   });
 
-  // Calcular semanas del período
   const semanas = [];
   let cursor = new Date(fechaInicio);
   while (cursor <= fechaFin) {
@@ -1015,7 +1245,6 @@ function generarReporte() {
     cursor.setDate(cursor.getDate() + 7);
   }
 
-  // Construir tabla: columna empleado + una columna por semana (solo horas extras) + columna total
   let html = '<table><thead><tr><th>Empleado</th>';
   semanas.forEach((s, i) => {
     html += `<th>${s.label}</th>`;
@@ -1035,7 +1264,7 @@ function generarReporte() {
       emp.registros.forEach(r => {
         if (r.fecha >= s.inicio && r.fecha <= s.fin) {
           const horas = calcularHoras(r.entrada, r.salida);
-          const calc = calcularExtrasYDescuento(horas, r.fecha);
+          const calc = calcularExtrasYDescuento(horas, r.fecha, r.tipo);
           extrasSem += calc.extras;
         }
       });
@@ -1053,9 +1282,6 @@ function generarReporte() {
   document.getElementById('contenedorReporte').innerHTML = html;
 }
 
-// ============================================================
-// PDF (actualizado para reflejar el nuevo formato)
-// ============================================================
 function generarPDF() {
   const contenido = document.getElementById('contenedorReporte');
   const tabla = contenido.querySelector('table');
