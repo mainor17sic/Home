@@ -323,6 +323,47 @@
     }
     .modal-comida .modal-box .botones-modal button { flex: 1; }
 
+    /* Login */
+    #login-screen {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background: #f1f5f9;
+      padding: 20px;
+    }
+    .login-box {
+      background: white;
+      padding: 40px;
+      border-radius: 16px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+      max-width: 400px;
+      width: 100%;
+    }
+    .login-box h2 { color: #1e3a8a; margin-bottom: 8px; }
+    .login-box p { color: #475569; margin-bottom: 24px; }
+    .login-box input {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 16px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 1rem;
+    }
+    .login-box button {
+      width: 100%;
+      padding: 14px;
+      background: #1e3a8a;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .login-box button:hover { background: #2563eb; }
+    .login-error { color: #dc2626; margin-top: 12px; text-align: center; display: none; }
+
     @media (max-width: 640px) {
       .container { padding: 12px; }
       .tab { padding: 8px 14px; font-size: 0.8rem; }
@@ -330,19 +371,39 @@
       th, td { padding: 6px 8px; font-size: 0.8rem; white-space: normal; }
       .overlay-controls { padding: 20px; }
       .modal-box { padding: 20px; }
+      .login-box { padding: 20px; }
     }
   </style>
 </head>
 <body>
 
-<div class="container">
-  <h1>⏱️ Control de Jornada</h1>
+<!-- ===== PANTALLA DE LOGIN ===== -->
+<div id="login-screen">
+  <div class="login-box">
+    <h2>⏱️ Control de Jornada</h2>
+    <p>Ingresa tus credenciales</p>
+    <input type="text" id="loginUsuario" placeholder="Usuario" />
+    <input type="password" id="loginPassword" placeholder="Contraseña" />
+    <button onclick="iniciarSesion()">Ingresar</button>
+    <div id="loginError" class="login-error">Usuario o contraseña incorrectos</div>
+  </div>
+</div>
+
+<!-- ===== APLICACIÓN PRINCIPAL (oculta hasta login) ===== -->
+<div id="app-container" class="container" style="display:none;">
+  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; margin-bottom:10px;">
+    <h1>⏱️ Control de Jornada</h1>
+    <div>
+      <span id="usuarioLogueado" style="font-weight:600; color:#1e3a8a; margin-right:16px;"></span>
+      <button onclick="cerrarSesion()" class="btn-danger btn-sm">Cerrar sesión</button>
+    </div>
+  </div>
   <p class="subtitulo">Guatemala • Período: 11 al 10 de cada mes • Feriados oficiales</p>
 
   <!-- PESTAÑAS -->
   <div class="tabs">
     <button class="tab active" data-tab="principal">🏠 Inicio</button>
-    <button class="tab" data-tab="empleados">👤 Empleados</button>
+    <button class="tab" data-tab="empleados" id="tabEmpleados">👤 Empleados</button>
     <button class="tab" data-tab="reporte">📊 Reporte Mensual</button>
     <button class="tab" data-tab="historial">📜 Historial</button>
     <button class="tab" data-tab="config">⚙️ Feriados</button>
@@ -382,17 +443,19 @@
     </div>
   </div>
 
-  <!-- ===== EMPLEADOS ===== -->
+  <!-- ===== EMPLEADOS (solo admin) ===== -->
   <div id="empleados" class="tab-content">
     <h2>Empleados</h2>
     <div class="form-row">
       <input type="text" id="nombreEmp" placeholder="Nombre completo" />
+      <input type="text" id="usuarioEmp" placeholder="Usuario" />
+      <input type="text" id="passEmp" placeholder="Contraseña" />
       <input type="number" id="salarioEmp" placeholder="Salario/hora (Q, opcional)" step="0.01" />
       <button onclick="agregarEmpleado()" class="btn-success">➕ Agregar</button>
     </div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Nombre</th><th>Salario/hora</th><th>Acciones</th></tr></thead>
+        <thead><tr><th>Nombre</th><th>Usuario</th><th>Salario/hora</th><th>Acciones</th></tr></thead>
         <tbody id="tablaEmpleados"></tbody>
       </table>
     </div>
@@ -412,7 +475,7 @@
     </div>
   </div>
 
-  <!-- ===== HISTORIAL (MEJORADO) ===== -->
+  <!-- ===== HISTORIAL ===== -->
   <div id="historial" class="tab-content">
     <h2>Historial de Asistencias</h2>
     <div class="form-row">
@@ -573,6 +636,10 @@ let salidaPendienteEmpleado = null;
 let salidaPendienteHora = null;
 let salidaPendienteRegistro = null;
 
+// Estado de sesión
+let usuarioActual = null;        // { id, nombre, usuario, rol, empleadoId (si es empleado) }
+let esAdmin = false;
+
 // ============================================================
 // FUNCIONES DE FECHA Y TURNOS
 // ============================================================
@@ -598,49 +665,32 @@ function calcularHorasBrutas(entrada, salida, tiemposComida) {
   return Math.round((brutas - descComida) * 100) / 100;
 }
 
-// ============================================================
-// DETERMINAR TURNO SEGÚN HORA DE ENTRADA
-// ============================================================
 function determinarTurno(horaEntrada) {
   if (!horaEntrada) return 'Diurno';
   const h = horasDecimal(horaEntrada);
-  // Rango 4:00 a 5:59 → Mixto
   if (h >= 4 && h < 6) return 'Mixto';
-  // Rango 6:00 a 10:00 → Diurno
   if (h >= 6 && h < 10) return 'Diurno';
-  // Rango 10:01 a 17:59 → Mixto
   if (h >= 10 && h < 18) return 'Mixto';
-  // 18:00 en adelante → Nocturno
   if (h >= 18) return 'Nocturno';
-  // Antes de las 4:00 → Nocturno (por defecto)
   return 'Nocturno';
 }
 
-// ============================================================
-// JORNADA MÁXIMA SEGÚN DÍA Y TURNO
-// ============================================================
 function getJornadaMaxima(fecha, turno) {
   const dia = diaSemana(fecha);
   const noLab = esNoLaborable(fecha);
-  // Si es domingo o feriado → 0 (todo es extra)
   if (noLab) return 0;
-  // Sábado
   if (dia === 6) {
     if (turno === 'Diurno') return 4;
     if (turno === 'Mixto') return 7;
     if (turno === 'Nocturno') return 6;
     return 0;
   }
-  // Lunes a viernes
   if (turno === 'Diurno') return 8;
   if (turno === 'Mixto') return 7;
   if (turno === 'Nocturno') return 6;
   return 0;
 }
 
-// ============================================================
-// CÁLCULO DE EXTRAS Y DESCUENTO
-// ============================================================
 function calcularExtrasYDescuento(horasBrutas, fecha, turno, tipo) {
   if (tipo && tipo !== 'normal') {
     return { extras: 0, descuento: 0, asistio: true };
@@ -715,7 +765,74 @@ async function sincronizarRegistros() {
 }
 
 // ============================================================
-// INICIALIZACIÓN
+// LOGIN / LOGOUT
+// ============================================================
+async function iniciarSesion() {
+  const usuario = document.getElementById('loginUsuario').value.trim();
+  const pass = document.getElementById('loginPassword').value.trim();
+  const errorDiv = document.getElementById('loginError');
+  errorDiv.style.display = 'none';
+
+  if (!usuario || !pass) {
+    errorDiv.textContent = 'Ingresa usuario y contraseña.';
+    errorDiv.style.display = 'block';
+    return;
+  }
+
+  try {
+    // Buscar en la colección de empleados
+    const snap = await db.collection("jornada_empleados")
+      .where("usuario", "==", usuario)
+      .where("contraseña", "==", pass)
+      .get();
+
+    if (!snap.empty) {
+      const doc = snap.docs[0];
+      const data = doc.data();
+      if (data.rol === 'admin') {
+        esAdmin = true;
+        usuarioActual = { id: doc.id, nombre: data.nombre, usuario: data.usuario, rol: 'admin', empleadoId: null };
+      } else {
+        esAdmin = false;
+        usuarioActual = { id: doc.id, nombre: data.nombre, usuario: data.usuario, rol: 'empleado', empleadoId: doc.id };
+      }
+      mostrarApp();
+      return;
+    }
+
+    // Si no se encuentra, mostrar error
+    errorDiv.textContent = 'Usuario o contraseña incorrectos.';
+    errorDiv.style.display = 'block';
+  } catch(e) {
+    errorDiv.textContent = 'Error al conectar con la base de datos.';
+    errorDiv.style.display = 'block';
+    console.error(e);
+  }
+}
+
+function mostrarApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-container').style.display = 'block';
+  document.getElementById('usuarioLogueado').textContent = `👤 ${usuarioActual.nombre} (${usuarioActual.rol === 'admin' ? 'Administrador' : 'Empleado'})`;
+
+  // Mostrar/ocultar pestaña de empleados según rol
+  document.getElementById('tabEmpleados').style.display = esAdmin ? 'inline-block' : 'none';
+
+  // Inicializar todo
+  init();
+}
+
+function cerrarSesion() {
+  usuarioActual = null;
+  esAdmin = false;
+  document.getElementById('app-container').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('loginUsuario').value = '';
+  document.getElementById('loginPassword').value = '';
+}
+
+// ============================================================
+// INICIALIZACIÓN (después del login)
 // ============================================================
 async function init() {
   cargarLocal();
@@ -870,7 +987,7 @@ function actualizarCalendario() {
 }
 
 // ============================================================
-// MARCACIÓN (ENTRADA)
+// MARCACIÓN (con permisos)
 // ============================================================
 function obtenerEmpleadoSeleccionado() {
   const id = document.getElementById('selectEmpleadoPrincipal').value;
@@ -880,6 +997,12 @@ function obtenerEmpleadoSeleccionado() {
 function marcarEntrada() {
   const emp = obtenerEmpleadoSeleccionado();
   if (!emp) { mostrarMensaje('⚠️ Selecciona un empleado.', 'rojo'); return; }
+
+  // Si es empleado, solo puede marcar para sí mismo
+  if (!esAdmin && usuarioActual.empleadoId !== emp.id) {
+    mostrarMensaje('⚠️ Solo puedes marcar tu propia entrada.', 'rojo');
+    return;
+  }
 
   const fecha = hoy();
   const entrada = document.getElementById('horaEntradaP').value || new Date().toLocaleTimeString('es-GT', { hour:'2-digit', minute:'2-digit' });
@@ -920,12 +1043,14 @@ function marcarEntrada() {
     });
 }
 
-// ============================================================
-// MARCACIÓN (SALIDA) con selección de tiempos de comida
-// ============================================================
 function iniciarSalidaConComidas() {
   const emp = obtenerEmpleadoSeleccionado();
   if (!emp) { mostrarMensaje('⚠️ Selecciona un empleado.', 'rojo'); return; }
+
+  if (!esAdmin && usuarioActual.empleadoId !== emp.id) {
+    mostrarMensaje('⚠️ Solo puedes marcar tu propia salida.', 'rojo');
+    return;
+  }
 
   const fecha = hoy();
   const salida = document.getElementById('horaSalidaP').value || new Date().toLocaleTimeString('es-GT', { hour:'2-digit', minute:'2-digit' });
@@ -996,9 +1121,6 @@ function cerrarComidaSalida() {
   salidaPendienteRegistro = null;
 }
 
-// ============================================================
-// USAR HORA ACTUAL
-// ============================================================
 function usarHoraActual() {
   const ahora = new Date().toLocaleTimeString('es-GT', { hour:'2-digit', minute:'2-digit' });
   document.getElementById('horaEntradaP').value = ahora;
@@ -1014,57 +1136,110 @@ function mostrarMensaje(texto, tipo) {
 
 function actualizarSelects() {
   const sel = document.getElementById('selectEmpleadoPrincipal');
-  sel.innerHTML = '<option value="">Selecciona empleado</option>';
-  empleados.forEach(e => {
-    sel.innerHTML += `<option value="${e.id}">${e.nombre}</option>`;
-  });
+  sel.innerHTML = '';
+  if (esAdmin) {
+    sel.innerHTML = '<option value="">Selecciona empleado</option>';
+    empleados.forEach(e => {
+      sel.innerHTML += `<option value="${e.id}">${e.nombre}</option>`;
+    });
+  } else {
+    // Empleado: solo ve su propio nombre
+    const emp = empleados.find(e => e.id === usuarioActual.empleadoId);
+    if (emp) {
+      sel.innerHTML = `<option value="${emp.id}">${emp.nombre}</option>`;
+    } else {
+      sel.innerHTML = '<option value="">No disponible</option>';
+    }
+  }
 }
 
 // ============================================================
-// EMPLEADOS
+// EMPLEADOS (solo admin)
 // ============================================================
 function mostrarEmpleados() {
+  if (!esAdmin) {
+    document.getElementById('tablaEmpleados').innerHTML = '<tr><td colspan="4" style="text-align:center;">Acceso restringido a administradores.</td></tr>';
+    return;
+  }
   const tbody = document.getElementById('tablaEmpleados');
   tbody.innerHTML = '';
   empleados.forEach(e => {
+    // No mostrar al admin en la lista (para no eliminarlo accidentalmente)
+    if (e.rol === 'admin') return;
     tbody.innerHTML += `
       <tr>
         <td>${e.nombre}</td>
+        <td>${e.usuario || '—'}</td>
         <td>Q${(e.salarioHora || 0).toFixed(2)}</td>
         <td><button class="btn-danger btn-sm" onclick="eliminarEmpleado('${e.id}')">Eliminar</button></td>
       </tr>
     `;
   });
+  if (tbody.innerHTML === '') {
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:#94a3b8;">No hay empleados registrados.</td></tr>`;
+  }
 }
 
 async function agregarEmpleado() {
+  if (!esAdmin) { alert('Solo el administrador puede agregar empleados.'); return; }
   const nombre = document.getElementById('nombreEmp').value.trim();
+  const usuario = document.getElementById('usuarioEmp').value.trim();
+  const pass = document.getElementById('passEmp').value.trim();
   const salario = parseFloat(document.getElementById('salarioEmp').value) || 0;
-  if (!nombre) { alert('Ingresa el nombre.'); return; }
+
+  if (!nombre || !usuario || !pass) {
+    alert('Nombre, usuario y contraseña son obligatorios.');
+    return;
+  }
+
+  // Verificar que el usuario no exista
+  if (empleados.some(e => e.usuario === usuario)) {
+    alert('Ese usuario ya está registrado.');
+    return;
+  }
+
   try {
-    const ref = await db.collection("jornada_empleados").add({ nombre, salarioHora: salario });
-    empleados.push({ id: ref.id, nombre, salarioHora: salario });
+    const ref = await db.collection("jornada_empleados").add({
+      nombre,
+      usuario,
+      contraseña: pass,
+      salarioHora: salario,
+      rol: 'empleado'
+    });
+    empleados.push({ id: ref.id, nombre, usuario, contraseña: pass, salarioHora: salario, rol: 'empleado' });
     guardarLocal();
     document.getElementById('nombreEmp').value = '';
+    document.getElementById('usuarioEmp').value = '';
+    document.getElementById('passEmp').value = '';
     document.getElementById('salarioEmp').value = '';
     actualizarSelects();
     mostrarEmpleados();
-  } catch(e) { alert('Error al guardar.'); }
+  } catch(e) { alert('Error al guardar empleado.'); }
 }
 
 async function eliminarEmpleado(id) {
-  if (!confirm('¿Eliminar este empleado?')) return;
+  if (!esAdmin) { alert('Solo el administrador puede eliminar empleados.'); return; }
+  if (!confirm('¿Eliminar este empleado y todos sus registros?')) return;
   try {
+    // Eliminar registros asociados
+    const regs = registrosCache.filter(r => r.empleadoId === id);
+    for (let r of regs) {
+      if (r.id && !r.id.startsWith('temp_')) {
+        await db.collection("jornada_registros").doc(r.id).delete();
+      }
+    }
     await db.collection("jornada_empleados").doc(id).delete();
     empleados = empleados.filter(e => e.id !== id);
+    registrosCache = registrosCache.filter(r => r.empleadoId !== id);
     guardarLocal();
     actualizarSelects();
     mostrarEmpleados();
+    actualizarHistorial();
   } catch(e) { alert('Error al eliminar.'); }
 }
 
 // ============================================================
-// HISTORIAL (con columna "Día" en azul y todos los días mostrados)
+// HISTORIAL (con permisos)
 // ============================================================
 function llenarSelectHistorial() {
   const sel = document.getElementById('mesHistorial');
@@ -1107,7 +1282,14 @@ function actualizarHistorial() {
 
   const nombreDias = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
 
-  empleados.forEach(emp => {
+  // Filtrar empleados según rol
+  let empleadosFiltrados = empleados;
+  if (!esAdmin) {
+    // Empleado: solo ve sus propios registros
+    empleadosFiltrados = empleados.filter(e => e.id === usuarioActual.empleadoId);
+  }
+
+  empleadosFiltrados.forEach(emp => {
     dias.forEach(fecha => {
       let registro = registrosCache.find(r => r.empleadoId === emp.id && r.fecha === fecha);
       if (!registro) {
@@ -1124,9 +1306,8 @@ function actualizarHistorial() {
         };
       }
 
-      // Aplicar filtro de turno (solo si hay registro o si el filtro es "todos")
+      // Aplicar filtro de turno
       if (filtroTurno !== 'todos' && registro.turno !== filtroTurno) {
-        // Si no hay registro y el filtro no coincide, omitimos esta fila
         if (!registro.id) return;
       }
 
@@ -1140,7 +1321,6 @@ function actualizarHistorial() {
 
       let horasBrutas = 0, extras = 0, descuento = 0;
       let asistio = false;
-      let esNoLab = esNoLaborable(fecha);
       let tipoLabel = 'Normal';
       let badgeClass = 'badge-verde';
 
@@ -1158,7 +1338,6 @@ function actualizarHistorial() {
         else if (tipo === 'personal') { tipoLabel = 'Personal'; badgeClass = 'badge-naranja'; }
         else if (tipo === 'incapacidad') { tipoLabel = 'Incapacidad'; badgeClass = 'badge-gris'; }
       } else {
-        // Día sin registro
         asistio = false;
         if (dia === 0) {
           tipoLabel = 'Domingo (no laborable)';
@@ -1167,7 +1346,6 @@ function actualizarHistorial() {
           tipoLabel = 'Feriado (no laborable)';
           badgeClass = 'badge-gris';
         } else if (dia === 6) {
-          // Sábado no trabajado → descuento según turno
           const jornada = getJornadaMaxima(fecha, turno);
           descuento = jornada;
           tipoLabel = 'Sábado no trabajado';
@@ -1183,7 +1361,14 @@ function actualizarHistorial() {
       const descuentoStr = (descuento > 0) ? descuento.toFixed(2) + 'h' : '—';
       const comidasStr = tiempos > 0 ? tiempos : '—';
 
-      // Siempre mostrar la fila (incluyendo domingos y feriados)
+      // Botón de edición: visible solo si es admin o si el registro pertenece al empleado logueado
+      let accionesHtml = '';
+      if (esAdmin || (usuarioActual && usuarioActual.empleadoId === emp.id)) {
+        accionesHtml = `<button class="btn-warning btn-sm" onclick="abrirModalEditar('${emp.id}','${fecha}')">✏️ Editar</button>`;
+      } else {
+        accionesHtml = '—';
+      }
+
       tbody.innerHTML += `
         <tr>
           <td>${fecha}</td>
@@ -1197,7 +1382,7 @@ function actualizarHistorial() {
           <td>${comidasStr}</td>
           <td><span class="badge badge-azul">${turno}</span></td>
           <td><span class="badge ${badgeClass}">${tipoLabel}</span></td>
-          <td><button class="btn-warning btn-sm" onclick="abrirModalEditar('${emp.id}','${fecha}')">✏️ Editar</button></td>
+          <td>${accionesHtml}</td>
         </tr>
       `;
     });
@@ -1209,9 +1394,15 @@ function actualizarHistorial() {
 }
 
 // ============================================================
-// MODAL DE EDICIÓN
+// MODAL DE EDICIÓN (con permisos)
 // ============================================================
 function abrirModalEditar(empleadoId, fecha) {
+  // Verificar permisos
+  if (!esAdmin && usuarioActual.empleadoId !== empleadoId) {
+    alert('No tienes permiso para editar este registro.');
+    return;
+  }
+
   let registro = registrosCache.find(r => r.empleadoId === empleadoId && r.fecha === fecha);
   const emp = empleados.find(e => e.id === empleadoId);
   if (!emp) { alert('Empleado no encontrado'); return; }
@@ -1345,6 +1536,7 @@ function actualizarTablaFeriados() {
 }
 
 async function agregarFeriado() {
+  if (!esAdmin) { alert('Solo el administrador puede modificar feriados.'); return; }
   const fecha = document.getElementById('nuevoFeriado').value;
   if (!fecha) { alert('Selecciona una fecha.'); return; }
   if (feriados.includes(fecha)) { alert('Ya está en la lista.'); return; }
@@ -1366,6 +1558,7 @@ async function agregarFeriado() {
 }
 
 async function eliminarFeriado(fecha) {
+  if (!esAdmin) { alert('Solo el administrador puede modificar feriados.'); return; }
   if (!confirm(`¿Eliminar feriado ${fecha}?`)) return;
   try {
     const docRef = db.collection("jornada_config").doc("feriados");
@@ -1384,7 +1577,7 @@ async function eliminarFeriado(fecha) {
 }
 
 // ============================================================
-// REPORTE MENSUAL (semana: domingo a sábado)
+// REPORTE MENSUAL (con permisos)
 // ============================================================
 function llenarSelectMeses() {
   const sel = document.getElementById('mesReporte');
@@ -1414,9 +1607,13 @@ function generarReporte() {
   const finStr = fechaFin.toISOString().split('T')[0];
   document.getElementById('periodoReporte').innerText = `${inicioStr} al ${finStr}`;
 
-  const registrosFiltrados = registrosCache.filter(r =>
+  // Filtrar registros según rol
+  let registrosFiltrados = registrosCache.filter(r =>
     r.fecha >= inicioStr && r.fecha <= finStr && r.entrada && r.salida
   );
+  if (!esAdmin) {
+    registrosFiltrados = registrosFiltrados.filter(r => r.empleadoId === usuarioActual.empleadoId);
+  }
 
   const mapa = {};
   registrosFiltrados.forEach(r => {
@@ -1428,11 +1625,9 @@ function generarReporte() {
   // Generar semanas: domingo a sábado
   const semanas = [];
   let cursor = new Date(fechaInicio);
-  // Buscar el domingo más cercano hacia atrás
   while (cursor.getDay() !== 0) {
     cursor.setDate(cursor.getDate() - 1);
   }
-  // Ahora cursor es domingo. Si es anterior a fechaInicio, la primera semana empezará antes, pero solo se contarán días dentro del período.
   while (cursor <= fechaFin) {
     const ini = new Date(cursor);
     const fin = new Date(cursor);
@@ -1541,9 +1736,25 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ============================================================
-// INICIO
+// CREAR ADMIN SI NO EXISTE (al cargar la página)
 // ============================================================
-init();
+(async function crearAdmin() {
+  try {
+    const snap = await db.collection("jornada_empleados").where("usuario", "==", "admin").get();
+    if (snap.empty) {
+      await db.collection("jornada_empleados").add({
+        nombre: "Administrador",
+        usuario: "admin",
+        contraseña: "root",
+        rol: "admin",
+        salarioHora: 0
+      });
+      console.log("Admin creado: usuario=admin, contraseña=root");
+    }
+  } catch(e) {
+    console.warn("No se pudo crear admin:", e);
+  }
+})();
 </script>
 </body>
 </html>
