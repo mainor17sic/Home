@@ -389,7 +389,7 @@
   </div>
 </div>
 
-<!-- ===== APLICACIÓN PRINCIPAL (oculta hasta login) ===== -->
+<!-- ===== APLICACIÓN PRINCIPAL ===== -->
 <div id="app-container" class="container" style="display:none;">
   <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; margin-bottom:10px;">
     <h1>⏱️ Control de Jornada</h1>
@@ -475,7 +475,7 @@
     </div>
   </div>
 
-  <!-- ===== HISTORIAL ===== -->
+  <!-- ===== HISTORIAL (CON FILTRO POR EMPLEADO) ===== -->
   <div id="historial" class="tab-content">
     <h2>Historial de Asistencias</h2>
     <div class="form-row">
@@ -485,6 +485,10 @@
         <option value="Diurno">Diurno</option>
         <option value="Mixto">Mixto</option>
         <option value="Nocturno">Nocturno</option>
+      </select>
+      <!-- Selector de empleados (visible solo para admin) -->
+      <select id="filtroEmpleado" style="flex:0 0 180px; display:none;">
+        <option value="todos">Todos los empleados</option>
       </select>
       <button onclick="actualizarHistorial()" class="btn-success">📅 Mostrar</button>
     </div>
@@ -636,8 +640,7 @@ let salidaPendienteEmpleado = null;
 let salidaPendienteHora = null;
 let salidaPendienteRegistro = null;
 
-// Estado de sesión
-let usuarioActual = null;        // { id, nombre, usuario, rol, empleadoId (si es empleado) }
+let usuarioActual = null;
 let esAdmin = false;
 
 // ============================================================
@@ -780,7 +783,6 @@ async function iniciarSesion() {
   }
 
   try {
-    // Buscar en la colección de empleados
     const snap = await db.collection("jornada_empleados")
       .where("usuario", "==", usuario)
       .where("contraseña", "==", pass)
@@ -800,7 +802,6 @@ async function iniciarSesion() {
       return;
     }
 
-    // Si no se encuentra, mostrar error
     errorDiv.textContent = 'Usuario o contraseña incorrectos.';
     errorDiv.style.display = 'block';
   } catch(e) {
@@ -815,10 +816,16 @@ function mostrarApp() {
   document.getElementById('app-container').style.display = 'block';
   document.getElementById('usuarioLogueado').textContent = `👤 ${usuarioActual.nombre} (${usuarioActual.rol === 'admin' ? 'Administrador' : 'Empleado'})`;
 
-  // Mostrar/ocultar pestaña de empleados según rol
+  // Mostrar/ocultar pestaña de empleados y selector de empleados en historial
   document.getElementById('tabEmpleados').style.display = esAdmin ? 'inline-block' : 'none';
+  const filtroEmp = document.getElementById('filtroEmpleado');
+  if (esAdmin) {
+    filtroEmp.style.display = 'inline-block';
+    llenarSelectEmpleados();
+  } else {
+    filtroEmp.style.display = 'none';
+  }
 
-  // Inicializar todo
   init();
 }
 
@@ -832,7 +839,7 @@ function cerrarSesion() {
 }
 
 // ============================================================
-// INICIALIZACIÓN (después del login)
+// INICIALIZACIÓN
 // ============================================================
 async function init() {
   cargarLocal();
@@ -840,7 +847,12 @@ async function init() {
   await sincronizarEmpleados();
   await sincronizarRegistros();
 
-  db.collection("jornada_empleados").onSnapshot(() => { sincronizarEmpleados(); actualizarSelects(); mostrarEmpleados(); });
+  db.collection("jornada_empleados").onSnapshot(() => {
+    sincronizarEmpleados();
+    actualizarSelects();
+    mostrarEmpleados();
+    if (esAdmin) llenarSelectEmpleados();
+  });
   db.collection("jornada_config").doc("feriados").onSnapshot(() => { sincronizarFeriados(); actualizarTablaFeriados(); });
   db.collection("jornada_registros").onSnapshot(() => { sincronizarRegistros(); actualizarHistorial(); });
 
@@ -849,6 +861,7 @@ async function init() {
   actualizarTablaFeriados();
   llenarSelectMeses();
   llenarSelectHistorial();
+  if (esAdmin) llenarSelectEmpleados();
 
   iniciarReloj();
   actualizarCalendario();
@@ -998,7 +1011,6 @@ function marcarEntrada() {
   const emp = obtenerEmpleadoSeleccionado();
   if (!emp) { mostrarMensaje('⚠️ Selecciona un empleado.', 'rojo'); return; }
 
-  // Si es empleado, solo puede marcar para sí mismo
   if (!esAdmin && usuarioActual.empleadoId !== emp.id) {
     mostrarMensaje('⚠️ Solo puedes marcar tu propia entrada.', 'rojo');
     return;
@@ -1143,7 +1155,6 @@ function actualizarSelects() {
       sel.innerHTML += `<option value="${e.id}">${e.nombre}</option>`;
     });
   } else {
-    // Empleado: solo ve su propio nombre
     const emp = empleados.find(e => e.id === usuarioActual.empleadoId);
     if (emp) {
       sel.innerHTML = `<option value="${emp.id}">${emp.nombre}</option>`;
@@ -1164,7 +1175,6 @@ function mostrarEmpleados() {
   const tbody = document.getElementById('tablaEmpleados');
   tbody.innerHTML = '';
   empleados.forEach(e => {
-    // No mostrar al admin en la lista (para no eliminarlo accidentalmente)
     if (e.rol === 'admin') return;
     tbody.innerHTML += `
       <tr>
@@ -1192,7 +1202,6 @@ async function agregarEmpleado() {
     return;
   }
 
-  // Verificar que el usuario no exista
   if (empleados.some(e => e.usuario === usuario)) {
     alert('Ese usuario ya está registrado.');
     return;
@@ -1214,6 +1223,7 @@ async function agregarEmpleado() {
     document.getElementById('salarioEmp').value = '';
     actualizarSelects();
     mostrarEmpleados();
+    if (esAdmin) llenarSelectEmpleados();
   } catch(e) { alert('Error al guardar empleado.'); }
 }
 
@@ -1221,7 +1231,6 @@ async function eliminarEmpleado(id) {
   if (!esAdmin) { alert('Solo el administrador puede eliminar empleados.'); return; }
   if (!confirm('¿Eliminar este empleado y todos sus registros?')) return;
   try {
-    // Eliminar registros asociados
     const regs = registrosCache.filter(r => r.empleadoId === id);
     for (let r of regs) {
       if (r.id && !r.id.startsWith('temp_')) {
@@ -1235,11 +1244,29 @@ async function eliminarEmpleado(id) {
     actualizarSelects();
     mostrarEmpleados();
     actualizarHistorial();
+    if (esAdmin) llenarSelectEmpleados();
   } catch(e) { alert('Error al eliminar.'); }
 }
 
 // ============================================================
-// HISTORIAL (con permisos)
+// SELECTOR DE EMPLEADOS PARA EL HISTORIAL (solo admin)
+// ============================================================
+function llenarSelectEmpleados() {
+  const sel = document.getElementById('filtroEmpleado');
+  if (!esAdmin) {
+    sel.style.display = 'none';
+    return;
+  }
+  sel.style.display = 'inline-block';
+  sel.innerHTML = '<option value="todos">Todos los empleados</option>';
+  empleados.forEach(e => {
+    if (e.rol === 'admin') return;
+    sel.innerHTML += `<option value="${e.id}">${e.nombre}</option>`;
+  });
+}
+
+// ============================================================
+// HISTORIAL (con filtro por empleado)
 // ============================================================
 function llenarSelectHistorial() {
   const sel = document.getElementById('mesHistorial');
@@ -1263,6 +1290,7 @@ function actualizarHistorial() {
   const mesVal = document.getElementById('mesHistorial').value;
   if (!mesVal) return;
   const filtroTurno = document.getElementById('filtroTurno').value;
+  const filtroEmpleadoId = document.getElementById('filtroEmpleado').value;
 
   const [year, month] = mesVal.split('-').map(Number);
   const fechaInicio = new Date(year, month - 1, 11);
@@ -1282,11 +1310,12 @@ function actualizarHistorial() {
 
   const nombreDias = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
 
-  // Filtrar empleados según rol
+  // Determinar empleados a mostrar
   let empleadosFiltrados = empleados;
   if (!esAdmin) {
-    // Empleado: solo ve sus propios registros
     empleadosFiltrados = empleados.filter(e => e.id === usuarioActual.empleadoId);
+  } else if (filtroEmpleadoId && filtroEmpleadoId !== 'todos') {
+    empleadosFiltrados = empleados.filter(e => e.id === filtroEmpleadoId);
   }
 
   empleadosFiltrados.forEach(emp => {
@@ -1306,7 +1335,6 @@ function actualizarHistorial() {
         };
       }
 
-      // Aplicar filtro de turno
       if (filtroTurno !== 'todos' && registro.turno !== filtroTurno) {
         if (!registro.id) return;
       }
@@ -1361,7 +1389,6 @@ function actualizarHistorial() {
       const descuentoStr = (descuento > 0) ? descuento.toFixed(2) + 'h' : '—';
       const comidasStr = tiempos > 0 ? tiempos : '—';
 
-      // Botón de edición: visible solo si es admin o si el registro pertenece al empleado logueado
       let accionesHtml = '';
       if (esAdmin || (usuarioActual && usuarioActual.empleadoId === emp.id)) {
         accionesHtml = `<button class="btn-warning btn-sm" onclick="abrirModalEditar('${emp.id}','${fecha}')">✏️ Editar</button>`;
@@ -1394,10 +1421,9 @@ function actualizarHistorial() {
 }
 
 // ============================================================
-// MODAL DE EDICIÓN (con permisos)
+// MODAL DE EDICIÓN
 // ============================================================
 function abrirModalEditar(empleadoId, fecha) {
-  // Verificar permisos
   if (!esAdmin && usuarioActual.empleadoId !== empleadoId) {
     alert('No tienes permiso para editar este registro.');
     return;
@@ -1607,7 +1633,6 @@ function generarReporte() {
   const finStr = fechaFin.toISOString().split('T')[0];
   document.getElementById('periodoReporte').innerText = `${inicioStr} al ${finStr}`;
 
-  // Filtrar registros según rol
   let registrosFiltrados = registrosCache.filter(r =>
     r.fecha >= inicioStr && r.fecha <= finStr && r.entrada && r.salida
   );
@@ -1622,7 +1647,6 @@ function generarReporte() {
     mapa[key].registros.push(r);
   });
 
-  // Generar semanas: domingo a sábado
   const semanas = [];
   let cursor = new Date(fechaInicio);
   while (cursor.getDay() !== 0) {
@@ -1736,7 +1760,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ============================================================
-// CREAR ADMIN SI NO EXISTE (al cargar la página)
+// CREAR ADMIN SI NO EXISTE
 // ============================================================
 (async function crearAdmin() {
   try {
