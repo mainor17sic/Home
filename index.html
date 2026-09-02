@@ -896,23 +896,29 @@ async function sincronizarRegistros() {
 }
 
 // ============================================================
-// LOGIN
+// LOGIN (MODIFICADO CON PERSISTENCIA)
 // ============================================================
 async function iniciarSesion() {
   const usuario = document.getElementById('loginUsuario').value.trim();
   const pass = document.getElementById('loginPassword').value.trim();
   const errorDiv = document.getElementById('loginError');
   errorDiv.style.display = 'none';
+
   if (!usuario || !pass) {
     errorDiv.textContent = 'Ingresa usuario y contraseña.';
     errorDiv.style.display = 'block';
+    // Si hay credenciales guardadas y son vacías, borrar
+    localStorage.removeItem('jornada_usuario');
+    localStorage.removeItem('jornada_pass');
     return;
   }
+
   try {
     const snap = await db.collection("jornada_empleados")
       .where("usuario", "==", usuario)
       .where("contraseña", "==", pass)
       .get();
+
     if (!snap.empty) {
       const doc = snap.docs[0];
       const data = doc.data();
@@ -923,16 +929,28 @@ async function iniciarSesion() {
         esAdmin = false;
         usuarioActual = { id: doc.id, nombre: data.nombre, usuario: data.usuario, rol: 'empleado', empleadoId: doc.id };
       }
+
+      // ✅ Guardar credenciales en localStorage
+      localStorage.setItem('jornada_usuario', usuario);
+      localStorage.setItem('jornada_pass', pass);
+
       mostrarApp();
       showToast(`Bienvenido ${usuarioActual.nombre}`, 'success');
       return;
     }
+
+    // Credenciales incorrectas: borrar lo guardado
     errorDiv.textContent = 'Usuario o contraseña incorrectos.';
     errorDiv.style.display = 'block';
+    localStorage.removeItem('jornada_usuario');
+    localStorage.removeItem('jornada_pass');
+
   } catch(e) {
     errorDiv.textContent = 'Error al conectar con la base de datos.';
     errorDiv.style.display = 'block';
     console.error(e);
+    localStorage.removeItem('jornada_usuario');
+    localStorage.removeItem('jornada_pass');
   }
 }
 
@@ -957,6 +975,10 @@ function mostrarApp() {
 }
 
 function cerrarSesion() {
+  // ✅ Borrar credenciales guardadas
+  localStorage.removeItem('jornada_usuario');
+  localStorage.removeItem('jornada_pass');
+
   usuarioActual = null;
   esAdmin = false;
   window._inicializado = false;
@@ -966,6 +988,21 @@ function cerrarSesion() {
   document.getElementById('loginUsuario').value = '';
   document.getElementById('loginPassword').value = '';
   showToast('Sesión cerrada', 'info');
+}
+
+// ============================================================
+// AUTO-LOGIN AL CARGAR LA PÁGINA
+// ============================================================
+async function autoLogin() {
+  const usuarioGuardado = localStorage.getItem('jornada_usuario');
+  const passGuardado = localStorage.getItem('jornada_pass');
+  if (usuarioGuardado && passGuardado) {
+    document.getElementById('loginUsuario').value = usuarioGuardado;
+    document.getElementById('loginPassword').value = passGuardado;
+    // Intentar login automático
+    await iniciarSesion();
+    // Si falla, la función ya borró las credenciales y mostró el error
+  }
 }
 
 // ============================================================
@@ -1678,8 +1715,9 @@ function llenarSelectMeses() {
   const sel = document.getElementById('mesReporte');
   sel.innerHTML = '';
   const ahora = new Date();
+  // Ahora empieza en el mes anterior (igual que Historial)
   for (let i = 0; i < 12; i++) {
-    const d = new Date(ahora.getFullYear(), ahora.getMonth() - i, 1);
+    const d = new Date(ahora.getFullYear(), ahora.getMonth() - i - 1, 1);
     const val = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
     const label = d.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
     const opt = document.createElement('option');
@@ -1687,8 +1725,10 @@ function llenarSelectMeses() {
     opt.textContent = label.charAt(0).toUpperCase() + label.slice(1);
     sel.appendChild(opt);
   }
-  const actual = ahora.getFullYear() + '-' + String(ahora.getMonth() + 1).padStart(2, '0');
-  sel.value = actual;
+  // Seleccionar el mes anterior
+  const mesInicio = new Date(ahora.getFullYear(), ahora.getMonth() - 1, 1);
+  const valorInicio = mesInicio.getFullYear() + '-' + String(mesInicio.getMonth() + 1).padStart(2, '0');
+  sel.value = valorInicio;
   generarReporte();
 }
 
@@ -1717,7 +1757,6 @@ function generarReporte() {
   });
 
   // Incluir también los descuentos por sábado no trabajado (sin entrada/salida)
-  // Recorremos todos los días del período y si es sábado sin registro, lo agregamos con descuento
   const todosLosDias = [];
   let cursor = new Date(fechaInicio);
   while (cursor <= fechaFin) {
@@ -1725,17 +1764,14 @@ function generarReporte() {
     cursor.setDate(cursor.getDate() + 1);
   }
 
-  // Para cada empleado, agregar los sábados no trabajados con descuento
   for (let empId in mapa) {
     const emp = mapa[empId];
     const turno = emp.turno || 'Diurno';
-    // Buscar sábados sin registro para este empleado
     todosLosDias.forEach(fecha => {
       const dia = diaSemana(fecha);
-      if (dia === 6 && !esNoLaborable(fecha)) { // sábado laborable
+      if (dia === 6 && !esNoLaborable(fecha)) {
         const existe = emp.registros.some(r => r.fecha === fecha);
         if (!existe) {
-          // Crear un registro virtual con descuento
           const jornada = getJornadaMaxima(fecha, turno);
           if (jornada > 0) {
             emp.registros.push({
@@ -1745,7 +1781,6 @@ function generarReporte() {
               turno: turno,
               tipo: 'normal',
               tiemposComida: 0,
-              // Este registro virtual servirá para calcular el descuento
               _esDescuento: true,
               _descuento: jornada
             });
@@ -1795,17 +1830,13 @@ function generarReporte() {
       let extrasNetasSem = 0;
       emp.registros.forEach(r => {
         if (r.fecha >= s.inicio && r.fecha <= s.fin) {
-          // Si es un registro virtual (descuento de sábado)
           if (r._esDescuento && r._descuento) {
-            // Restamos el descuento directamente
             extrasNetasSem -= r._descuento;
             return;
           }
-          // Para registros normales con entrada/salida
           if (r.entrada && r.salida) {
             const horas = calcularHorasBrutas(r.entrada, r.salida, r.tiemposComida || 0);
             const calc = calcularExtrasYDescuento(horas, r.fecha, turno, r.tipo || 'normal');
-            // extras netas = extras - descuento
             extrasNetasSem += calc.extras - calc.descuento;
           }
         }
@@ -1881,6 +1912,12 @@ function generarPDF() {
     }
   } catch(e) { console.warn("No se pudo crear admin:", e); }
 })();
+
+// ============================================================
+// EJECUTAR AUTO-LOGIN AL CARGAR LA PÁGINA
+// ============================================================
+autoLogin();
+
 </script>
 </body>
 </html>
