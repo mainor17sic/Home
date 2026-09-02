@@ -726,6 +726,7 @@ const db = firebase.firestore();
 // ============================================================
 function showToast(message, type = 'info') {
   const container = document.getElementById('toastContainer');
+  if (!container) return;
   const toast = document.createElement('div');
   toast.className = `toast toast-${type}`;
   const icons = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
@@ -1001,7 +1002,6 @@ function mostrarApp() {
     actualizarCalendario();
     llenarSelectHistorial();
     if (esAdmin) llenarSelectEmpleados();
-    // Al restaurar sesión, cargar el reporte con el mes de inicio
     llenarSelectMeses();
     generarReporte();
   }
@@ -1056,7 +1056,6 @@ function construirMenuInferior() {
         actualizarCalendario();
         actualizarSelects();
       } else if (tabId === 'reporte') {
-        // Al hacer clic en Reporte, seleccionar mes de inicio y generar
         llenarSelectMeses();
         generarReporte();
       } else if (tabId === 'historial') {
@@ -1087,18 +1086,15 @@ async function init() {
   await sincronizarEmpleados();
   await sincronizarRegistros();
 
-  // Intentar restaurar sesión después de cargar empleados
   if (restaurarSesion()) {
     mostrarApp();
     return;
   }
 
-  // Si no hay sesión, mostrar login
   document.getElementById('login-screen').style.display = 'flex';
   document.getElementById('app-container').style.display = 'none';
   document.getElementById('bottomNav').style.display = 'none';
 
-  // Escuchas para cuando se loguee
   db.collection("jornada_empleados").onSnapshot(() => {
     sincronizarEmpleados();
     actualizarSelects();
@@ -1732,7 +1728,6 @@ function llenarSelectMeses() {
   const sel = document.getElementById('mesReporte');
   sel.innerHTML = '';
   const ahora = new Date();
-  // Generar opciones para los últimos 12 meses, pero seleccionar el mes de inicio del período (mes anterior al actual)
   for (let i = 0; i < 12; i++) {
     const d = new Date(ahora.getFullYear(), ahora.getMonth() - i, 1);
     const val = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
@@ -1742,7 +1737,6 @@ function llenarSelectMeses() {
     opt.textContent = label.charAt(0).toUpperCase() + label.slice(1);
     sel.appendChild(opt);
   }
-  // Seleccionar mes de inicio del período (mes actual - 1)
   const mesInicio = new Date(ahora.getFullYear(), ahora.getMonth() - 1, 1);
   const valorInicio = mesInicio.getFullYear() + '-' + String(mesInicio.getMonth() + 1).padStart(2, '0');
   sel.value = valorInicio;
@@ -1771,7 +1765,6 @@ function generarReporte() {
     mapa[key].registros.push(r);
   });
 
-  // Incluir sábados no trabajados
   const todosLosDias = [];
   let cursor = new Date(fechaInicio);
   while (cursor <= fechaFin) {
@@ -1805,7 +1798,6 @@ function generarReporte() {
     });
   }
 
-  // Generar semanas ISO
   const semanasMap = {};
   let tempDate = new Date(fechaInicio);
   while (tempDate <= fechaFin) {
