@@ -37,7 +37,7 @@
       background: var(--bg-light);
       color: var(--text-dark);
       min-height: 100vh;
-      padding-bottom: 80px; /* espacio para menú inferior */
+      padding-bottom: 80px;
     }
 
     /* ===== PANTALLA DE LOGIN ===== */
@@ -488,6 +488,11 @@
     @media (min-width: 641px) {
       .bottom-nav .nav-item .label { display: inline-block; }
     }
+
+    /* Ocultar pestaña de empleados en el contenido (se gestiona desde el menú inferior) */
+    #empleados-content { display: none; }
+    #empleados-content.active { display: block; }
+    /* Empleados visible solo para admin, controlado por JS */
   </style>
 </head>
 <body>
@@ -618,26 +623,29 @@
       </table>
     </div>
   </div>
+
+  <!-- EMPLEADOS (solo admin, se muestra como pestaña adicional en el menú) -->
+  <div id="empleados" class="tab-content">
+    <h2>Empleados</h2>
+    <div class="form-row">
+      <input type="text" id="nombreEmp" placeholder="Nombre completo" />
+      <input type="text" id="usuarioEmp" placeholder="Usuario" />
+      <input type="text" id="passEmp" placeholder="Contraseña" />
+      <input type="number" id="salarioEmp" placeholder="Salario/hora (Q, opcional)" step="0.01" />
+      <button onclick="agregarEmpleado()" class="btn-success">➕ Agregar</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Nombre</th><th>Usuario</th><th>Salario/hora</th><th>Acciones</th></tr></thead>
+        <tbody id="tablaEmpleados"></tbody>
+      </table>
+    </div>
+  </div>
 </div>
 
 <!-- ===== MENÚ INFERIOR FIJO ===== -->
 <nav class="bottom-nav" id="bottomNav" style="display:none;">
-  <button class="nav-item active" data-tab="principal">
-    <span class="icon">🏠</span>
-    <span class="label">Inicio</span>
-  </button>
-  <button class="nav-item" data-tab="reporte">
-    <span class="icon">📊</span>
-    <span class="label">Reporte</span>
-  </button>
-  <button class="nav-item" data-tab="historial">
-    <span class="icon">📜</span>
-    <span class="label">Historial</span>
-  </button>
-  <button class="nav-item" data-tab="config">
-    <span class="icon">⚙️</span>
-    <span class="label">Feriados</span>
-  </button>
+  <!-- Los botones se generan dinámicamente con JavaScript -->
 </nav>
 
 <!-- ===== MODALES ===== -->
@@ -930,42 +938,92 @@ function mostrarApp() {
   document.getElementById('app-container').style.display = 'block';
   document.getElementById('bottomNav').style.display = 'flex';
   document.getElementById('usuarioLogueado').textContent = `👤 ${usuarioActual.nombre} (${usuarioActual.rol === 'admin' ? 'Administrador' : 'Empleado'})`;
-  // Ocultar pestaña de empleados si no es admin (se agrega al menú inferior si se requiere)
-  // pero no hay pestaña de empleados en el menú inferior. La gestión de empleados queda como modal o vista separada.
-  // Agregaremos acceso a empleados solo para admin en el menú inferior?
-  // Por ahora mantenemos la pestaña de empleados en el contenido, pero el menú inferior no la tiene.
-  // Agregamos un botón flotante o lo dejamos como estaba.
-  // Para simplificar, añadimos la pestaña de empleados en el menú inferior solo para admin.
-  // Pero el menú inferior ya tiene 4 botones. Podemos añadir empleados como quinto botón solo para admin.
-  // Modificamos el menú inferior dinámicamente.
-  const nav = document.getElementById('bottomNav');
-  // Limpiar y reconstruir según rol
-  // Eliminar botón de empleados si existe
-  const existingEmp = nav.querySelector('[data-tab="empleados"]');
-  if (existingEmp) existingEmp.remove();
-  if (esAdmin) {
-    const btn = document.createElement('button');
-    btn.className = 'nav-item';
-    btn.dataset.tab = 'empleados';
-    btn.innerHTML = '<span class="icon">👤</span><span class="label">Empleados</span>';
-    nav.appendChild(btn);
+
+  // Construir menú inferior
+  construirMenuInferior();
+
+  // Inicializar la aplicación (solo una vez)
+  if (!window._inicializado) {
+    init();
+    window._inicializado = true;
+  } else {
+    // Si ya está inicializado, solo refrescar datos
+    actualizarSelects();
+    actualizarCalendario();
+    llenarSelectHistorial();
+    if (esAdmin) llenarSelectEmpleados();
+    generarReporte();
   }
-  // Asegurar que el botón de inicio esté activo
-  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-  document.querySelector('.nav-item[data-tab="principal"]').classList.add('active');
-  // Inicializar
-  init();
 }
 
 function cerrarSesion() {
   usuarioActual = null;
   esAdmin = false;
+  window._inicializado = false;
   document.getElementById('app-container').style.display = 'none';
   document.getElementById('bottomNav').style.display = 'none';
   document.getElementById('login-screen').style.display = 'flex';
   document.getElementById('loginUsuario').value = '';
   document.getElementById('loginPassword').value = '';
   showToast('Sesión cerrada', 'info');
+}
+
+// ============================================================
+// CONSTRUIR MENÚ INFERIOR DINÁMICO
+// ============================================================
+function construirMenuInferior() {
+  const nav = document.getElementById('bottomNav');
+  nav.innerHTML = '';
+  const items = [
+    { tab: 'principal', icon: '🏠', label: 'Inicio' },
+    { tab: 'reporte', icon: '📊', label: 'Reporte' },
+    { tab: 'historial', icon: '📜', label: 'Historial' },
+    { tab: 'config', icon: '⚙️', label: 'Feriados' }
+  ];
+  if (esAdmin) {
+    items.push({ tab: 'empleados', icon: '👤', label: 'Empleados' });
+  }
+  items.forEach(item => {
+    const btn = document.createElement('button');
+    btn.className = 'nav-item';
+    btn.dataset.tab = item.tab;
+    btn.innerHTML = `<span class="icon">${item.icon}</span><span class="label">${item.label}</span>`;
+    nav.appendChild(btn);
+  });
+
+  // Asignar eventos de clic a los botones del menú
+  nav.querySelectorAll('.nav-item').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      const tabId = this.dataset.tab;
+      if (!tabId) return;
+      // Cambiar pestaña activa
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      const target = document.getElementById(tabId);
+      if (target) target.classList.add('active');
+      nav.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      // Ejecutar acciones según la pestaña
+      if (tabId === 'principal') {
+        actualizarCalendario();
+        actualizarSelects();
+      } else if (tabId === 'reporte') {
+        generarReporte();
+      } else if (tabId === 'historial') {
+        actualizarHistorial();
+      } else if (tabId === 'empleados') {
+        mostrarEmpleados();
+      } else if (tabId === 'config') {
+        actualizarTablaFeriados();
+      }
+    });
+  });
+
+  // Activar la pestaña "Inicio" por defecto
+  const defaultBtn = nav.querySelector('.nav-item[data-tab="principal"]');
+  if (defaultBtn) {
+    defaultBtn.classList.add('active');
+    document.getElementById('principal').classList.add('active');
+  }
 }
 
 // ============================================================
@@ -977,6 +1035,7 @@ async function init() {
   await sincronizarEmpleados();
   await sincronizarRegistros();
 
+  // Escuchas en tiempo real
   db.collection("jornada_empleados").onSnapshot(() => {
     sincronizarEmpleados();
     actualizarSelects();
@@ -986,6 +1045,7 @@ async function init() {
   db.collection("jornada_config").doc("feriados").onSnapshot(() => { sincronizarFeriados(); actualizarTablaFeriados(); });
   db.collection("jornada_registros").onSnapshot(() => { sincronizarRegistros(); actualizarHistorial(); });
 
+  // Llenar selects y cargar datos
   actualizarSelects();
   mostrarEmpleados();
   actualizarTablaFeriados();
@@ -993,29 +1053,14 @@ async function init() {
   llenarSelectHistorial();
   if (esAdmin) llenarSelectEmpleados();
 
+  // Iniciar reloj y calendario
   iniciarReloj();
   actualizarCalendario();
 
+  // Asignar eventos de marcación
   document.getElementById('btnEntradaP').addEventListener('click', marcarEntrada);
   document.getElementById('btnSalidaP').addEventListener('click', iniciarSalidaConComidas);
   document.getElementById('btnAhoraP').addEventListener('click', usarHoraActual);
-
-  // Navegación inferior
-  document.querySelectorAll('.nav-item').forEach(item => {
-    item.addEventListener('click', function() {
-      const tabId = this.dataset.tab;
-      if (!tabId) return;
-      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-      const target = document.getElementById(tabId);
-      if (target) target.classList.add('active');
-      document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-      this.classList.add('active');
-      if (tabId === 'reporte') generarReporte();
-      if (tabId === 'historial') actualizarHistorial();
-      if (tabId === 'principal') actualizarCalendario();
-      if (tabId === 'empleados') mostrarEmpleados();
-    });
-  });
 }
 
 // ============================================================
@@ -1201,7 +1246,7 @@ function actualizarSelects() {
 }
 
 // ============================================================
-// EMPLEADOS (solo admin)
+// EMPLEADOS
 // ============================================================
 function mostrarEmpleados() {
   if (!esAdmin) {
@@ -1311,7 +1356,7 @@ function llenarSelectEmpleados() {
 }
 
 // ============================================================
-// HISTORIAL (con colores por semana y sin número de semana)
+// HISTORIAL
 // ============================================================
 function llenarSelectHistorial() {
   const sel = document.getElementById('mesHistorial');
@@ -1425,7 +1470,6 @@ function actualizarHistorial() {
         accionesHtml = `<button class="btn-warning btn-sm" onclick="abrirModalEditar('${emp.id}','${fecha}')">✏️ Editar</button>`;
       } else { accionesHtml = '—'; }
 
-      // Asignar clase de semana para coloreado
       const weekNum = getISOWeek(fecha);
       const rowClass = weekColorMap[weekNum] || '';
 
@@ -1581,7 +1625,7 @@ async function eliminarFeriado(fecha) {
 }
 
 // ============================================================
-// REPORTE MENSUAL (con número de semana real)
+// REPORTE MENSUAL
 // ============================================================
 function llenarSelectMeses() {
   const sel = document.getElementById('mesReporte');
@@ -1623,7 +1667,7 @@ function generarReporte() {
     mapa[key].registros.push(r);
   });
 
-  // Generar semanas: domingo a sábado, pero etiquetar con número de semana ISO real
+  // Generar semanas: domingo a sábado, etiquetar con número ISO
   const semanas = [];
   let cursor = new Date(fechaInicio);
   while (cursor.getDay() !== 0) cursor.setDate(cursor.getDate() - 1);
