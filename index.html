@@ -2,8 +2,8 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Control de Jornada - CMI TOLEDO</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=2.0, user-scalable=yes" />
+  <title>Control de Jornada - CMI Toledo</title>
 
   <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -14,63 +14,197 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 
   <style>
-    /* ===== TEMA AZUL CORPORATIVO ===== */
+    /* ===== TEMA CMI TOLEDO ===== */
+    :root {
+      --primary: #0A1C3A;
+      --secondary: #1A3A6B;
+      --accent: #D4AF37;
+      --bg-light: #F2F5F9;
+      --text-dark: #1E293B;
+      --text-gray: #64748B;
+      --white: #FFFFFF;
+      --success: #10B981;
+      --error: #EF4444;
+      --warning: #F59E0B;
+      --info: #3B82F6;
+      --border-radius: 12px;
+      --shadow: 0 4px 20px rgba(10, 28, 58, 0.12);
+    }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
+    html, body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: #f1f5f9;
-      padding: 12px;
+      background: var(--bg-light);
+      color: var(--text-dark);
+      min-height: 100vh;
+      padding-bottom: 80px; /* espacio para menú inferior */
+    }
+
+    /* ===== PANTALLA DE LOGIN ===== */
+    #login-screen {
       display: flex;
       justify-content: center;
+      align-items: center;
       min-height: 100vh;
-    }
-    .container {
-      max-width: 1300px;
-      width: 100%;
-      background: #ffffff;
-      border-radius: 16px;
-      box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+      background: var(--bg-light);
       padding: 20px;
-      position: relative;
     }
-    h1 { color: #1e3a8a; font-size: 1.8rem; margin-bottom: 4px; }
-    .subtitulo { color: #475569; font-size: 0.95rem; margin-bottom: 20px; }
-
-    .tabs {
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-      background: #f8fafc;
-      padding: 6px;
-      border-radius: 12px;
-      margin-bottom: 24px;
-      border: 1px solid #e2e8f0;
+    .login-box {
+      background: var(--white);
+      padding: 40px;
+      border-radius: var(--border-radius);
+      box-shadow: var(--shadow);
+      max-width: 400px;
+      width: 100%;
     }
-    .tab {
-      background: transparent;
-      border: none;
-      padding: 10px 20px;
+    .login-box h2 { color: var(--primary); margin-bottom: 8px; }
+    .login-box p { color: var(--text-gray); margin-bottom: 24px; }
+    .login-box input {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 16px;
+      border: 1px solid #cbd5e1;
       border-radius: 8px;
+      font-size: 1rem;
+    }
+    .login-box button {
+      width: 100%;
+      padding: 14px;
+      background: var(--primary);
+      color: var(--white);
+      border: none;
+      border-radius: 8px;
+      font-size: 1.1rem;
       font-weight: 600;
-      font-size: 0.95rem;
-      color: #475569;
       cursor: pointer;
       transition: 0.2s;
     }
-    .tab:hover { background: #e2e8f0; }
-    .tab.active {
-      background: #1e3a8a;
-      color: white;
-      box-shadow: 0 2px 8px rgba(30,58,138,0.3);
-    }
-    .tab-content { display: none; animation: fade 0.25s ease; }
-    .tab-content.active { display: block; }
-    @keyframes fade { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+    .login-box button:hover { background: var(--secondary); }
+    .login-error { color: var(--error); margin-top: 12px; text-align: center; display: none; }
 
-    /* ===== PANTALLA PRINCIPAL ===== */
+    /* ===== CONTENEDOR PRINCIPAL ===== */
+    #app-container {
+      max-width: 1300px;
+      margin: 0 auto;
+      padding: 16px 16px 80px 16px;
+      background: var(--white);
+      border-radius: var(--border-radius);
+      box-shadow: var(--shadow);
+      min-height: 100vh;
+    }
+
+    /* ===== HEADER ===== */
+    .app-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid var(--bg-light);
+    }
+    .app-header h1 {
+      color: var(--primary);
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+    .app-header .user-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .app-header .user-info span {
+      font-weight: 600;
+      color: var(--primary);
+    }
+    .app-header .user-info button {
+      background: var(--error);
+      color: white;
+      border: none;
+      padding: 6px 14px;
+      border-radius: 30px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .app-header .user-info button:hover { opacity: 0.85; }
+    .subtitulo {
+      color: var(--text-gray);
+      font-size: 0.9rem;
+      margin-bottom: 16px;
+    }
+
+    /* ===== MENÚ INFERIOR FIJO ===== */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background: var(--primary);
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      padding: 8px 0 env(safe-area-inset-bottom, 8px) 0;
+      box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+      z-index: 999;
+      border-top: 2px solid var(--accent);
+    }
+    .bottom-nav .nav-item {
+      background: transparent;
+      border: none;
+      color: rgba(255,255,255,0.6);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-size: 0.7rem;
+      padding: 4px 12px;
+      cursor: pointer;
+      transition: 0.2s;
+      position: relative;
+      font-weight: 600;
+      min-width: 60px;
+    }
+    .bottom-nav .nav-item .icon {
+      font-size: 1.6rem;
+      line-height: 1.2;
+    }
+    .bottom-nav .nav-item .label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    .bottom-nav .nav-item.active {
+      color: var(--accent);
+    }
+    .bottom-nav .nav-item.active::after {
+      content: '';
+      position: absolute;
+      top: -2px;
+      left: 30%;
+      width: 40%;
+      height: 3px;
+      background: var(--accent);
+      border-radius: 0 0 4px 4px;
+    }
+    .bottom-nav .nav-item:hover { color: white; }
+
+    /* ===== CONTENIDO DE PESTAÑAS ===== */
+    .tab-content {
+      display: none;
+      animation: fadeIn 0.25s ease;
+    }
+    .tab-content.active { display: block; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ===== RELOJ Y CALENDARIO ===== */
     #principal {
       position: relative;
-      min-height: 500px;
+      min-height: 480px;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -85,53 +219,52 @@
       height: 100%;
       z-index: 0;
       pointer-events: none;
-      border-radius: 12px;
+      border-radius: var(--border-radius);
+      opacity: 0.4;
     }
     .overlay-controls {
       position: relative;
       z-index: 1;
-      background: rgba(255,255,255,0.85);
+      background: rgba(255,255,255,0.92);
       backdrop-filter: blur(6px);
-      border-radius: 20px;
-      padding: 30px 35px;
+      border-radius: var(--border-radius);
+      padding: 24px 28px;
       max-width: 600px;
       width: 100%;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+      box-shadow: var(--shadow);
       border: 1px solid rgba(255,255,255,0.3);
-      margin: 20px auto;
+      margin: 16px auto;
     }
     .overlay-controls .fecha-actual {
       font-size: 1.2rem;
       font-weight: 600;
-      color: #1e3a8a;
+      color: var(--primary);
       text-align: center;
       margin-bottom: 16px;
     }
     .overlay-controls .fecha-actual small {
       font-weight: 400;
-      color: #475569;
+      color: var(--text-gray);
       display: block;
       font-size: 0.9rem;
     }
     .form-marcar {
       display: flex;
       flex-direction: column;
-      gap: 14px;
+      gap: 12px;
     }
-    .form-marcar select,
-    .form-marcar input {
+    .form-marcar select, .form-marcar input {
       padding: 12px 16px;
       border: 1px solid #cbd5e1;
-      border-radius: 10px;
+      border-radius: 8px;
       font-size: 1rem;
       background: white;
       width: 100%;
     }
-    .form-marcar select:focus,
-    .form-marcar input:focus {
+    .form-marcar select:focus, .form-marcar input:focus {
       outline: none;
-      border-color: #1e3a8a;
-      box-shadow: 0 0 0 3px rgba(30,58,138,0.15);
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(10,28,58,0.15);
     }
     .hora-row {
       display: flex;
@@ -144,64 +277,68 @@
       flex-direction: column;
       font-size: 0.85rem;
       font-weight: 600;
-      color: #1e293b;
+      color: var(--text-dark);
     }
-    .hora-row label input {
-      margin-top: 4px;
-    }
+    .hora-row label input { margin-top: 4px; }
     .botones-marcar {
       display: flex;
-      gap: 12px;
+      gap: 10px;
       flex-wrap: wrap;
       margin-top: 6px;
     }
     .botones-marcar button {
       flex: 1;
-      padding: 14px 20px;
+      padding: 14px 16px;
       border: none;
-      border-radius: 12px;
-      font-size: 1.1rem;
+      border-radius: 8px;
+      font-size: 1rem;
       font-weight: 700;
       cursor: pointer;
       transition: 0.2s;
-      min-width: 120px;
+      min-width: 100px;
     }
     .botones-marcar button:hover { transform: translateY(-2px); }
-    .btn-entrada { background: #16a34a; color: white; }
-    .btn-entrada:hover { background: #15803d; }
-    .btn-salida { background: #dc2626; color: white; }
-    .btn-salida:hover { background: #b91c1c; }
-    .btn-ahora { background: #1e3a8a; color: white; }
-    .btn-ahora:hover { background: #2563eb; }
+    .btn-entrada { background: var(--accent); color: var(--primary); }
+    .btn-entrada:hover { background: #c5a032; }
+    .btn-salida { background: var(--error); color: white; }
+    .btn-salida:hover { background: #dc2626; }
+    .btn-ahora { background: var(--primary); color: white; }
+    .btn-ahora:hover { background: var(--secondary); }
+
     .mensaje-confirmacion {
       margin-top: 16px;
       padding: 12px;
-      background: #f1f5f9;
-      border-radius: 10px;
-      color: #1e293b;
+      background: var(--bg-light);
+      border-radius: 8px;
+      color: var(--text-dark);
       text-align: center;
       font-weight: 500;
-      min-height: 50px;
+      min-height: 48px;
       display: flex;
       align-items: center;
       justify-content: center;
     }
 
-    .table-wrap { overflow-x: auto; margin: 10px 0; }
+    /* ===== TABLAS ===== */
+    .table-wrap {
+      overflow-x: auto;
+      margin: 12px 0;
+      -webkit-overflow-scrolling: touch;
+    }
     table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
     }
     th, td {
-      padding: 10px 12px;
+      padding: 8px 10px;
       border: 1px solid #e2e8f0;
       text-align: left;
       white-space: nowrap;
     }
     th {
-      background: #f1f5f9;
-      color: #1e293b;
+      background: var(--primary);
+      color: white;
       font-weight: 600;
     }
     td { background: white; }
@@ -209,7 +346,7 @@
       display: inline-block;
       padding: 2px 10px;
       border-radius: 30px;
-      font-size: 0.75rem;
+      font-size: 0.7rem;
       font-weight: 600;
     }
     .badge-verde { background: #dcfce7; color: #166534; }
@@ -217,41 +354,47 @@
     .badge-azul { background: #dbeafe; color: #1e40af; }
     .badge-naranja { background: #fef3c7; color: #92400e; }
     .badge-gris { background: #e2e8f0; color: #475569; }
-    .dia-azul { color: #1e3a8a; font-weight: 600; }
+    .badge-dorado { background: #fef9e7; color: #8a6d0b; }
+    .dia-azul { color: var(--primary); font-weight: 600; }
 
+    /* ===== FILAS POR SEMANA (historial) ===== */
+    .fila-semana-par { background-color: #f8fafc; }
+    .fila-semana-impar { background-color: #ffffff; }
+
+    /* ===== FORMULARIOS ===== */
     .form-row {
       display: flex;
       flex-wrap: wrap;
-      gap: 12px;
+      gap: 10px;
       align-items: center;
-      margin: 10px 0 16px;
+      margin: 12px 0 16px;
     }
-    .form-row > * { flex: 1 1 180px; }
+    .form-row > * { flex: 1 1 150px; }
     input, select, button {
       padding: 10px 14px;
       border: 1px solid #cbd5e1;
       border-radius: 8px;
-      font-size: 15px;
+      font-size: 0.95rem;
       background: white;
       transition: 0.2s;
     }
     button {
-      background: #1e3a8a;
+      background: var(--primary);
       color: white;
       border: none;
       font-weight: 600;
       cursor: pointer;
     }
-    button:hover { background: #2563eb; }
-    .btn-success { background: #16a34a; }
-    .btn-success:hover { background: #15803d; }
-    .btn-danger { background: #dc2626; }
-    .btn-danger:hover { background: #b91c1c; }
-    .btn-warning { background: #f59e0b; }
+    button:hover { background: var(--secondary); }
+    .btn-success { background: var(--success); }
+    .btn-success:hover { background: #059669; }
+    .btn-danger { background: var(--error); }
+    .btn-danger:hover { background: #dc2626; }
+    .btn-warning { background: var(--warning); color: #1e293b; }
     .btn-warning:hover { background: #d97706; }
-    .btn-sm { padding: 6px 12px; font-size: 0.8rem; }
+    .btn-sm { padding: 4px 10px; font-size: 0.75rem; }
 
-    /* Modal */
+    /* ===== MODALES ===== */
     .modal-overlay {
       display: none;
       position: fixed;
@@ -265,21 +408,18 @@
     .modal-overlay.active { display: flex; }
     .modal-box {
       background: white;
-      padding: 30px;
-      border-radius: 16px;
+      padding: 28px;
+      border-radius: var(--border-radius);
       max-width: 500px;
       width: 90%;
       box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+      max-height: 90vh;
+      overflow-y: auto;
     }
-    .modal-box h3 { margin-bottom: 20px; color: #1e3a8a; }
-    .modal-box .form-group { margin-bottom: 16px; }
-    .modal-box label { display: block; font-weight: 600; margin-bottom: 4px; color: #1e293b; }
-    .modal-box input, .modal-box select {
-      width: 100%;
-      padding: 10px;
-      border: 1px solid #cbd5e1;
-      border-radius: 8px;
-    }
+    .modal-box h3 { color: var(--primary); margin-bottom: 16px; }
+    .modal-box .form-group { margin-bottom: 14px; }
+    .modal-box label { display: block; font-weight: 600; margin-bottom: 4px; color: var(--text-dark); }
+    .modal-box input, .modal-box select { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; }
     .modal-box .botones-modal {
       display: flex;
       gap: 12px;
@@ -287,91 +427,66 @@
     }
     .modal-box .botones-modal button { flex: 1; }
 
-    /* Modal para tiempos de comida al salir */
-    .modal-comida {
-      display: none;
+    /* ===== TOASTS ===== */
+    .toast-container {
       position: fixed;
-      top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.3);
-      backdrop-filter: blur(3px);
-      z-index: 1001;
-      justify-content: center;
-      align-items: center;
-    }
-    .modal-comida.active { display: flex; }
-    .modal-comida .modal-box {
-      background: white;
-      padding: 30px;
-      border-radius: 16px;
-      max-width: 400px;
-      width: 90%;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-      text-align: center;
-    }
-    .modal-comida .modal-box h3 { color: #1e3a8a; }
-    .modal-comida .modal-box select {
-      width: 100%;
-      padding: 10px;
-      margin: 16px 0;
-      border: 1px solid #cbd5e1;
-      border-radius: 8px;
-      font-size: 1.2rem;
-    }
-    .modal-comida .modal-box .botones-modal {
+      top: 20px;
+      right: 20px;
+      z-index: 9999;
       display: flex;
-      gap: 12px;
-    }
-    .modal-comida .modal-box .botones-modal button { flex: 1; }
-
-    /* Login */
-    #login-screen {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      background: #f1f5f9;
-      padding: 20px;
-    }
-    .login-box {
-      background: white;
-      padding: 40px;
-      border-radius: 16px;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-      max-width: 400px;
+      flex-direction: column;
+      gap: 10px;
+      max-width: 380px;
       width: 100%;
     }
-    .login-box h2 { color: #1e3a8a; margin-bottom: 8px; }
-    .login-box p { color: #475569; margin-bottom: 24px; }
-    .login-box input {
-      width: 100%;
-      padding: 12px;
-      margin-bottom: 16px;
-      border: 1px solid #cbd5e1;
-      border-radius: 8px;
-      font-size: 1rem;
-    }
-    .login-box button {
-      width: 100%;
-      padding: 14px;
-      background: #1e3a8a;
+    .toast {
+      padding: 14px 18px;
+      border-radius: 10px;
       color: white;
-      border: none;
-      border-radius: 8px;
-      font-size: 1.1rem;
-      font-weight: 600;
-      cursor: pointer;
+      font-weight: 500;
+      font-size: 0.9rem;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      animation: slideIn 0.3s ease;
+      cursor: default;
     }
-    .login-box button:hover { background: #2563eb; }
-    .login-error { color: #dc2626; margin-top: 12px; text-align: center; display: none; }
+    .toast-success { background: var(--success); }
+    .toast-error { background: var(--error); }
+    .toast-warning { background: var(--warning); color: #1e293b; }
+    .toast-info { background: var(--primary); }
+    .toast .toast-close {
+      background: transparent;
+      border: none;
+      color: inherit;
+      font-size: 1.4rem;
+      line-height: 1;
+      cursor: pointer;
+      padding: 0 4px;
+      opacity: 0.7;
+    }
+    .toast .toast-close:hover { opacity: 1; }
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
 
+    /* ===== RESPONSIVE ===== */
     @media (max-width: 640px) {
-      .container { padding: 12px; }
-      .tab { padding: 8px 14px; font-size: 0.8rem; }
+      .app-header h1 { font-size: 1.2rem; }
+      .app-header .user-info span { font-size: 0.8rem; }
+      .bottom-nav .nav-item .label { font-size: 0.55rem; }
+      .bottom-nav .nav-item .icon { font-size: 1.4rem; }
+      .overlay-controls { padding: 16px; }
+      .botones-marcar button { font-size: 0.9rem; padding: 12px; }
+      th, td { padding: 6px 8px; font-size: 0.75rem; }
       .form-row > * { flex: 1 1 100%; }
-      th, td { padding: 6px 8px; font-size: 0.8rem; white-space: normal; }
-      .overlay-controls { padding: 20px; }
       .modal-box { padding: 20px; }
-      .login-box { padding: 20px; }
+      .toast-container { top: 10px; right: 10px; max-width: 90%; }
+    }
+    @media (min-width: 641px) {
+      .bottom-nav .nav-item .label { display: inline-block; }
     }
   </style>
 </head>
@@ -390,28 +505,19 @@
 </div>
 
 <!-- ===== APLICACIÓN PRINCIPAL ===== -->
-<div id="app-container" class="container" style="display:none;">
-  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; margin-bottom:10px;">
+<div id="app-container" style="display:none;">
+  <!-- HEADER -->
+  <div class="app-header">
     <h1>⏱️ Control de Jornada</h1>
-    <div>
-      <span id="usuarioLogueado" style="font-weight:600; color:#1e3a8a; margin-right:16px;"></span>
-      <button onclick="cerrarSesion()" class="btn-danger btn-sm">Cerrar sesión</button>
+    <div class="user-info">
+      <span id="usuarioLogueado"></span>
+      <button onclick="cerrarSesion()">Cerrar sesión</button>
     </div>
   </div>
   <p class="subtitulo">Guatemala • Período: 11 al 10 de cada mes • Feriados oficiales</p>
 
-  <!-- PESTAÑAS -->
-  <div class="tabs">
-    <button class="tab active" data-tab="principal">🏠 Inicio</button>
-    <button class="tab" data-tab="empleados" id="tabEmpleados">👤 Empleados</button>
-    <button class="tab" data-tab="reporte">📊 Reporte Mensual</button>
-    <button class="tab" data-tab="historial">📜 Historial</button>
-    <button class="tab" data-tab="config">⚙️ Feriados</button>
-  </div>
-
-  <!-- ========================================================= -->
-  <!-- PESTAÑA PRINCIPAL                                         -->
-  <!-- ========================================================= -->
+  <!-- ===== CONTENIDO DE PESTAÑAS ===== -->
+  <!-- INICIO -->
   <div id="principal" class="tab-content active">
     <canvas id="relojCanvas"></canvas>
     <div class="overlay-controls">
@@ -443,25 +549,7 @@
     </div>
   </div>
 
-  <!-- ===== EMPLEADOS (solo admin) ===== -->
-  <div id="empleados" class="tab-content">
-    <h2>Empleados</h2>
-    <div class="form-row">
-      <input type="text" id="nombreEmp" placeholder="Nombre completo" />
-      <input type="text" id="usuarioEmp" placeholder="Usuario" />
-      <input type="text" id="passEmp" placeholder="Contraseña" />
-      <input type="number" id="salarioEmp" placeholder="Salario/hora (Q, opcional)" step="0.01" />
-      <button onclick="agregarEmpleado()" class="btn-success">➕ Agregar</button>
-    </div>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Nombre</th><th>Usuario</th><th>Salario/hora</th><th>Acciones</th></tr></thead>
-        <tbody id="tablaEmpleados"></tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- ===== REPORTE MENSUAL ===== -->
+  <!-- REPORTE MENSUAL -->
   <div id="reporte" class="tab-content">
     <h2>Reporte Mensual de Horas Extras</h2>
     <div class="form-row">
@@ -469,13 +557,13 @@
       <button onclick="generarReporte()" class="btn-success">📊 Generar</button>
       <button onclick="generarPDF()" class="btn-warning">📄 PDF</button>
     </div>
-    <p style="font-size:0.9rem; color:#475569;">Período: <span id="periodoReporte">—</span></p>
+    <p style="font-size:0.9rem; color:var(--text-gray);">Período: <span id="periodoReporte">—</span></p>
     <div id="contenedorReporte" class="table-wrap">
-      <p style="color:#94a3b8; text-align:center; padding:40px 0;">Selecciona un mes y genera el reporte.</p>
+      <p style="color:var(--text-gray); text-align:center; padding:40px 0;">Selecciona un mes y genera el reporte.</p>
     </div>
   </div>
 
-  <!-- ===== HISTORIAL ===== -->
+  <!-- HISTORIAL -->
   <div id="historial" class="tab-content">
     <h2>Historial de Asistencias</h2>
     <div class="form-row">
@@ -491,8 +579,8 @@
       </select>
       <button onclick="actualizarHistorial()" class="btn-success">📅 Mostrar</button>
     </div>
-    <div class="table-wrap">
-      <table>
+    <div class="table-wrap" id="historialTableWrap">
+      <table id="historialTable">
         <thead>
           <tr>
             <th>Fecha</th>
@@ -514,10 +602,10 @@
     </div>
   </div>
 
-  <!-- ===== FERIADOS ===== -->
+  <!-- FERIADOS -->
   <div id="config" class="tab-content">
     <h2>Feriados oficiales de Guatemala</h2>
-    <p style="color:#475569;">Los domingos son automáticamente no laborables. Agrega o elimina feriados.</p>
+    <p style="color:var(--text-gray);">Los domingos son automáticamente no laborables. Agrega o elimina feriados.</p>
     <div class="form-row">
       <input type="date" id="nuevoFeriado" />
       <input type="text" id="nombreFeriado" placeholder="Nombre (opcional)" />
@@ -532,68 +620,77 @@
   </div>
 </div>
 
-<!-- ===== MODAL DE EDICIÓN DE REGISTROS ===== -->
+<!-- ===== MENÚ INFERIOR FIJO ===== -->
+<nav class="bottom-nav" id="bottomNav" style="display:none;">
+  <button class="nav-item active" data-tab="principal">
+    <span class="icon">🏠</span>
+    <span class="label">Inicio</span>
+  </button>
+  <button class="nav-item" data-tab="reporte">
+    <span class="icon">📊</span>
+    <span class="label">Reporte</span>
+  </button>
+  <button class="nav-item" data-tab="historial">
+    <span class="icon">📜</span>
+    <span class="label">Historial</span>
+  </button>
+  <button class="nav-item" data-tab="config">
+    <span class="icon">⚙️</span>
+    <span class="label">Feriados</span>
+  </button>
+</nav>
+
+<!-- ===== MODALES ===== -->
+<!-- Editar registro -->
 <div class="modal-overlay" id="modalEditar">
   <div class="modal-box">
     <h3>✏️ Editar registro</h3>
-    <div class="form-group">
-      <label>Empleado</label>
-      <span id="modalEmpleado" style="font-weight:600;"></span>
+    <div class="form-group"><label>Empleado</label><span id="modalEmpleado" style="font-weight:600;"></span></div>
+    <div class="form-group"><label>Fecha</label><span id="modalFecha" style="font-weight:600;"></span></div>
+    <div class="form-group"><label>Entrada (HH:MM)</label><input type="time" id="modalEntrada" step="60" /></div>
+    <div class="form-group"><label>Salida (HH:MM)</label><input type="time" id="modalSalida" step="60" /></div>
+    <div class="form-group"><label>Tiempos de comida</label>
+      <select id="modalComidas"><option value="0">0</option><option value="1">1</option><option value="2">2</option></select>
     </div>
-    <div class="form-group">
-      <label>Fecha</label>
-      <span id="modalFecha" style="font-weight:600;"></span>
+    <div class="form-group"><label>Turno</label>
+      <select id="modalTurno"><option value="Diurno">Diurno</option><option value="Mixto">Mixto</option><option value="Nocturno">Nocturno</option></select>
     </div>
-    <div class="form-group">
-      <label>Entrada (HH:MM)</label>
-      <input type="time" id="modalEntrada" step="60" />
-    </div>
-    <div class="form-group">
-      <label>Salida (HH:MM)</label>
-      <input type="time" id="modalSalida" step="60" />
-    </div>
-    <div class="form-group">
-      <label>Tiempos de comida (0, 1 o 2)</label>
-      <select id="modalComidas">
-        <option value="0">0</option>
-        <option value="1">1 (descuenta 0.5h)</option>
-        <option value="2">2 (descuenta 1h)</option>
-      </select>
-    </div>
-    <div class="form-group">
-      <label>Turno</label>
-      <select id="modalTurno">
-        <option value="Diurno">Diurno</option>
-        <option value="Mixto">Mixto</option>
-        <option value="Nocturno">Nocturno</option>
-      </select>
-    </div>
-    <div class="form-group">
-      <label>Tipo de día</label>
-      <select id="modalTipo">
-        <option value="normal">Trabajado (normal)</option>
-        <option value="vacaciones">Vacaciones</option>
-        <option value="personal">Personal / Permiso</option>
-        <option value="incapacidad">Incapacidad</option>
-      </select>
+    <div class="form-group"><label>Tipo de día</label>
+      <select id="modalTipo"><option value="normal">Normal</option><option value="vacaciones">Vacaciones</option><option value="personal">Personal</option><option value="incapacidad">Incapacidad</option></select>
     </div>
     <div class="botones-modal">
       <button onclick="guardarEdicion()" class="btn-success">💾 Guardar</button>
       <button onclick="cerrarModal()" class="btn-danger">❌ Cancelar</button>
     </div>
-    <p id="modalMensaje" style="margin-top:12px; color:#dc2626; font-weight:500;"></p>
+    <p id="modalMensaje" style="margin-top:12px; color:var(--error); font-weight:500;"></p>
   </div>
 </div>
 
-<!-- ===== MODAL PARA TIEMPOS DE COMIDA AL SALIR ===== -->
-<div class="modal-comida" id="modalComidaSalida">
+<!-- Editar empleado -->
+<div class="modal-overlay" id="modalEditarEmpleado">
   <div class="modal-box">
+    <h3>✏️ Editar empleado</h3>
+    <div class="form-group"><label>Nombre</label><input type="text" id="editNombreEmp" /></div>
+    <div class="form-group"><label>Usuario</label><input type="text" id="editUsuarioEmp" /></div>
+    <div class="form-group"><label>Contraseña (dejar en blanco para no cambiar)</label><input type="text" id="editPassEmp" placeholder="Nueva contraseña" /></div>
+    <div class="form-group"><label>Salario/hora (Q)</label><input type="number" id="editSalarioEmp" step="0.01" placeholder="0.00" /></div>
+    <div class="botones-modal">
+      <button onclick="guardarEdicionEmpleado()" class="btn-success">💾 Guardar</button>
+      <button onclick="cerrarModalEmpleado()" class="btn-danger">❌ Cancelar</button>
+    </div>
+    <p id="modalMensajeEmp" style="margin-top:12px; color:var(--error); font-weight:500;"></p>
+  </div>
+</div>
+
+<!-- Comidas al salir -->
+<div class="modal-comida" id="modalComidaSalida" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.3); backdrop-filter:blur(3px); z-index:1001; justify-content:center; align-items:center;">
+  <div class="modal-box" style="max-width:400px; text-align:center;">
     <h3>🍽️ Tiempos de comida</h3>
-    <p style="color:#475569;">¿Cuántos tiempos de comida tomó el empleado?</p>
-    <select id="selectComidaSalida">
+    <p style="color:var(--text-gray);">¿Cuántos tiempos de comida tomó?</p>
+    <select id="selectComidaSalida" style="width:100%; padding:10px; margin:16px 0; border:1px solid #cbd5e1; border-radius:8px; font-size:1.2rem;">
       <option value="0">0</option>
-      <option value="1">1 (descuenta 0.5 horas)</option>
-      <option value="2">2 (descuenta 1 hora)</option>
+      <option value="1">1 (descuenta 0.5h)</option>
+      <option value="2">2 (descuenta 1h)</option>
     </select>
     <div class="botones-modal">
       <button onclick="confirmarComidaSalida()" class="btn-success">✅ Confirmar</button>
@@ -602,33 +699,8 @@
   </div>
 </div>
 
-<!-- ===== MODAL PARA EDITAR EMPLEADO (NUEVO) ===== -->
-<div class="modal-overlay" id="modalEditarEmpleado">
-  <div class="modal-box">
-    <h3>✏️ Editar empleado</h3>
-    <div class="form-group">
-      <label>Nombre</label>
-      <input type="text" id="editNombreEmp" />
-    </div>
-    <div class="form-group">
-      <label>Usuario</label>
-      <input type="text" id="editUsuarioEmp" />
-    </div>
-    <div class="form-group">
-      <label>Contraseña (dejar en blanco para no cambiar)</label>
-      <input type="text" id="editPassEmp" placeholder="Nueva contraseña" />
-    </div>
-    <div class="form-group">
-      <label>Salario/hora (Q)</label>
-      <input type="number" id="editSalarioEmp" step="0.01" placeholder="0.00" />
-    </div>
-    <div class="botones-modal">
-      <button onclick="guardarEdicionEmpleado()" class="btn-success">💾 Guardar</button>
-      <button onclick="cerrarModalEmpleado()" class="btn-danger">❌ Cancelar</button>
-    </div>
-    <p id="modalMensajeEmp" style="margin-top:12px; color:#dc2626; font-weight:500;"></p>
-  </div>
-</div>
+<!-- ===== TOAST CONTAINER ===== -->
+<div class="toast-container" id="toastContainer"></div>
 
 <script>
 // ============================================================
@@ -644,6 +716,22 @@ const firebaseConfig = {
 };
 if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
+
+// ============================================================
+// TOAST SYSTEM
+// ============================================================
+function showToast(message, type = 'info') {
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  const icons = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
+  toast.innerHTML = `
+    <span>${icons[type] || 'ℹ️'} ${message}</span>
+    <button class="toast-close" onclick="this.parentElement.remove()">×</button>
+  `;
+  container.appendChild(toast);
+  setTimeout(() => { if (toast.parentElement) toast.remove(); }, 4000);
+}
 
 // ============================================================
 // VARIABLES GLOBALES
@@ -662,15 +750,11 @@ const FERIADOS_POR_DEFECTO = [
 let editandoRegistroId = null;
 let editandoEmpleadoId = null;
 let editandoFecha = null;
-
 let salidaPendienteEmpleado = null;
 let salidaPendienteHora = null;
 let salidaPendienteRegistro = null;
-
 let usuarioActual = null;
 let esAdmin = false;
-
-// Variable para editar empleado
 let editandoEmpleadoIdGlobal = null;
 
 // ============================================================
@@ -681,6 +765,14 @@ function esDomingo(f) { return new Date(f + 'T00:00:00').getDay() === 0; }
 function esFeriado(f) { return feriados.includes(f); }
 function esNoLaborable(f) { return esDomingo(f) || esFeriado(f); }
 function diaSemana(f) { return new Date(f + 'T00:00:00').getDay(); }
+
+function getISOWeek(date) {
+  const d = new Date(date);
+  d.setHours(0,0,0,0);
+  d.setDate(d.getDate() + 3 - (d.getDay() + 6) % 7);
+  const week1 = new Date(d.getFullYear(), 0, 4);
+  return 1 + Math.round(((d - week1) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+}
 
 function horasDecimal(h) {
   if (!h) return 0;
@@ -725,14 +817,11 @@ function getJornadaMaxima(fecha, turno) {
 }
 
 function calcularExtrasYDescuento(horasBrutas, fecha, turno, tipo) {
-  if (tipo && tipo !== 'normal') {
-    return { extras: 0, descuento: 0, asistio: true };
-  }
+  if (tipo && tipo !== 'normal') return { extras: 0, descuento: 0, asistio: true };
   const jornada = getJornadaMaxima(fecha, turno);
   let extras = 0, descuento = 0;
-  if (jornada === 0) {
-    extras = horasBrutas;
-  } else {
+  if (jornada === 0) { extras = horasBrutas; }
+  else {
     extras = Math.max(0, horasBrutas - jornada);
     if (diaSemana(fecha) === 6 && !esNoLaborable(fecha)) {
       descuento = Math.max(0, jornada - horasBrutas);
@@ -747,9 +836,7 @@ function calcularExtrasYDescuento(horasBrutas, fecha, turno, tipo) {
 // OFFLINE
 // ============================================================
 function guardarLocal() {
-  try {
-    localStorage.setItem(LS_KEY, JSON.stringify({ empleados, feriados, registros: registrosCache }));
-  } catch(e) {}
+  try { localStorage.setItem(LS_KEY, JSON.stringify({ empleados, feriados, registros: registrosCache })); } catch(e) {}
 }
 function cargarLocal() {
   try {
@@ -798,26 +885,23 @@ async function sincronizarRegistros() {
 }
 
 // ============================================================
-// LOGIN / LOGOUT
+// LOGIN
 // ============================================================
 async function iniciarSesion() {
   const usuario = document.getElementById('loginUsuario').value.trim();
   const pass = document.getElementById('loginPassword').value.trim();
   const errorDiv = document.getElementById('loginError');
   errorDiv.style.display = 'none';
-
   if (!usuario || !pass) {
     errorDiv.textContent = 'Ingresa usuario y contraseña.';
     errorDiv.style.display = 'block';
     return;
   }
-
   try {
     const snap = await db.collection("jornada_empleados")
       .where("usuario", "==", usuario)
       .where("contraseña", "==", pass)
       .get();
-
     if (!snap.empty) {
       const doc = snap.docs[0];
       const data = doc.data();
@@ -829,9 +913,9 @@ async function iniciarSesion() {
         usuarioActual = { id: doc.id, nombre: data.nombre, usuario: data.usuario, rol: 'empleado', empleadoId: doc.id };
       }
       mostrarApp();
+      showToast(`Bienvenido ${usuarioActual.nombre}`, 'success');
       return;
     }
-
     errorDiv.textContent = 'Usuario o contraseña incorrectos.';
     errorDiv.style.display = 'block';
   } catch(e) {
@@ -844,17 +928,32 @@ async function iniciarSesion() {
 function mostrarApp() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app-container').style.display = 'block';
+  document.getElementById('bottomNav').style.display = 'flex';
   document.getElementById('usuarioLogueado').textContent = `👤 ${usuarioActual.nombre} (${usuarioActual.rol === 'admin' ? 'Administrador' : 'Empleado'})`;
-
-  document.getElementById('tabEmpleados').style.display = esAdmin ? 'inline-block' : 'none';
-  const filtroEmp = document.getElementById('filtroEmpleado');
+  // Ocultar pestaña de empleados si no es admin (se agrega al menú inferior si se requiere)
+  // pero no hay pestaña de empleados en el menú inferior. La gestión de empleados queda como modal o vista separada.
+  // Agregaremos acceso a empleados solo para admin en el menú inferior?
+  // Por ahora mantenemos la pestaña de empleados en el contenido, pero el menú inferior no la tiene.
+  // Agregamos un botón flotante o lo dejamos como estaba.
+  // Para simplificar, añadimos la pestaña de empleados en el menú inferior solo para admin.
+  // Pero el menú inferior ya tiene 4 botones. Podemos añadir empleados como quinto botón solo para admin.
+  // Modificamos el menú inferior dinámicamente.
+  const nav = document.getElementById('bottomNav');
+  // Limpiar y reconstruir según rol
+  // Eliminar botón de empleados si existe
+  const existingEmp = nav.querySelector('[data-tab="empleados"]');
+  if (existingEmp) existingEmp.remove();
   if (esAdmin) {
-    filtroEmp.style.display = 'inline-block';
-    llenarSelectEmpleados();
-  } else {
-    filtroEmp.style.display = 'none';
+    const btn = document.createElement('button');
+    btn.className = 'nav-item';
+    btn.dataset.tab = 'empleados';
+    btn.innerHTML = '<span class="icon">👤</span><span class="label">Empleados</span>';
+    nav.appendChild(btn);
   }
-
+  // Asegurar que el botón de inicio esté activo
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  document.querySelector('.nav-item[data-tab="principal"]').classList.add('active');
+  // Inicializar
   init();
 }
 
@@ -862,9 +961,11 @@ function cerrarSesion() {
   usuarioActual = null;
   esAdmin = false;
   document.getElementById('app-container').style.display = 'none';
+  document.getElementById('bottomNav').style.display = 'none';
   document.getElementById('login-screen').style.display = 'flex';
   document.getElementById('loginUsuario').value = '';
   document.getElementById('loginPassword').value = '';
+  showToast('Sesión cerrada', 'info');
 }
 
 // ============================================================
@@ -898,16 +999,32 @@ async function init() {
   document.getElementById('btnEntradaP').addEventListener('click', marcarEntrada);
   document.getElementById('btnSalidaP').addEventListener('click', iniciarSalidaConComidas);
   document.getElementById('btnAhoraP').addEventListener('click', usarHoraActual);
+
+  // Navegación inferior
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', function() {
+      const tabId = this.dataset.tab;
+      if (!tabId) return;
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      const target = document.getElementById(tabId);
+      if (target) target.classList.add('active');
+      document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      if (tabId === 'reporte') generarReporte();
+      if (tabId === 'historial') actualizarHistorial();
+      if (tabId === 'principal') actualizarCalendario();
+      if (tabId === 'empleados') mostrarEmpleados();
+    });
+  });
 }
 
 // ============================================================
-// RELOJ ANALÓGICO
+// RELOJ
 // ============================================================
 function iniciarReloj() {
   const canvas = document.getElementById('relojCanvas');
   const ctx = canvas.getContext('2d');
   let animId = null;
-
   function resizeCanvas() {
     const parent = canvas.parentElement;
     canvas.width = parent.offsetWidth;
@@ -918,101 +1035,58 @@ function iniciarReloj() {
 
   function dibujarReloj() {
     const w = canvas.width, h = canvas.height;
-    const centroX = w/2, centroY = h/2;
-    const radio = Math.min(w, h) * 0.38;
-
-    ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = 'rgba(255,255,255,0.15)';
-    ctx.beginPath();
-    ctx.arc(centroX, centroY, radio + 10, 0, 2*Math.PI);
-    ctx.fill();
-
+    const cx = w/2, cy = h/2;
+    const r = Math.min(w, h) * 0.38;
+    ctx.clearRect(0,0,w,h);
+    ctx.fillStyle = 'rgba(255,255,255,0.1)';
+    ctx.beginPath(); ctx.arc(cx, cy, r+10, 0, 2*Math.PI); ctx.fill();
     ctx.shadowColor = 'rgba(0,0,0,0.05)';
     ctx.shadowBlur = 20;
-    ctx.beginPath();
-    ctx.arc(centroX, centroY, radio, 0, 2*Math.PI);
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, 2*Math.PI);
     ctx.fillStyle = 'rgba(255,255,255,0.7)';
     ctx.fill();
     ctx.shadowBlur = 0;
-    ctx.strokeStyle = '#1e3a8a';
+    ctx.strokeStyle = 'var(--primary)';
     ctx.lineWidth = 2;
     ctx.stroke();
-
-    ctx.fillStyle = '#1e3a8a';
-    ctx.font = `${radio * 0.15}px 'Segoe UI', sans-serif`;
+    ctx.fillStyle = 'var(--primary)';
+    ctx.font = `${r * 0.15}px 'Segoe UI', sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    for (let i = 1; i <= 12; i++) {
-      const ang = (i / 12) * 2 * Math.PI - Math.PI/2;
-      const x = centroX + radio * 0.80 * Math.cos(ang);
-      const y = centroY + radio * 0.80 * Math.sin(ang);
-      ctx.fillText(i, x, y);
+    for (let i=1;i<=12;i++) {
+      const ang = (i/12)*2*Math.PI - Math.PI/2;
+      ctx.fillText(i, cx + r*0.80*Math.cos(ang), cy + r*0.80*Math.sin(ang));
     }
-
-    for (let i = 0; i < 60; i++) {
-      const ang = (i / 60) * 2 * Math.PI - Math.PI/2;
-      const len = (i % 5 === 0) ? radio * 0.08 : radio * 0.04;
-      const x1 = centroX + (radio - len) * Math.cos(ang);
-      const y1 = centroY + (radio - len) * Math.sin(ang);
-      const x2 = centroX + radio * Math.cos(ang);
-      const y2 = centroY + radio * Math.sin(ang);
+    for (let i=0;i<60;i++) {
+      const ang = (i/60)*2*Math.PI - Math.PI/2;
+      const len = (i%5===0) ? r*0.08 : r*0.04;
       ctx.beginPath();
-      ctx.moveTo(x1, y1);
-      ctx.lineTo(x2, y2);
-      ctx.strokeStyle = (i % 5 === 0) ? '#1e3a8a' : '#94a3b8';
-      ctx.lineWidth = (i % 5 === 0) ? 2 : 1;
+      ctx.moveTo(cx + (r-len)*Math.cos(ang), cy + (r-len)*Math.sin(ang));
+      ctx.lineTo(cx + r*Math.cos(ang), cy + r*Math.sin(ang));
+      ctx.strokeStyle = (i%5===0) ? 'var(--primary)' : '#94a3b8';
+      ctx.lineWidth = (i%5===0) ? 2 : 1;
       ctx.stroke();
     }
-
     const ahora = new Date();
-    let horas = ahora.getHours() % 12;
-    const minutos = ahora.getMinutes();
-    const segundos = ahora.getSeconds();
-
-    const angHora = (horas / 12) * 2 * Math.PI + (minutos / 60) * (2 * Math.PI / 12) - Math.PI/2;
-    ctx.beginPath();
-    ctx.moveTo(centroX, centroY);
-    ctx.lineTo(centroX + radio * 0.50 * Math.cos(angHora), centroY + radio * 0.50 * Math.sin(angHora));
-    ctx.strokeStyle = '#1e3a8a';
-    ctx.lineWidth = 5;
-    ctx.lineCap = 'round';
-    ctx.stroke();
-
-    const angMin = (minutos / 60) * 2 * Math.PI - Math.PI/2;
-    ctx.beginPath();
-    ctx.moveTo(centroX, centroY);
-    ctx.lineTo(centroX + radio * 0.68 * Math.cos(angMin), centroY + radio * 0.68 * Math.sin(angMin));
-    ctx.strokeStyle = '#2563eb';
-    ctx.lineWidth = 3;
-    ctx.stroke();
-
-    const angSeg = (segundos / 60) * 2 * Math.PI - Math.PI/2;
-    ctx.beginPath();
-    ctx.moveTo(centroX, centroY);
-    ctx.lineTo(centroX + radio * 0.75 * Math.cos(angSeg), centroY + radio * 0.75 * Math.sin(angSeg));
-    ctx.strokeStyle = '#dc2626';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.arc(centroX, centroY, 6, 0, 2*Math.PI);
-    ctx.fillStyle = '#1e3a8a';
-    ctx.fill();
+    let hrs = ahora.getHours() % 12, min = ahora.getMinutes(), seg = ahora.getSeconds();
+    const angH = (hrs/12)*2*Math.PI + (min/60)*(2*Math.PI/12) - Math.PI/2;
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + r*0.50*Math.cos(angH), cy + r*0.50*Math.sin(angH));
+    ctx.strokeStyle = 'var(--primary)'; ctx.lineWidth = 5; ctx.lineCap='round'; ctx.stroke();
+    const angM = (min/60)*2*Math.PI - Math.PI/2;
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + r*0.68*Math.cos(angM), cy + r*0.68*Math.sin(angM));
+    ctx.strokeStyle = 'var(--secondary)'; ctx.lineWidth = 3; ctx.stroke();
+    const angS = (seg/60)*2*Math.PI - Math.PI/2;
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + r*0.75*Math.cos(angS), cy + r*0.75*Math.sin(angS));
+    ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx, cy, 6, 0, 2*Math.PI); ctx.fillStyle='var(--primary)'; ctx.fill();
   }
-
-  function loop() {
-    dibujarReloj();
-    animId = requestAnimationFrame(loop);
-  }
+  function loop() { dibujarReloj(); animId = requestAnimationFrame(loop); }
   loop();
-
-  window.addEventListener('resize', () => {
-    resizeCanvas();
-  });
+  window.addEventListener('resize', resizeCanvas);
 }
 
 // ============================================================
-// CALENDARIO ACTUAL
+// CALENDARIO
 // ============================================================
 function actualizarCalendario() {
   const ahora = new Date();
@@ -1022,10 +1096,9 @@ function actualizarCalendario() {
   document.getElementById('diaNumero').textContent = ahora.getDate();
   document.getElementById('mesNombre').textContent = meses[ahora.getMonth()];
   document.getElementById('anio').textContent = ahora.getFullYear();
-
   const hoyStr = hoy();
-  const feriadoInfo = esFeriado(hoyStr) ? '🔴 Hoy es feriado' : (esDomingo(hoyStr) ? '🔵 Domingo (no laborable)' : '🟢 Día laborable');
-  document.getElementById('infoFeriado').textContent = feriadoInfo;
+  const info = esFeriado(hoyStr) ? '🔴 Hoy es feriado' : (esDomingo(hoyStr) ? '🔵 Domingo (no laborable)' : '🟢 Día laborable');
+  document.getElementById('infoFeriado').textContent = info;
 }
 
 // ============================================================
@@ -1038,141 +1111,80 @@ function obtenerEmpleadoSeleccionado() {
 
 function marcarEntrada() {
   const emp = obtenerEmpleadoSeleccionado();
-  if (!emp) { mostrarMensaje('⚠️ Selecciona un empleado.', 'rojo'); return; }
-
+  if (!emp) { showToast('⚠️ Selecciona un empleado.', 'warning'); return; }
   if (!esAdmin && usuarioActual.empleadoId !== emp.id) {
-    mostrarMensaje('⚠️ Solo puedes marcar tu propia entrada.', 'rojo');
+    showToast('⚠️ Solo puedes marcar tu propia entrada.', 'warning');
     return;
   }
-
   const fecha = hoy();
   const entrada = document.getElementById('horaEntradaP').value || new Date().toLocaleTimeString('es-GT', { hour:'2-digit', minute:'2-digit' });
   const turno = determinarTurno(entrada);
-
   const activo = registrosCache.find(r => r.empleadoId === emp.id && r.fecha === fecha && !r.salida);
   if (activo) {
-    mostrarMensaje(`⚠️ ${emp.nombre} ya tiene entrada activa. Marque salida primero.`, 'rojo');
+    showToast(`⚠️ ${emp.nombre} ya tiene entrada activa. Marque salida primero.`, 'warning');
     return;
   }
-
   const nuevo = {
-    empleadoId: emp.id,
-    nombre: emp.nombre,
-    fecha: fecha,
-    entrada: entrada,
-    salida: null,
-    turno: turno,
-    tiemposComida: 0,
-    tipo: 'normal',
+    empleadoId: emp.id, nombre: emp.nombre, fecha, entrada, salida: null,
+    turno, tiemposComida: 0, tipo: 'normal',
     timestamp: new Date().toISOString()
   };
-
   db.collection("jornada_registros").add(nuevo)
-    .then(docRef => {
-      nuevo.id = docRef.id;
-      registrosCache.push(nuevo);
-      guardarLocal();
-      mostrarMensaje(`✅ Entrada registrada para ${emp.nombre} a las ${entrada} (Turno: ${turno})`, 'verde');
+    .then(docRef => { nuevo.id = docRef.id; registrosCache.push(nuevo); guardarLocal();
+      showToast(`✅ Entrada registrada para ${emp.nombre} a las ${entrada} (Turno: ${turno})`, 'success');
       actualizarHistorial();
     })
-    .catch(() => {
-      nuevo.id = 'temp_' + Date.now();
-      registrosCache.push(nuevo);
-      guardarLocal();
-      mostrarMensaje(`⚠️ Entrada guardada localmente (sin conexión) para ${emp.nombre}`, 'naranja');
+    .catch(() => { nuevo.id = 'temp_'+Date.now(); registrosCache.push(nuevo); guardarLocal();
+      showToast(`⚠️ Entrada guardada localmente para ${emp.nombre}`, 'warning');
       actualizarHistorial();
     });
 }
 
 function iniciarSalidaConComidas() {
   const emp = obtenerEmpleadoSeleccionado();
-  if (!emp) { mostrarMensaje('⚠️ Selecciona un empleado.', 'rojo'); return; }
-
+  if (!emp) { showToast('⚠️ Selecciona un empleado.', 'warning'); return; }
   if (!esAdmin && usuarioActual.empleadoId !== emp.id) {
-    mostrarMensaje('⚠️ Solo puedes marcar tu propia salida.', 'rojo');
+    showToast('⚠️ Solo puedes marcar tu propia salida.', 'warning');
     return;
   }
-
   const fecha = hoy();
   const salida = document.getElementById('horaSalidaP').value || new Date().toLocaleTimeString('es-GT', { hour:'2-digit', minute:'2-digit' });
-
   const registro = registrosCache.find(r => r.empleadoId === emp.id && r.fecha === fecha && !r.salida);
   if (!registro) {
-    mostrarMensaje(`⚠️ No hay entrada activa para ${emp.nombre}.`, 'rojo');
+    showToast(`⚠️ No hay entrada activa para ${emp.nombre}.`, 'warning');
     return;
   }
-
   salidaPendienteEmpleado = emp;
   salidaPendienteHora = salida;
   salidaPendienteRegistro = registro;
-
-  document.getElementById('modalComidaSalida').classList.add('active');
+  document.getElementById('modalComidaSalida').style.display = 'flex';
 }
 
 function confirmarComidaSalida() {
   const tiempos = parseInt(document.getElementById('selectComidaSalida').value);
-  const emp = salidaPendienteEmpleado;
-  const salida = salidaPendienteHora;
-  const registro = salidaPendienteRegistro;
-
-  if (!emp || !registro) {
-    cancelarComidaSalida();
-    return;
-  }
-
+  const emp = salidaPendienteEmpleado, salida = salidaPendienteHora, registro = salidaPendienteRegistro;
+  if (!emp || !registro) { cancelarComidaSalida(); return; }
   registro.salida = salida;
   registro.tiemposComida = tiempos;
   registro.timestampSalida = new Date().toISOString();
-
   if (registro.id && !registro.id.startsWith('temp_')) {
-    db.collection("jornada_registros").doc(registro.id).update({
-      salida: salida,
-      tiemposComida: tiempos,
-      timestampSalida: new Date().toISOString()
-    })
-    .then(() => {
-      guardarLocal();
-      mostrarMensaje(`✅ Salida registrada para ${emp.nombre} a las ${salida} (${tiempos} tiempo(s) de comida)`, 'verde');
-      actualizarHistorial();
-      cerrarComidaSalida();
-    })
-    .catch(() => {
-      guardarLocal();
-      mostrarMensaje(`⚠️ Salida guardada localmente (sin conexión) para ${emp.nombre}`, 'naranja');
-      actualizarHistorial();
-      cerrarComidaSalida();
-    });
-  } else {
-    guardarLocal();
-    mostrarMensaje(`✅ Salida registrada localmente para ${emp.nombre}`, 'verde');
-    actualizarHistorial();
-    cerrarComidaSalida();
-  }
+    db.collection("jornada_registros").doc(registro.id).update({ salida, tiemposComida: tiempos, timestampSalida: new Date().toISOString() })
+      .then(() => { guardarLocal();
+        showToast(`✅ Salida registrada para ${emp.nombre} a las ${salida} (${tiempos} tiempo(s) de comida)`, 'success');
+        actualizarHistorial(); cerrarComidaSalida();
+      })
+      .catch(() => { guardarLocal(); showToast(`⚠️ Salida guardada localmente para ${emp.nombre}`, 'warning'); actualizarHistorial(); cerrarComidaSalida(); });
+  } else { guardarLocal(); showToast(`✅ Salida registrada localmente para ${emp.nombre}`, 'success'); actualizarHistorial(); cerrarComidaSalida(); }
 }
 
-function cancelarComidaSalida() {
-  cerrarComidaSalida();
-  mostrarMensaje('❌ Salida cancelada.', 'rojo');
-}
-
-function cerrarComidaSalida() {
-  document.getElementById('modalComidaSalida').classList.remove('active');
-  salidaPendienteEmpleado = null;
-  salidaPendienteHora = null;
-  salidaPendienteRegistro = null;
-}
+function cancelarComidaSalida() { cerrarComidaSalida(); showToast('❌ Salida cancelada.', 'error'); }
+function cerrarComidaSalida() { document.getElementById('modalComidaSalida').style.display = 'none'; salidaPendienteEmpleado = null; salidaPendienteHora = null; salidaPendienteRegistro = null; }
 
 function usarHoraActual() {
   const ahora = new Date().toLocaleTimeString('es-GT', { hour:'2-digit', minute:'2-digit' });
   document.getElementById('horaEntradaP').value = ahora;
   document.getElementById('horaSalidaP').value = ahora;
-  mostrarMensaje(`🔄 Hora actual establecida: ${ahora}`, 'azul');
-}
-
-function mostrarMensaje(texto, tipo) {
-  const el = document.getElementById('mensajeP');
-  el.textContent = texto;
-  el.style.color = tipo === 'rojo' ? '#dc2626' : tipo === 'verde' ? '#16a34a' : tipo === 'naranja' ? '#f59e0b' : '#1e3a8a';
+  showToast(`🔄 Hora actual establecida: ${ahora}`, 'info');
 }
 
 function actualizarSelects() {
@@ -1180,25 +1192,20 @@ function actualizarSelects() {
   sel.innerHTML = '';
   if (esAdmin) {
     sel.innerHTML = '<option value="">Selecciona empleado</option>';
-    empleados.forEach(e => {
-      sel.innerHTML += `<option value="${e.id}">${e.nombre}</option>`;
-    });
+    empleados.forEach(e => { sel.innerHTML += `<option value="${e.id}">${e.nombre}</option>`; });
   } else {
     const emp = empleados.find(e => e.id === usuarioActual.empleadoId);
-    if (emp) {
-      sel.innerHTML = `<option value="${emp.id}">${emp.nombre}</option>`;
-    } else {
-      sel.innerHTML = '<option value="">No disponible</option>';
-    }
+    if (emp) sel.innerHTML = `<option value="${emp.id}">${emp.nombre}</option>`;
+    else sel.innerHTML = '<option value="">No disponible</option>';
   }
 }
 
 // ============================================================
-// EMPLEADOS (solo admin) - CON EDICIÓN
+// EMPLEADOS (solo admin)
 // ============================================================
 function mostrarEmpleados() {
   if (!esAdmin) {
-    document.getElementById('tablaEmpleados').innerHTML = '<tr><td colspan="4" style="text-align:center;">Acceso restringido a administradores.</td></tr>';
+    document.getElementById('tablaEmpleados').innerHTML = '<tr><td colspan="4" style="text-align:center;">Acceso restringido.</td></tr>';
     return;
   }
   const tbody = document.getElementById('tablaEmpleados');
@@ -1218,71 +1225,43 @@ function mostrarEmpleados() {
     `;
   });
   if (tbody.innerHTML === '') {
-    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:#94a3b8;">No hay empleados registrados.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--text-gray);">No hay empleados registrados.</td></tr>`;
   }
 }
 
 async function agregarEmpleado() {
-  if (!esAdmin) { alert('Solo el administrador puede agregar empleados.'); return; }
+  if (!esAdmin) { showToast('Solo el administrador puede agregar empleados.', 'error'); return; }
   const nombre = document.getElementById('nombreEmp').value.trim();
   const usuario = document.getElementById('usuarioEmp').value.trim();
   const pass = document.getElementById('passEmp').value.trim();
   const salario = parseFloat(document.getElementById('salarioEmp').value) || 0;
-
-  if (!nombre || !usuario || !pass) {
-    alert('Nombre, usuario y contraseña son obligatorios.');
-    return;
-  }
-
-  if (empleados.some(e => e.usuario === usuario)) {
-    alert('Ese usuario ya está registrado.');
-    return;
-  }
-
+  if (!nombre || !usuario || !pass) { showToast('Nombre, usuario y contraseña son obligatorios.', 'warning'); return; }
+  if (empleados.some(e => e.usuario === usuario)) { showToast('Ese usuario ya está registrado.', 'error'); return; }
   try {
-    const ref = await db.collection("jornada_empleados").add({
-      nombre,
-      usuario,
-      contraseña: pass,
-      salarioHora: salario,
-      rol: 'empleado'
-    });
+    const ref = await db.collection("jornada_empleados").add({ nombre, usuario, contraseña: pass, salarioHora: salario, rol: 'empleado' });
     empleados.push({ id: ref.id, nombre, usuario, contraseña: pass, salarioHora: salario, rol: 'empleado' });
     guardarLocal();
-    document.getElementById('nombreEmp').value = '';
-    document.getElementById('usuarioEmp').value = '';
-    document.getElementById('passEmp').value = '';
-    document.getElementById('salarioEmp').value = '';
-    actualizarSelects();
-    mostrarEmpleados();
-    if (esAdmin) llenarSelectEmpleados();
-  } catch(e) { alert('Error al guardar empleado.'); }
+    document.getElementById('nombreEmp').value = ''; document.getElementById('usuarioEmp').value = ''; document.getElementById('passEmp').value = ''; document.getElementById('salarioEmp').value = '';
+    actualizarSelects(); mostrarEmpleados(); if (esAdmin) llenarSelectEmpleados();
+    showToast('✅ Empleado agregado correctamente.', 'success');
+  } catch(e) { showToast('Error al guardar empleado.', 'error'); }
 }
 
 async function eliminarEmpleado(id) {
-  if (!esAdmin) { alert('Solo el administrador puede eliminar empleados.'); return; }
+  if (!esAdmin) { showToast('Solo el administrador puede eliminar empleados.', 'error'); return; }
   if (!confirm('¿Eliminar este empleado y todos sus registros?')) return;
   try {
     const regs = registrosCache.filter(r => r.empleadoId === id);
-    for (let r of regs) {
-      if (r.id && !r.id.startsWith('temp_')) {
-        await db.collection("jornada_registros").doc(r.id).delete();
-      }
-    }
+    for (let r of regs) { if (r.id && !r.id.startsWith('temp_')) await db.collection("jornada_registros").doc(r.id).delete(); }
     await db.collection("jornada_empleados").doc(id).delete();
     empleados = empleados.filter(e => e.id !== id);
     registrosCache = registrosCache.filter(r => r.empleadoId !== id);
     guardarLocal();
-    actualizarSelects();
-    mostrarEmpleados();
-    actualizarHistorial();
-    if (esAdmin) llenarSelectEmpleados();
-  } catch(e) { alert('Error al eliminar.'); }
+    actualizarSelects(); mostrarEmpleados(); actualizarHistorial(); if (esAdmin) llenarSelectEmpleados();
+    showToast('✅ Empleado eliminado.', 'success');
+  } catch(e) { showToast('Error al eliminar.', 'error'); }
 }
 
-// ============================================================
-// ABRIR MODAL PARA EDITAR EMPLEADO
-// ============================================================
 function abrirModalEditarEmpleado(id) {
   const emp = empleados.find(e => e.id === id);
   if (!emp) return;
@@ -1295,10 +1274,7 @@ function abrirModalEditarEmpleado(id) {
   document.getElementById('modalEditarEmpleado').classList.add('active');
 }
 
-function cerrarModalEmpleado() {
-  document.getElementById('modalEditarEmpleado').classList.remove('active');
-  editandoEmpleadoIdGlobal = null;
-}
+function cerrarModalEmpleado() { document.getElementById('modalEditarEmpleado').classList.remove('active'); editandoEmpleadoIdGlobal = null; }
 
 async function guardarEdicionEmpleado() {
   const id = editandoEmpleadoIdGlobal;
@@ -1307,71 +1283,35 @@ async function guardarEdicionEmpleado() {
   const usuario = document.getElementById('editUsuarioEmp').value.trim();
   const nuevaPass = document.getElementById('editPassEmp').value.trim();
   const salario = parseFloat(document.getElementById('editSalarioEmp').value) || 0;
-
-  if (!nombre || !usuario) {
-    document.getElementById('modalMensajeEmp').textContent = 'Nombre y usuario son obligatorios.';
-    return;
-  }
-
-  // Verificar que el usuario no esté en uso por otro empleado
+  if (!nombre || !usuario) { document.getElementById('modalMensajeEmp').textContent = 'Nombre y usuario son obligatorios.'; return; }
   const duplicado = empleados.find(e => e.usuario === usuario && e.id !== id);
-  if (duplicado) {
-    document.getElementById('modalMensajeEmp').textContent = 'Ese usuario ya está registrado por otro empleado.';
-    return;
-  }
-
+  if (duplicado) { document.getElementById('modalMensajeEmp').textContent = 'Ese usuario ya está registrado.'; return; }
   try {
-    const updateData = {
-      nombre,
-      usuario,
-      salarioHora: salario
-    };
-    if (nuevaPass) {
-      updateData.contraseña = nuevaPass;
-    }
-
+    const updateData = { nombre, usuario, salarioHora: salario };
+    if (nuevaPass) updateData.contraseña = nuevaPass;
     await db.collection("jornada_empleados").doc(id).update(updateData);
-    // Actualizar cache local
     const emp = empleados.find(e => e.id === id);
-    if (emp) {
-      emp.nombre = nombre;
-      emp.usuario = usuario;
-      if (nuevaPass) emp.contraseña = nuevaPass;
-      emp.salarioHora = salario;
-    }
+    if (emp) { emp.nombre = nombre; emp.usuario = usuario; if (nuevaPass) emp.contraseña = nuevaPass; emp.salarioHora = salario; }
     guardarLocal();
     cerrarModalEmpleado();
-    mostrarEmpleados();
-    actualizarSelects();
-    if (esAdmin) llenarSelectEmpleados();
-    // Si el usuario actual es el que se editó y se cambió su contraseña, cerrar sesión?
-    // No cerramos sesión automáticamente para no interrumpir.
-    alert('Empleado actualizado correctamente.');
-  } catch(e) {
-    document.getElementById('modalMensajeEmp').textContent = 'Error al guardar.';
-    console.error(e);
-  }
+    mostrarEmpleados(); actualizarSelects(); if (esAdmin) llenarSelectEmpleados();
+    showToast('✅ Empleado actualizado.', 'success');
+  } catch(e) { document.getElementById('modalMensajeEmp').textContent = 'Error al guardar.'; console.error(e); }
 }
 
 // ============================================================
-// SELECTOR DE EMPLEADOS PARA EL HISTORIAL
+// SELECTOR EMPLEADOS PARA HISTORIAL
 // ============================================================
 function llenarSelectEmpleados() {
   const sel = document.getElementById('filtroEmpleado');
-  if (!esAdmin) {
-    sel.style.display = 'none';
-    return;
-  }
+  if (!esAdmin) { sel.style.display = 'none'; return; }
   sel.style.display = 'inline-block';
   sel.innerHTML = '<option value="todos">Todos los empleados</option>';
-  empleados.forEach(e => {
-    if (e.rol === 'admin') return;
-    sel.innerHTML += `<option value="${e.id}">${e.nombre}</option>`;
-  });
+  empleados.forEach(e => { if (e.rol === 'admin') return; sel.innerHTML += `<option value="${e.id}">${e.nombre}</option>`; });
 }
 
 // ============================================================
-// HISTORIAL
+// HISTORIAL (con colores por semana y sin número de semana)
 // ============================================================
 function llenarSelectHistorial() {
   const sel = document.getElementById('mesHistorial');
@@ -1412,7 +1352,6 @@ function actualizarHistorial() {
 
   const tbody = document.getElementById('tablaHistorial');
   tbody.innerHTML = '';
-
   const nombreDias = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
 
   let empleadosFiltrados = empleados;
@@ -1422,27 +1361,28 @@ function actualizarHistorial() {
     empleadosFiltrados = empleados.filter(e => e.id === filtroEmpleadoId);
   }
 
+  // Agrupar por semana para coloreado
+  const semanaMap = {};
+  dias.forEach(fecha => {
+    const weekNum = getISOWeek(fecha);
+    if (!semanaMap[weekNum]) semanaMap[weekNum] = [];
+    semanaMap[weekNum].push(fecha);
+  });
+  const weekKeys = Object.keys(semanaMap).sort((a,b) => a-b);
+  const weekColorMap = {};
+  weekKeys.forEach((key, idx) => {
+    weekColorMap[key] = idx % 2 === 0 ? 'fila-semana-par' : 'fila-semana-impar';
+  });
+
   empleadosFiltrados.forEach(emp => {
     dias.forEach(fecha => {
       let registro = registrosCache.find(r => r.empleadoId === emp.id && r.fecha === fecha);
       if (!registro) {
-        registro = {
-          empleadoId: emp.id,
-          nombre: emp.nombre,
-          fecha: fecha,
-          entrada: null,
-          salida: null,
-          turno: 'Diurno',
-          tiemposComida: 0,
-          tipo: 'normal',
-          id: null
-        };
+        registro = { empleadoId: emp.id, nombre: emp.nombre, fecha, entrada: null, salida: null, turno: 'Diurno', tiemposComida: 0, tipo: 'normal', id: null };
       }
-
       if (filtroTurno !== 'todos' && registro.turno !== filtroTurno) {
         if (!registro.id) return;
       }
-
       const dia = diaSemana(fecha);
       const nombreDia = nombreDias[dia];
       const entrada = registro.entrada || '—';
@@ -1451,19 +1391,14 @@ function actualizarHistorial() {
       const tiempos = registro.tiemposComida || 0;
       const tipo = registro.tipo || 'normal';
 
-      let horasBrutas = 0, extras = 0, descuento = 0;
-      let asistio = false;
-      let tipoLabel = 'Normal';
-      let badgeClass = 'badge-verde';
+      let horasBrutas = 0, extras = 0, descuento = 0, asistio = false;
+      let tipoLabel = 'Normal', badgeClass = 'badge-verde';
 
       if (registro.entrada && registro.salida) {
         horasBrutas = calcularHorasBrutas(registro.entrada, registro.salida, tiempos);
         const calc = calcularExtrasYDescuento(horasBrutas, fecha, turno, tipo);
-        extras = calc.extras;
-        descuento = calc.descuento;
-        asistio = true;
-        tipoLabel = 'Trabajado';
-        badgeClass = 'badge-verde';
+        extras = calc.extras; descuento = calc.descuento; asistio = true;
+        tipoLabel = 'Trabajado'; badgeClass = 'badge-verde';
       } else if (tipo !== 'normal') {
         asistio = true;
         if (tipo === 'vacaciones') { tipoLabel = 'Vacaciones'; badgeClass = 'badge-azul'; }
@@ -1471,37 +1406,31 @@ function actualizarHistorial() {
         else if (tipo === 'incapacidad') { tipoLabel = 'Incapacidad'; badgeClass = 'badge-gris'; }
       } else {
         asistio = false;
-        if (dia === 0) {
-          tipoLabel = 'Domingo (no laborable)';
-          badgeClass = 'badge-gris';
-        } else if (esFeriado(fecha)) {
-          tipoLabel = 'Feriado (no laborable)';
-          badgeClass = 'badge-gris';
-        } else if (dia === 6) {
+        if (dia === 0) { tipoLabel = 'Domingo (no laborable)'; badgeClass = 'badge-gris'; }
+        else if (esFeriado(fecha)) { tipoLabel = 'Feriado (no laborable)'; badgeClass = 'badge-gris'; }
+        else if (dia === 6) {
           const jornada = getJornadaMaxima(fecha, turno);
           descuento = jornada;
-          tipoLabel = 'Sábado no trabajado';
-          badgeClass = 'badge-rojo';
-        } else {
-          tipoLabel = 'Falta';
-          badgeClass = 'badge-rojo';
-        }
+          tipoLabel = 'Sábado no trabajado'; badgeClass = 'badge-rojo';
+        } else { tipoLabel = 'Falta'; badgeClass = 'badge-rojo'; }
       }
 
-      const horasStr = (asistio && horasBrutas > 0) ? horasBrutas.toFixed(2) + 'h' : '—';
-      const extrasStr = (asistio && extras > 0) ? extras.toFixed(2) + 'h' : '—';
-      const descuentoStr = (descuento > 0) ? descuento.toFixed(2) + 'h' : '—';
+      const horasStr = (asistio && horasBrutas > 0) ? horasBrutas.toFixed(2)+'h' : '—';
+      const extrasStr = (asistio && extras > 0) ? extras.toFixed(2)+'h' : '—';
+      const descuentoStr = (descuento > 0) ? descuento.toFixed(2)+'h' : '—';
       const comidasStr = tiempos > 0 ? tiempos : '—';
 
       let accionesHtml = '';
       if (esAdmin || (usuarioActual && usuarioActual.empleadoId === emp.id)) {
         accionesHtml = `<button class="btn-warning btn-sm" onclick="abrirModalEditar('${emp.id}','${fecha}')">✏️ Editar</button>`;
-      } else {
-        accionesHtml = '—';
-      }
+      } else { accionesHtml = '—'; }
+
+      // Asignar clase de semana para coloreado
+      const weekNum = getISOWeek(fecha);
+      const rowClass = weekColorMap[weekNum] || '';
 
       tbody.innerHTML += `
-        <tr>
+        <tr class="${rowClass}">
           <td>${fecha}</td>
           <td><span class="dia-azul">${nombreDia}</span></td>
           <td>${emp.nombre}</td>
@@ -1520,7 +1449,7 @@ function actualizarHistorial() {
   });
 
   if (tbody.innerHTML === '') {
-    tbody.innerHTML = `<tr><td colspan="12" style="text-align:center;color:#94a3b8;">No hay registros para este período</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="12" style="text-align:center;color:var(--text-gray);">No hay registros para este período</td></tr>`;
   }
 }
 
@@ -1529,21 +1458,17 @@ function actualizarHistorial() {
 // ============================================================
 function abrirModalEditar(empleadoId, fecha) {
   if (!esAdmin && usuarioActual.empleadoId !== empleadoId) {
-    alert('No tienes permiso para editar este registro.');
+    showToast('No tienes permiso para editar este registro.', 'error');
     return;
   }
-
   let registro = registrosCache.find(r => r.empleadoId === empleadoId && r.fecha === fecha);
   const emp = empleados.find(e => e.id === empleadoId);
-  if (!emp) { alert('Empleado no encontrado'); return; }
-
+  if (!emp) { showToast('Empleado no encontrado.', 'error'); return; }
   editandoRegistroId = registro ? registro.id : null;
   editandoEmpleadoId = empleadoId;
   editandoFecha = fecha;
-
   document.getElementById('modalEmpleado').textContent = emp.nombre;
   document.getElementById('modalFecha').textContent = fecha;
-
   if (registro) {
     document.getElementById('modalEntrada').value = registro.entrada || '';
     document.getElementById('modalSalida').value = registro.salida || '';
@@ -1557,14 +1482,11 @@ function abrirModalEditar(empleadoId, fecha) {
     document.getElementById('modalTurno').value = 'Diurno';
     document.getElementById('modalTipo').value = 'normal';
   }
-
   document.getElementById('modalMensaje').textContent = '';
   document.getElementById('modalEditar').classList.add('active');
 }
 
-function cerrarModal() {
-  document.getElementById('modalEditar').classList.remove('active');
-}
+function cerrarModal() { document.getElementById('modalEditar').classList.remove('active'); }
 
 function guardarEdicion() {
   const entrada = document.getElementById('modalEntrada').value;
@@ -1572,74 +1494,32 @@ function guardarEdicion() {
   const tipo = document.getElementById('modalTipo').value;
   const tiempos = parseInt(document.getElementById('modalComidas').value);
   const turno = document.getElementById('modalTurno').value;
-
   if (tipo === 'normal' && (!entrada || !salida)) {
     document.getElementById('modalMensaje').textContent = '⚠️ Para tipo "normal" debe tener entrada y salida.';
     return;
   }
-
   const emp = empleados.find(e => e.id === editandoEmpleadoId);
-  if (!emp) { alert('Empleado no encontrado'); return; }
-
+  if (!emp) { showToast('Empleado no encontrado.', 'error'); return; }
   let registro = registrosCache.find(r => r.empleadoId === editandoEmpleadoId && r.fecha === editandoFecha);
   const esNuevo = !registro;
-
   const datos = {
-    empleadoId: editandoEmpleadoId,
-    nombre: emp.nombre,
-    fecha: editandoFecha,
-    entrada: entrada || null,
-    salida: salida || null,
-    turno: turno,
-    tiemposComida: tiempos,
-    tipo: tipo,
+    empleadoId: editandoEmpleadoId, nombre: emp.nombre, fecha: editandoFecha,
+    entrada: entrada || null, salida: salida || null, turno, tiemposComida: tiempos, tipo,
     timestamp: new Date().toISOString()
   };
-
   if (esNuevo) {
     db.collection("jornada_registros").add(datos)
-      .then(docRef => {
-        datos.id = docRef.id;
-        registrosCache.push(datos);
-        guardarLocal();
-        cerrarModal();
-        actualizarHistorial();
-      })
-      .catch(() => {
-        datos.id = 'temp_' + Date.now();
-        registrosCache.push(datos);
-        guardarLocal();
-        cerrarModal();
-        actualizarHistorial();
-      });
+      .then(docRef => { datos.id = docRef.id; registrosCache.push(datos); guardarLocal(); cerrarModal(); actualizarHistorial(); showToast('✅ Registro creado.', 'success'); })
+      .catch(() => { datos.id = 'temp_'+Date.now(); registrosCache.push(datos); guardarLocal(); cerrarModal(); actualizarHistorial(); showToast('⚠️ Guardado localmente.', 'warning'); });
   } else {
     const id = registro.id;
     if (id && !id.startsWith('temp_')) {
-      db.collection("jornada_registros").doc(id).update({
-        entrada: entrada || null,
-        salida: salida || null,
-        turno: turno,
-        tiemposComida: tiempos,
-        tipo: tipo,
-        timestampSalida: new Date().toISOString()
-      })
-      .then(() => {
-        Object.assign(registro, { entrada: entrada || null, salida: salida || null, turno, tiemposComida: tiempos, tipo });
-        guardarLocal();
-        cerrarModal();
-        actualizarHistorial();
-      })
-      .catch(() => {
-        Object.assign(registro, { entrada: entrada || null, salida: salida || null, turno, tiemposComida: tiempos, tipo });
-        guardarLocal();
-        cerrarModal();
-        actualizarHistorial();
-      });
+      db.collection("jornada_registros").doc(id).update({ entrada: entrada||null, salida: salida||null, turno, tiemposComida: tiempos, tipo, timestampSalida: new Date().toISOString() })
+        .then(() => { Object.assign(registro, { entrada: entrada||null, salida: salida||null, turno, tiemposComida: tiempos, tipo }); guardarLocal(); cerrarModal(); actualizarHistorial(); showToast('✅ Registro actualizado.', 'success'); })
+        .catch(() => { Object.assign(registro, { entrada: entrada||null, salida: salida||null, turno, tiemposComida: tiempos, tipo }); guardarLocal(); cerrarModal(); actualizarHistorial(); showToast('⚠️ Guardado localmente.', 'warning'); });
     } else {
-      Object.assign(registro, { entrada: entrada || null, salida: salida || null, turno, tiemposComida: tiempos, tipo });
-      guardarLocal();
-      cerrarModal();
-      actualizarHistorial();
+      Object.assign(registro, { entrada: entrada||null, salida: salida||null, turno, tiemposComida: tiempos, tipo });
+      guardarLocal(); cerrarModal(); actualizarHistorial(); showToast('✅ Registro actualizado localmente.', 'success');
     }
   }
 }
@@ -1661,15 +1541,15 @@ function actualizarTablaFeriados() {
     `;
   });
   if (tbody.innerHTML === '') {
-    tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;color:#94a3b8;">No hay feriados</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;color:var(--text-gray);">No hay feriados</td></tr>`;
   }
 }
 
 async function agregarFeriado() {
-  if (!esAdmin) { alert('Solo el administrador puede modificar feriados.'); return; }
+  if (!esAdmin) { showToast('Solo el administrador puede modificar feriados.', 'error'); return; }
   const fecha = document.getElementById('nuevoFeriado').value;
-  if (!fecha) { alert('Selecciona una fecha.'); return; }
-  if (feriados.includes(fecha)) { alert('Ya está en la lista.'); return; }
+  if (!fecha) { showToast('Selecciona una fecha.', 'warning'); return; }
+  if (feriados.includes(fecha)) { showToast('Ya está en la lista.', 'warning'); return; }
   try {
     const docRef = db.collection("jornada_config").doc("feriados");
     const doc = await docRef.get();
@@ -1680,16 +1560,13 @@ async function agregarFeriado() {
     guardarLocal();
     document.getElementById('nuevoFeriado').value = '';
     actualizarTablaFeriados();
-  } catch(e) {
-    feriados.push(fecha);
-    guardarLocal();
-    actualizarTablaFeriados();
-  }
+    showToast('✅ Feriado agregado.', 'success');
+  } catch(e) { feriados.push(fecha); guardarLocal(); actualizarTablaFeriados(); showToast('⚠️ Guardado localmente.', 'warning'); }
 }
 
 async function eliminarFeriado(fecha) {
-  if (!esAdmin) { alert('Solo el administrador puede modificar feriados.'); return; }
-  if (!confirm(`¿Eliminar feriado ${fecha}?`)) return;
+  if (!esAdmin) { showToast('Solo el administrador puede modificar feriados.', 'error'); return; }
+  if (!confirm('¿Eliminar feriado?')) return;
   try {
     const docRef = db.collection("jornada_config").doc("feriados");
     const doc = await docRef.get();
@@ -1699,15 +1576,12 @@ async function eliminarFeriado(fecha) {
     feriados = nueva;
     guardarLocal();
     actualizarTablaFeriados();
-  } catch(e) {
-    feriados = feriados.filter(f => f !== fecha);
-    guardarLocal();
-    actualizarTablaFeriados();
-  }
+    showToast('✅ Feriado eliminado.', 'success');
+  } catch(e) { feriados = feriados.filter(f => f !== fecha); guardarLocal(); actualizarTablaFeriados(); showToast('⚠️ Guardado localmente.', 'warning'); }
 }
 
 // ============================================================
-// REPORTE MENSUAL
+// REPORTE MENSUAL (con número de semana real)
 // ============================================================
 function llenarSelectMeses() {
   const sel = document.getElementById('mesReporte');
@@ -1737,9 +1611,7 @@ function generarReporte() {
   const finStr = fechaFin.toISOString().split('T')[0];
   document.getElementById('periodoReporte').innerText = `${inicioStr} al ${finStr}`;
 
-  let registrosFiltrados = registrosCache.filter(r =>
-    r.fecha >= inicioStr && r.fecha <= finStr && r.entrada && r.salida
-  );
+  let registrosFiltrados = registrosCache.filter(r => r.fecha >= inicioStr && r.fecha <= finStr && r.entrada && r.salida);
   if (!esAdmin) {
     registrosFiltrados = registrosFiltrados.filter(r => r.empleadoId === usuarioActual.empleadoId);
   }
@@ -1751,28 +1623,26 @@ function generarReporte() {
     mapa[key].registros.push(r);
   });
 
+  // Generar semanas: domingo a sábado, pero etiquetar con número de semana ISO real
   const semanas = [];
   let cursor = new Date(fechaInicio);
-  while (cursor.getDay() !== 0) {
-    cursor.setDate(cursor.getDate() - 1);
-  }
+  while (cursor.getDay() !== 0) cursor.setDate(cursor.getDate() - 1);
   while (cursor <= fechaFin) {
     const ini = new Date(cursor);
     const fin = new Date(cursor);
     fin.setDate(cursor.getDate() + 6);
     if (fin > fechaFin) fin.setTime(fechaFin.getTime());
+    const weekNum = getISOWeek(ini);
     semanas.push({
       inicio: ini.toISOString().split('T')[0],
       fin: fin.toISOString().split('T')[0],
-      label: `Semana ${semanas.length + 1}`
+      label: `Semana ${weekNum}`
     });
     cursor.setDate(cursor.getDate() + 7);
   }
 
   let html = '<table><thead><tr><th>Empleado (Turno)</th>';
-  semanas.forEach((s, i) => {
-    html += `<th>${s.label}</th>`;
-  });
+  semanas.forEach(s => { html += `<th>${s.label}</th>`; });
   html += `<th>Total Extras</th></tr></thead><tbody>`;
 
   for (let empId in mapa) {
@@ -1780,10 +1650,8 @@ function generarReporte() {
     const nombre = emp.nombre;
     const turno = emp.turno;
     html += `<tr><td><strong>${nombre}</strong> (${turno})</td>`;
-
     let totalExtras = 0;
-
-    semanas.forEach((s) => {
+    semanas.forEach(s => {
       let extrasSem = 0;
       emp.registros.forEach(r => {
         if (r.fecha >= s.inicio && r.fecha <= s.fin) {
@@ -1796,34 +1664,32 @@ function generarReporte() {
       totalExtras += extrasSem;
       html += `<td>${extrasSem.toFixed(2)}</td>`;
     });
-
     totalExtras = Math.round(totalExtras * 100) / 100;
-    html += `<td><strong>${totalExtras.toFixed(2)}</strong></td>`;
-    html += `</tr>`;
+    html += `<td><strong>${totalExtras.toFixed(2)}</strong></td></tr>`;
   }
 
   html += '</tbody></table>';
   document.getElementById('contenedorReporte').innerHTML = html;
 }
 
+// ============================================================
+// PDF
+// ============================================================
 function generarPDF() {
   const contenido = document.getElementById('contenedorReporte');
   const tabla = contenido.querySelector('table');
-  if (!tabla) { alert('Genera el reporte primero.'); return; }
-
+  if (!tabla) { showToast('Genera el reporte primero.', 'warning'); return; }
   const { jsPDF } = window.jspdf;
   const pdf = new jsPDF('landscape', 'mm', 'a4');
   pdf.setFontSize(14);
-  pdf.text('Reporte Mensual de Horas Extras - Guatemala', 14, 15);
+  pdf.text('Reporte Mensual de Horas Extras - CMI Toledo', 14, 15);
   pdf.setFontSize(10);
   const periodo = document.getElementById('periodoReporte').innerText;
   pdf.text(`Período: ${periodo}`, 14, 22);
 
   const headers = [];
   const headRow = tabla.querySelector('thead tr');
-  headRow.querySelectorAll('th').forEach(th => {
-    headers.push(th.innerText.trim().replace(/\n/g, ' ').replace(/\s+/g, ' '));
-  });
+  headRow.querySelectorAll('th').forEach(th => headers.push(th.innerText.trim().replace(/\n/g, ' ').replace(/\s+/g, ' ')));
 
   const rows = [];
   tabla.querySelectorAll('tbody tr').forEach(tr => {
@@ -1838,30 +1704,13 @@ function generarPDF() {
     startY: 30,
     theme: 'grid',
     styles: { fontSize: 8, cellPadding: 2 },
-    headStyles: { fillColor: [30, 58, 138], textColor: 255, fontSize: 9 },
+    headStyles: { fillColor: [10, 28, 58], textColor: 255, fontSize: 9 },
     columnStyles: { 0: { cellWidth: 35 } }
   });
 
   pdf.save(`Reporte_Extras_${periodo.replace(/\s/g, '_')}.pdf`);
+  showToast('✅ PDF generado correctamente.', 'success');
 }
-
-// ============================================================
-// PESTAÑAS
-// ============================================================
-document.addEventListener('DOMContentLoaded', () => {
-  document.querySelectorAll('.tab').forEach(tab => {
-    tab.addEventListener('click', function() {
-      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-      this.classList.add('active');
-      const target = document.getElementById(this.dataset.tab);
-      if (target) target.classList.add('active');
-      if (this.dataset.tab === 'reporte') generarReporte();
-      if (this.dataset.tab === 'historial') actualizarHistorial();
-      if (this.dataset.tab === 'principal') actualizarCalendario();
-    });
-  });
-});
 
 // ============================================================
 // CREAR ADMIN SI NO EXISTE
@@ -1879,9 +1728,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       console.log("Admin creado: usuario=admin, contraseña=root");
     }
-  } catch(e) {
-    console.warn("No se pudo crear admin:", e);
-  }
+  } catch(e) { console.warn("No se pudo crear admin:", e); }
 })();
 </script>
 </body>
