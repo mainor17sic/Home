@@ -761,7 +761,6 @@ let salidaPendienteRegistro = null;
 let usuarioActual = null;
 let esAdmin = false;
 let editandoEmpleadoIdGlobal = null;
-let sesionRestaurada = false;
 
 // ============================================================
 // FUNCIONES DE FECHA Y TURNOS
@@ -971,13 +970,11 @@ async function iniciarSesion() {
 function restaurarSesion() {
   const session = cargarSesion();
   if (!session) return false;
-  // Buscar el usuario en el array de empleados (ya cargado)
   const emp = empleados.find(e => e.id === session.id);
   if (!emp) {
     eliminarSesion();
     return false;
   }
-  // Restaurar usuarioActual y esAdmin
   if (emp.rol === 'admin') {
     esAdmin = true;
     usuarioActual = { id: emp.id, nombre: emp.nombre, usuario: emp.usuario, rol: 'admin', empleadoId: null };
@@ -1004,6 +1001,8 @@ function mostrarApp() {
     actualizarCalendario();
     llenarSelectHistorial();
     if (esAdmin) llenarSelectEmpleados();
+    // Al restaurar sesión, cargar el reporte con el mes de inicio
+    llenarSelectMeses();
     generarReporte();
   }
 }
@@ -1057,6 +1056,8 @@ function construirMenuInferior() {
         actualizarCalendario();
         actualizarSelects();
       } else if (tabId === 'reporte') {
+        // Al hacer clic en Reporte, seleccionar mes de inicio y generar
+        llenarSelectMeses();
         generarReporte();
       } else if (tabId === 'historial') {
         llenarSelectHistorial();
@@ -1097,7 +1098,7 @@ async function init() {
   document.getElementById('app-container').style.display = 'none';
   document.getElementById('bottomNav').style.display = 'none';
 
-  // Aún así, inicializar escuchas para cuando se loguee
+  // Escuchas para cuando se loguee
   db.collection("jornada_empleados").onSnapshot(() => {
     sincronizarEmpleados();
     actualizarSelects();
@@ -1107,7 +1108,6 @@ async function init() {
   db.collection("jornada_config").doc("feriados").onSnapshot(() => { sincronizarFeriados(); actualizarTablaFeriados(); });
   db.collection("jornada_registros").onSnapshot(() => { sincronizarRegistros(); actualizarHistorial(); });
 
-  // Iniciar reloj aunque no esté logueado (para que funcione luego)
   iniciarReloj();
 }
 
@@ -1726,12 +1726,13 @@ async function eliminarFeriado(fecha) {
 }
 
 // ============================================================
-// REPORTE MENSUAL (con extras netas = extras - descuento)
+// REPORTE MENSUAL (con selección de mes de inicio)
 // ============================================================
 function llenarSelectMeses() {
   const sel = document.getElementById('mesReporte');
   sel.innerHTML = '';
   const ahora = new Date();
+  // Generar opciones para los últimos 12 meses, pero seleccionar el mes de inicio del período (mes anterior al actual)
   for (let i = 0; i < 12; i++) {
     const d = new Date(ahora.getFullYear(), ahora.getMonth() - i, 1);
     const val = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
@@ -1741,8 +1742,10 @@ function llenarSelectMeses() {
     opt.textContent = label.charAt(0).toUpperCase() + label.slice(1);
     sel.appendChild(opt);
   }
-  const actual = ahora.getFullYear() + '-' + String(ahora.getMonth() + 1).padStart(2, '0');
-  sel.value = actual;
+  // Seleccionar mes de inicio del período (mes actual - 1)
+  const mesInicio = new Date(ahora.getFullYear(), ahora.getMonth() - 1, 1);
+  const valorInicio = mesInicio.getFullYear() + '-' + String(mesInicio.getMonth() + 1).padStart(2, '0');
+  sel.value = valorInicio;
   generarReporte();
 }
 
@@ -1926,7 +1929,7 @@ function generarPDF() {
 })();
 
 // ============================================================
-// INICIO (ejecutar al cargar)
+// INICIO
 // ============================================================
 init();
 </script>
