@@ -1672,7 +1672,7 @@ async function eliminarFeriado(fecha) {
 }
 
 // ============================================================
-// REPORTE MENSUAL (con semanas ISO sincronizadas con historial)
+// REPORTE MENSUAL (con extras netas: extras - descuento)
 // ============================================================
 function llenarSelectMeses() {
   const sel = document.getElementById('mesReporte');
@@ -1714,6 +1714,7 @@ function generarReporte() {
     mapa[key].registros.push(r);
   });
 
+  // Generar semanas usando ISO
   const semanasMap = {};
   let tempDate = new Date(fechaInicio);
   while (tempDate <= fechaFin) {
@@ -1740,29 +1741,30 @@ function generarReporte() {
 
   let html = '<table><thead><tr><th>Empleado (Turno)</th>';
   semanasList.forEach(s => { html += `<th>${s.label}</th>`; });
-  html += `<th>Total Extras</th></tr></thead><tbody>`;
+  html += `<th>Total Extras Netas</th></tr></thead><tbody>`;
 
   for (let empId in mapa) {
     const emp = mapa[empId];
     const nombre = emp.nombre;
     const turno = emp.turno;
     html += `<tr><td><strong>${nombre}</strong> (${turno})</td>`;
-    let totalExtras = 0;
+    let totalExtrasNetas = 0;
     semanasList.forEach(s => {
-      let extrasSem = 0;
+      let extrasNetasSem = 0;
       emp.registros.forEach(r => {
         if (r.fecha >= s.inicio && r.fecha <= s.fin) {
           const horas = calcularHorasBrutas(r.entrada, r.salida, r.tiemposComida || 0);
           const calc = calcularExtrasYDescuento(horas, r.fecha, r.turno || 'Diurno', r.tipo);
-          extrasSem += calc.extras;
+          // extras netas = extras - descuento
+          extrasNetasSem += calc.extras - calc.descuento;
         }
       });
-      extrasSem = Math.round(extrasSem * 100) / 100;
-      totalExtras += extrasSem;
-      html += `<td>${extrasSem.toFixed(2)}</td>`;
+      extrasNetasSem = Math.round(extrasNetasSem * 100) / 100;
+      totalExtrasNetas += extrasNetasSem;
+      html += `<td>${extrasNetasSem.toFixed(2)}</td>`;
     });
-    totalExtras = Math.round(totalExtras * 100) / 100;
-    html += `<td><strong>${totalExtras.toFixed(2)}</strong></td></tr>`;
+    totalExtrasNetas = Math.round(totalExtrasNetas * 100) / 100;
+    html += `<td><strong>${totalExtrasNetas.toFixed(2)}</strong></td></tr>`;
   }
 
   html += '</tbody></table>';
