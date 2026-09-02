@@ -248,6 +248,18 @@
       display: block;
       font-size: 0.9rem;
     }
+    .fecha-marcaje {
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: var(--text-gray);
+      text-align: center;
+      margin-bottom: 12px;
+      padding: 8px;
+      background: var(--bg-light);
+      border-radius: 8px;
+      border: 1px dashed var(--primary);
+    }
+    .fecha-marcaje strong { color: var(--primary); }
     .form-marcar {
       display: flex;
       flex-direction: column;
@@ -354,7 +366,6 @@
     .badge-azul { background: #dbeafe; color: #1e40af; }
     .badge-naranja { background: #fef3c7; color: #92400e; }
     .badge-gris { background: #e2e8f0; color: #475569; }
-    .badge-dorado { background: #fef9e7; color: #8a6d0b; }
     .dia-azul { color: var(--primary); font-weight: 600; }
 
     /* ===== FILAS POR SEMANA (historial) ===== */
@@ -488,11 +499,6 @@
     @media (min-width: 641px) {
       .bottom-nav .nav-item .label { display: inline-block; }
     }
-
-    /* Ocultar pestaña de empleados en el contenido (se gestiona desde el menú inferior) */
-    #empleados-content { display: none; }
-    #empleados-content.active { display: block; }
-    /* Empleados visible solo para admin, controlado por JS */
   </style>
 </head>
 <body>
@@ -529,6 +535,11 @@
       <div class="fecha-actual" id="fechaActual">
         <span id="diaSemana"></span>, <span id="diaNumero"></span> de <span id="mesNombre"></span> de <span id="anio"></span>
         <small id="infoFeriado"></small>
+      </div>
+
+      <!-- Mensaje de fecha de marcaje -->
+      <div class="fecha-marcaje" id="fechaMarcaje">
+        📌 Registrando para hoy: <strong id="fechaMarcajeDia"></strong>
       </div>
 
       <div class="form-marcar">
@@ -624,7 +635,7 @@
     </div>
   </div>
 
-  <!-- EMPLEADOS (solo admin, se muestra como pestaña adicional en el menú) -->
+  <!-- EMPLEADOS (solo admin) -->
   <div id="empleados" class="tab-content">
     <h2>Empleados</h2>
     <div class="form-row">
@@ -950,6 +961,7 @@ function mostrarApp() {
     // Si ya está inicializado, solo refrescar datos
     actualizarSelects();
     actualizarCalendario();
+    actualizarFechaMarcaje();
     llenarSelectHistorial();
     if (esAdmin) llenarSelectEmpleados();
     generarReporte();
@@ -1006,9 +1018,11 @@ function construirMenuInferior() {
       if (tabId === 'principal') {
         actualizarCalendario();
         actualizarSelects();
+        actualizarFechaMarcaje();
       } else if (tabId === 'reporte') {
         generarReporte();
       } else if (tabId === 'historial') {
+        llenarSelectHistorial(); // Restablece el selector al mes de inicio del período
         actualizarHistorial();
       } else if (tabId === 'empleados') {
         mostrarEmpleados();
@@ -1051,6 +1065,7 @@ async function init() {
   actualizarTablaFeriados();
   llenarSelectMeses();
   llenarSelectHistorial();
+  actualizarFechaMarcaje();
   if (esAdmin) llenarSelectEmpleados();
 
   // Iniciar reloj y calendario
@@ -1131,7 +1146,7 @@ function iniciarReloj() {
 }
 
 // ============================================================
-// CALENDARIO
+// CALENDARIO Y FECHA DE MARCAJE
 // ============================================================
 function actualizarCalendario() {
   const ahora = new Date();
@@ -1144,6 +1159,14 @@ function actualizarCalendario() {
   const hoyStr = hoy();
   const info = esFeriado(hoyStr) ? '🔴 Hoy es feriado' : (esDomingo(hoyStr) ? '🔵 Domingo (no laborable)' : '🟢 Día laborable');
   document.getElementById('infoFeriado').textContent = info;
+}
+
+function actualizarFechaMarcaje() {
+  const ahora = new Date();
+  const dias = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  const fechaStr = `${dias[ahora.getDay()]}, ${ahora.getDate()} de ${meses[ahora.getMonth()]} de ${ahora.getFullYear()}`;
+  document.getElementById('fechaMarcajeDia').textContent = fechaStr;
 }
 
 // ============================================================
@@ -1356,14 +1379,16 @@ function llenarSelectEmpleados() {
 }
 
 // ============================================================
-// HISTORIAL
+// HISTORIAL - Selector de mes en el mes de inicio del período
 // ============================================================
 function llenarSelectHistorial() {
   const sel = document.getElementById('mesHistorial');
   sel.innerHTML = '';
   const ahora = new Date();
+  // Para mostrar el mes de inicio del período, restamos 1 al mes actual
+  // porque el período comienza en el mes anterior al actual
   for (let i = 0; i < 12; i++) {
-    const d = new Date(ahora.getFullYear(), ahora.getMonth() - i, 1);
+    const d = new Date(ahora.getFullYear(), ahora.getMonth() - i - 1, 1);
     const val = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
     const label = d.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
     const opt = document.createElement('option');
@@ -1371,8 +1396,10 @@ function llenarSelectHistorial() {
     opt.textContent = label.charAt(0).toUpperCase() + label.slice(1);
     sel.appendChild(opt);
   }
-  const actual = ahora.getFullYear() + '-' + String(ahora.getMonth() + 1).padStart(2, '0');
-  sel.value = actual;
+  // Seleccionar el mes de inicio del período (mes actual - 1)
+  const mesInicio = new Date(ahora.getFullYear(), ahora.getMonth() - 1, 1);
+  const valorInicio = mesInicio.getFullYear() + '-' + String(mesInicio.getMonth() + 1).padStart(2, '0');
+  sel.value = valorInicio;
   actualizarHistorial();
 }
 
@@ -1383,6 +1410,7 @@ function actualizarHistorial() {
   const filtroEmpleadoId = document.getElementById('filtroEmpleado').value;
 
   const [year, month] = mesVal.split('-').map(Number);
+  // El período es del día 11 del mes seleccionado al día 10 del mes siguiente
   const fechaInicio = new Date(year, month - 1, 11);
   const fechaFin = new Date(year, month, 10);
   const inicioStr = fechaInicio.toISOString().split('T')[0];
@@ -1640,6 +1668,7 @@ function llenarSelectMeses() {
     opt.textContent = label.charAt(0).toUpperCase() + label.slice(1);
     sel.appendChild(opt);
   }
+  // Seleccionar el mes actual (para el reporte se mantiene el mes actual)
   const actual = ahora.getFullYear() + '-' + String(ahora.getMonth() + 1).padStart(2, '0');
   sel.value = actual;
   generarReporte();
