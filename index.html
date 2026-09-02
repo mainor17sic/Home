@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Control de Jornada - Guatemala</title>
+  <title>Control de Jornada - CMI TOLEDO</title>
 
   <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -475,7 +475,7 @@
     </div>
   </div>
 
-  <!-- ===== HISTORIAL (CON FILTRO POR EMPLEADO) ===== -->
+  <!-- ===== HISTORIAL ===== -->
   <div id="historial" class="tab-content">
     <h2>Historial de Asistencias</h2>
     <div class="form-row">
@@ -486,7 +486,6 @@
         <option value="Mixto">Mixto</option>
         <option value="Nocturno">Nocturno</option>
       </select>
-      <!-- Selector de empleados (visible solo para admin) -->
       <select id="filtroEmpleado" style="flex:0 0 180px; display:none;">
         <option value="todos">Todos los empleados</option>
       </select>
@@ -533,7 +532,7 @@
   </div>
 </div>
 
-<!-- ===== MODAL DE EDICIÓN ===== -->
+<!-- ===== MODAL DE EDICIÓN DE REGISTROS ===== -->
 <div class="modal-overlay" id="modalEditar">
   <div class="modal-box">
     <h3>✏️ Editar registro</h3>
@@ -603,6 +602,34 @@
   </div>
 </div>
 
+<!-- ===== MODAL PARA EDITAR EMPLEADO (NUEVO) ===== -->
+<div class="modal-overlay" id="modalEditarEmpleado">
+  <div class="modal-box">
+    <h3>✏️ Editar empleado</h3>
+    <div class="form-group">
+      <label>Nombre</label>
+      <input type="text" id="editNombreEmp" />
+    </div>
+    <div class="form-group">
+      <label>Usuario</label>
+      <input type="text" id="editUsuarioEmp" />
+    </div>
+    <div class="form-group">
+      <label>Contraseña (dejar en blanco para no cambiar)</label>
+      <input type="text" id="editPassEmp" placeholder="Nueva contraseña" />
+    </div>
+    <div class="form-group">
+      <label>Salario/hora (Q)</label>
+      <input type="number" id="editSalarioEmp" step="0.01" placeholder="0.00" />
+    </div>
+    <div class="botones-modal">
+      <button onclick="guardarEdicionEmpleado()" class="btn-success">💾 Guardar</button>
+      <button onclick="cerrarModalEmpleado()" class="btn-danger">❌ Cancelar</button>
+    </div>
+    <p id="modalMensajeEmp" style="margin-top:12px; color:#dc2626; font-weight:500;"></p>
+  </div>
+</div>
+
 <script>
 // ============================================================
 // CONFIGURACIÓN FIREBASE
@@ -642,6 +669,9 @@ let salidaPendienteRegistro = null;
 
 let usuarioActual = null;
 let esAdmin = false;
+
+// Variable para editar empleado
+let editandoEmpleadoIdGlobal = null;
 
 // ============================================================
 // FUNCIONES DE FECHA Y TURNOS
@@ -816,7 +846,6 @@ function mostrarApp() {
   document.getElementById('app-container').style.display = 'block';
   document.getElementById('usuarioLogueado').textContent = `👤 ${usuarioActual.nombre} (${usuarioActual.rol === 'admin' ? 'Administrador' : 'Empleado'})`;
 
-  // Mostrar/ocultar pestaña de empleados y selector de empleados en historial
   document.getElementById('tabEmpleados').style.display = esAdmin ? 'inline-block' : 'none';
   const filtroEmp = document.getElementById('filtroEmpleado');
   if (esAdmin) {
@@ -1000,7 +1029,7 @@ function actualizarCalendario() {
 }
 
 // ============================================================
-// MARCACIÓN (con permisos)
+// MARCACIÓN
 // ============================================================
 function obtenerEmpleadoSeleccionado() {
   const id = document.getElementById('selectEmpleadoPrincipal').value;
@@ -1165,7 +1194,7 @@ function actualizarSelects() {
 }
 
 // ============================================================
-// EMPLEADOS (solo admin)
+// EMPLEADOS (solo admin) - CON EDICIÓN
 // ============================================================
 function mostrarEmpleados() {
   if (!esAdmin) {
@@ -1181,7 +1210,10 @@ function mostrarEmpleados() {
         <td>${e.nombre}</td>
         <td>${e.usuario || '—'}</td>
         <td>Q${(e.salarioHora || 0).toFixed(2)}</td>
-        <td><button class="btn-danger btn-sm" onclick="eliminarEmpleado('${e.id}')">Eliminar</button></td>
+        <td>
+          <button class="btn-warning btn-sm" onclick="abrirModalEditarEmpleado('${e.id}')">✏️ Editar</button>
+          <button class="btn-danger btn-sm" onclick="eliminarEmpleado('${e.id}')">Eliminar</button>
+        </td>
       </tr>
     `;
   });
@@ -1249,7 +1281,80 @@ async function eliminarEmpleado(id) {
 }
 
 // ============================================================
-// SELECTOR DE EMPLEADOS PARA EL HISTORIAL (solo admin)
+// ABRIR MODAL PARA EDITAR EMPLEADO
+// ============================================================
+function abrirModalEditarEmpleado(id) {
+  const emp = empleados.find(e => e.id === id);
+  if (!emp) return;
+  editandoEmpleadoIdGlobal = id;
+  document.getElementById('editNombreEmp').value = emp.nombre || '';
+  document.getElementById('editUsuarioEmp').value = emp.usuario || '';
+  document.getElementById('editPassEmp').value = '';
+  document.getElementById('editSalarioEmp').value = emp.salarioHora || 0;
+  document.getElementById('modalMensajeEmp').textContent = '';
+  document.getElementById('modalEditarEmpleado').classList.add('active');
+}
+
+function cerrarModalEmpleado() {
+  document.getElementById('modalEditarEmpleado').classList.remove('active');
+  editandoEmpleadoIdGlobal = null;
+}
+
+async function guardarEdicionEmpleado() {
+  const id = editandoEmpleadoIdGlobal;
+  if (!id) return;
+  const nombre = document.getElementById('editNombreEmp').value.trim();
+  const usuario = document.getElementById('editUsuarioEmp').value.trim();
+  const nuevaPass = document.getElementById('editPassEmp').value.trim();
+  const salario = parseFloat(document.getElementById('editSalarioEmp').value) || 0;
+
+  if (!nombre || !usuario) {
+    document.getElementById('modalMensajeEmp').textContent = 'Nombre y usuario son obligatorios.';
+    return;
+  }
+
+  // Verificar que el usuario no esté en uso por otro empleado
+  const duplicado = empleados.find(e => e.usuario === usuario && e.id !== id);
+  if (duplicado) {
+    document.getElementById('modalMensajeEmp').textContent = 'Ese usuario ya está registrado por otro empleado.';
+    return;
+  }
+
+  try {
+    const updateData = {
+      nombre,
+      usuario,
+      salarioHora: salario
+    };
+    if (nuevaPass) {
+      updateData.contraseña = nuevaPass;
+    }
+
+    await db.collection("jornada_empleados").doc(id).update(updateData);
+    // Actualizar cache local
+    const emp = empleados.find(e => e.id === id);
+    if (emp) {
+      emp.nombre = nombre;
+      emp.usuario = usuario;
+      if (nuevaPass) emp.contraseña = nuevaPass;
+      emp.salarioHora = salario;
+    }
+    guardarLocal();
+    cerrarModalEmpleado();
+    mostrarEmpleados();
+    actualizarSelects();
+    if (esAdmin) llenarSelectEmpleados();
+    // Si el usuario actual es el que se editó y se cambió su contraseña, cerrar sesión?
+    // No cerramos sesión automáticamente para no interrumpir.
+    alert('Empleado actualizado correctamente.');
+  } catch(e) {
+    document.getElementById('modalMensajeEmp').textContent = 'Error al guardar.';
+    console.error(e);
+  }
+}
+
+// ============================================================
+// SELECTOR DE EMPLEADOS PARA EL HISTORIAL
 // ============================================================
 function llenarSelectEmpleados() {
   const sel = document.getElementById('filtroEmpleado');
@@ -1266,7 +1371,7 @@ function llenarSelectEmpleados() {
 }
 
 // ============================================================
-// HISTORIAL (con filtro por empleado)
+// HISTORIAL
 // ============================================================
 function llenarSelectHistorial() {
   const sel = document.getElementById('mesHistorial');
@@ -1310,7 +1415,6 @@ function actualizarHistorial() {
 
   const nombreDias = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
 
-  // Determinar empleados a mostrar
   let empleadosFiltrados = empleados;
   if (!esAdmin) {
     empleadosFiltrados = empleados.filter(e => e.id === usuarioActual.empleadoId);
@@ -1421,7 +1525,7 @@ function actualizarHistorial() {
 }
 
 // ============================================================
-// MODAL DE EDICIÓN
+// MODAL DE EDICIÓN DE REGISTROS
 // ============================================================
 function abrirModalEditar(empleadoId, fecha) {
   if (!esAdmin && usuarioActual.empleadoId !== empleadoId) {
@@ -1603,7 +1707,7 @@ async function eliminarFeriado(fecha) {
 }
 
 // ============================================================
-// REPORTE MENSUAL (con permisos)
+// REPORTE MENSUAL
 // ============================================================
 function llenarSelectMeses() {
   const sel = document.getElementById('mesReporte');
