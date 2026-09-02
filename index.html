@@ -435,8 +435,9 @@
       display: flex;
       gap: 12px;
       margin-top: 20px;
+      flex-wrap: wrap;
     }
-    .modal-box .botones-modal button { flex: 1; }
+    .modal-box .botones-modal button { flex: 1; min-width: 80px; }
 
     /* ===== TOASTS ===== */
     .toast-container {
@@ -537,7 +538,6 @@
         <small id="infoFeriado"></small>
       </div>
 
-      <!-- Mensaje de fecha de marcaje -->
       <div class="fecha-marcaje" id="fechaMarcaje">
         📌 Registrando para hoy: <strong id="fechaMarcajeDia"></strong>
       </div>
@@ -680,6 +680,7 @@
     <div class="botones-modal">
       <button onclick="guardarEdicion()" class="btn-success">💾 Guardar</button>
       <button onclick="cerrarModal()" class="btn-danger">❌ Cancelar</button>
+      <button onclick="eliminarRegistro()" class="btn-danger" style="background:#dc2626;">🗑️ Eliminar</button>
     </div>
     <p id="modalMensaje" style="margin-top:12px; color:var(--error); font-weight:500;"></p>
   </div>
@@ -950,15 +951,12 @@ function mostrarApp() {
   document.getElementById('bottomNav').style.display = 'flex';
   document.getElementById('usuarioLogueado').textContent = `👤 ${usuarioActual.nombre} (${usuarioActual.rol === 'admin' ? 'Administrador' : 'Empleado'})`;
 
-  // Construir menú inferior
   construirMenuInferior();
 
-  // Inicializar la aplicación (solo una vez)
   if (!window._inicializado) {
     init();
     window._inicializado = true;
   } else {
-    // Si ya está inicializado, solo refrescar datos
     actualizarSelects();
     actualizarCalendario();
     actualizarFechaMarcaje();
@@ -1003,18 +1001,15 @@ function construirMenuInferior() {
     nav.appendChild(btn);
   });
 
-  // Asignar eventos de clic a los botones del menú
   nav.querySelectorAll('.nav-item').forEach(btn => {
     btn.addEventListener('click', function(e) {
       const tabId = this.dataset.tab;
       if (!tabId) return;
-      // Cambiar pestaña activa
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
       const target = document.getElementById(tabId);
       if (target) target.classList.add('active');
       nav.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
       this.classList.add('active');
-      // Ejecutar acciones según la pestaña
       if (tabId === 'principal') {
         actualizarCalendario();
         actualizarSelects();
@@ -1022,7 +1017,7 @@ function construirMenuInferior() {
       } else if (tabId === 'reporte') {
         generarReporte();
       } else if (tabId === 'historial') {
-        llenarSelectHistorial(); // Restablece el selector al mes de inicio del período
+        llenarSelectHistorial();
         actualizarHistorial();
       } else if (tabId === 'empleados') {
         mostrarEmpleados();
@@ -1032,7 +1027,6 @@ function construirMenuInferior() {
     });
   });
 
-  // Activar la pestaña "Inicio" por defecto
   const defaultBtn = nav.querySelector('.nav-item[data-tab="principal"]');
   if (defaultBtn) {
     defaultBtn.classList.add('active');
@@ -1049,7 +1043,6 @@ async function init() {
   await sincronizarEmpleados();
   await sincronizarRegistros();
 
-  // Escuchas en tiempo real
   db.collection("jornada_empleados").onSnapshot(() => {
     sincronizarEmpleados();
     actualizarSelects();
@@ -1059,7 +1052,6 @@ async function init() {
   db.collection("jornada_config").doc("feriados").onSnapshot(() => { sincronizarFeriados(); actualizarTablaFeriados(); });
   db.collection("jornada_registros").onSnapshot(() => { sincronizarRegistros(); actualizarHistorial(); });
 
-  // Llenar selects y cargar datos
   actualizarSelects();
   mostrarEmpleados();
   actualizarTablaFeriados();
@@ -1068,11 +1060,9 @@ async function init() {
   actualizarFechaMarcaje();
   if (esAdmin) llenarSelectEmpleados();
 
-  // Iniciar reloj y calendario
   iniciarReloj();
   actualizarCalendario();
 
-  // Asignar eventos de marcación
   document.getElementById('btnEntradaP').addEventListener('click', marcarEntrada);
   document.getElementById('btnSalidaP').addEventListener('click', iniciarSalidaConComidas);
   document.getElementById('btnAhoraP').addEventListener('click', usarHoraActual);
@@ -1170,6 +1160,26 @@ function actualizarFechaMarcaje() {
 }
 
 // ============================================================
+// VALIDACIÓN DE FECHA (no futura)
+// ============================================================
+function validarFechaDispositivo() {
+  const ahora = new Date();
+  const hoyStr = hoy();
+  // Si la fecha del dispositivo es mayor a hoy (futura), mostrar advertencia
+  const hoyDate = new Date(hoyStr);
+  const diffDias = Math.floor((ahora - hoyDate) / (1000 * 60 * 60 * 24));
+  if (diffDias > 1) {
+    showToast('⚠️ La fecha de tu dispositivo está adelantada. Ajusta el reloj para marcar correctamente.', 'warning');
+    return false;
+  }
+  if (diffDias < -1) {
+    showToast('⚠️ La fecha de tu dispositivo está atrasada. Ajusta el reloj para marcar correctamente.', 'warning');
+    return false;
+  }
+  return true;
+}
+
+// ============================================================
 // MARCACIÓN
 // ============================================================
 function obtenerEmpleadoSeleccionado() {
@@ -1178,6 +1188,7 @@ function obtenerEmpleadoSeleccionado() {
 }
 
 function marcarEntrada() {
+  if (!validarFechaDispositivo()) return;
   const emp = obtenerEmpleadoSeleccionado();
   if (!emp) { showToast('⚠️ Selecciona un empleado.', 'warning'); return; }
   if (!esAdmin && usuarioActual.empleadoId !== emp.id) {
@@ -1209,6 +1220,7 @@ function marcarEntrada() {
 }
 
 function iniciarSalidaConComidas() {
+  if (!validarFechaDispositivo()) return;
   const emp = obtenerEmpleadoSeleccionado();
   if (!emp) { showToast('⚠️ Selecciona un empleado.', 'warning'); return; }
   if (!esAdmin && usuarioActual.empleadoId !== emp.id) {
@@ -1379,14 +1391,12 @@ function llenarSelectEmpleados() {
 }
 
 // ============================================================
-// HISTORIAL - Selector de mes en el mes de inicio del período
+// HISTORIAL
 // ============================================================
 function llenarSelectHistorial() {
   const sel = document.getElementById('mesHistorial');
   sel.innerHTML = '';
   const ahora = new Date();
-  // Para mostrar el mes de inicio del período, restamos 1 al mes actual
-  // porque el período comienza en el mes anterior al actual
   for (let i = 0; i < 12; i++) {
     const d = new Date(ahora.getFullYear(), ahora.getMonth() - i - 1, 1);
     const val = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
@@ -1396,7 +1406,6 @@ function llenarSelectHistorial() {
     opt.textContent = label.charAt(0).toUpperCase() + label.slice(1);
     sel.appendChild(opt);
   }
-  // Seleccionar el mes de inicio del período (mes actual - 1)
   const mesInicio = new Date(ahora.getFullYear(), ahora.getMonth() - 1, 1);
   const valorInicio = mesInicio.getFullYear() + '-' + String(mesInicio.getMonth() + 1).padStart(2, '0');
   sel.value = valorInicio;
@@ -1410,7 +1419,6 @@ function actualizarHistorial() {
   const filtroEmpleadoId = document.getElementById('filtroEmpleado').value;
 
   const [year, month] = mesVal.split('-').map(Number);
-  // El período es del día 11 del mes seleccionado al día 10 del mes siguiente
   const fechaInicio = new Date(year, month - 1, 11);
   const fechaFin = new Date(year, month, 10);
   const inicioStr = fechaInicio.toISOString().split('T')[0];
@@ -1434,7 +1442,7 @@ function actualizarHistorial() {
     empleadosFiltrados = empleados.filter(e => e.id === filtroEmpleadoId);
   }
 
-  // Agrupar por semana para coloreado
+  // Coloreado por semana ISO
   const semanaMap = {};
   dias.forEach(fecha => {
     const weekNum = getISOWeek(fecha);
@@ -1526,7 +1534,7 @@ function actualizarHistorial() {
 }
 
 // ============================================================
-// MODAL DE EDICIÓN DE REGISTROS
+// MODAL DE EDICIÓN DE REGISTROS (con eliminar)
 // ============================================================
 function abrirModalEditar(empleadoId, fecha) {
   if (!esAdmin && usuarioActual.empleadoId !== empleadoId) {
@@ -1596,6 +1604,39 @@ function guardarEdicion() {
   }
 }
 
+// ===== ELIMINAR REGISTRO =====
+function eliminarRegistro() {
+  if (!editandoRegistroId) return;
+  if (!confirm('¿Eliminar este registro permanentemente?')) return;
+  const id = editandoRegistroId;
+  const reg = registrosCache.find(r => r.id === id);
+  if (!reg) { showToast('Registro no encontrado.', 'error'); return; }
+  // Eliminar de Firebase
+  if (id && !id.startsWith('temp_')) {
+    db.collection("jornada_registros").doc(id).delete()
+      .then(() => {
+        registrosCache = registrosCache.filter(r => r.id !== id);
+        guardarLocal();
+        cerrarModal();
+        actualizarHistorial();
+        showToast('✅ Registro eliminado.', 'success');
+      })
+      .catch(() => {
+        registrosCache = registrosCache.filter(r => r.id !== id);
+        guardarLocal();
+        cerrarModal();
+        actualizarHistorial();
+        showToast('⚠️ Eliminado localmente (sin conexión).', 'warning');
+      });
+  } else {
+    registrosCache = registrosCache.filter(r => r.id !== id);
+    guardarLocal();
+    cerrarModal();
+    actualizarHistorial();
+    showToast('✅ Registro eliminado localmente.', 'success');
+  }
+}
+
 // ============================================================
 // FERIADOS
 // ============================================================
@@ -1653,7 +1694,7 @@ async function eliminarFeriado(fecha) {
 }
 
 // ============================================================
-// REPORTE MENSUAL
+// REPORTE MENSUAL (con semanas ISO sincronizadas con historial)
 // ============================================================
 function llenarSelectMeses() {
   const sel = document.getElementById('mesReporte');
@@ -1668,7 +1709,6 @@ function llenarSelectMeses() {
     opt.textContent = label.charAt(0).toUpperCase() + label.slice(1);
     sel.appendChild(opt);
   }
-  // Seleccionar el mes actual (para el reporte se mantiene el mes actual)
   const actual = ahora.getFullYear() + '-' + String(ahora.getMonth() + 1).padStart(2, '0');
   sel.value = actual;
   generarReporte();
@@ -1696,26 +1736,41 @@ function generarReporte() {
     mapa[key].registros.push(r);
   });
 
-  // Generar semanas: domingo a sábado, etiquetar con número ISO
+  // Generar semanas usando ISO (mismo criterio que historial)
   const semanas = [];
   let cursor = new Date(fechaInicio);
-  while (cursor.getDay() !== 0) cursor.setDate(cursor.getDate() - 1);
-  while (cursor <= fechaFin) {
-    const ini = new Date(cursor);
-    const fin = new Date(cursor);
-    fin.setDate(cursor.getDate() + 6);
-    if (fin > fechaFin) fin.setTime(fechaFin.getTime());
-    const weekNum = getISOWeek(ini);
-    semanas.push({
-      inicio: ini.toISOString().split('T')[0],
-      fin: fin.toISOString().split('T')[0],
-      label: `Semana ${weekNum}`
-    });
-    cursor.setDate(cursor.getDate() + 7);
+  // Ajustar al lunes más cercano (para alinear semanas ISO)
+  while (cursor.getDay() !== 1) cursor.setDate(cursor.getDate() - 1);
+  // Ahora cursor es el lunes más cercano al inicio del período
+  // Pero la primera semana del reporte debe comenzar en el día 11, no necesariamente en lunes.
+  // Usamos la misma lógica que el historial: agrupar por número de semana ISO.
+  // Simplemente recorremos el período y agrupamos por número de semana ISO.
+  const semanasMap = {};
+  let tempDate = new Date(fechaInicio);
+  while (tempDate <= fechaFin) {
+    const weekNum = getISOWeek(tempDate);
+    if (!semanasMap[weekNum]) {
+      semanasMap[weekNum] = { inicio: null, fin: null };
+    }
+    const fechaStr = tempDate.toISOString().split('T')[0];
+    if (!semanasMap[weekNum].inicio || fechaStr < semanasMap[weekNum].inicio) {
+      semanasMap[weekNum].inicio = fechaStr;
+    }
+    if (!semanasMap[weekNum].fin || fechaStr > semanasMap[weekNum].fin) {
+      semanasMap[weekNum].fin = fechaStr;
+    }
+    tempDate.setDate(tempDate.getDate() + 1);
   }
 
+  const semanasOrdenadas = Object.keys(semanasMap).sort((a,b) => a-b);
+  const semanasList = semanasOrdenadas.map(key => ({
+    label: `Semana ${key}`,
+    inicio: semanasMap[key].inicio,
+    fin: semanasMap[key].fin
+  }));
+
   let html = '<table><thead><tr><th>Empleado (Turno)</th>';
-  semanas.forEach(s => { html += `<th>${s.label}</th>`; });
+  semanasList.forEach(s => { html += `<th>${s.label}</th>`; });
   html += `<th>Total Extras</th></tr></thead><tbody>`;
 
   for (let empId in mapa) {
@@ -1724,7 +1779,7 @@ function generarReporte() {
     const turno = emp.turno;
     html += `<tr><td><strong>${nombre}</strong> (${turno})</td>`;
     let totalExtras = 0;
-    semanas.forEach(s => {
+    semanasList.forEach(s => {
       let extrasSem = 0;
       emp.registros.forEach(r => {
         if (r.fecha >= s.inicio && r.fecha <= s.fin) {
