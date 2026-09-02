@@ -248,18 +248,6 @@
       display: block;
       font-size: 0.9rem;
     }
-    .fecha-marcaje {
-      font-size: 0.95rem;
-      font-weight: 500;
-      color: var(--text-gray);
-      text-align: center;
-      margin-bottom: 12px;
-      padding: 8px;
-      background: var(--bg-light);
-      border-radius: 8px;
-      border: 1px dashed var(--primary);
-    }
-    .fecha-marcaje strong { color: var(--primary); }
     .form-marcar {
       display: flex;
       flex-direction: column;
@@ -536,10 +524,6 @@
       <div class="fecha-actual" id="fechaActual">
         <span id="diaSemana"></span>, <span id="diaNumero"></span> de <span id="mesNombre"></span> de <span id="anio"></span>
         <small id="infoFeriado"></small>
-      </div>
-
-      <div class="fecha-marcaje" id="fechaMarcaje">
-        📌 Registrando para hoy: <strong id="fechaMarcajeDia"></strong>
       </div>
 
       <div class="form-marcar">
@@ -959,7 +943,6 @@ function mostrarApp() {
   } else {
     actualizarSelects();
     actualizarCalendario();
-    actualizarFechaMarcaje();
     llenarSelectHistorial();
     if (esAdmin) llenarSelectEmpleados();
     generarReporte();
@@ -1013,7 +996,6 @@ function construirMenuInferior() {
       if (tabId === 'principal') {
         actualizarCalendario();
         actualizarSelects();
-        actualizarFechaMarcaje();
       } else if (tabId === 'reporte') {
         generarReporte();
       } else if (tabId === 'historial') {
@@ -1057,7 +1039,6 @@ async function init() {
   actualizarTablaFeriados();
   llenarSelectMeses();
   llenarSelectHistorial();
-  actualizarFechaMarcaje();
   if (esAdmin) llenarSelectEmpleados();
 
   iniciarReloj();
@@ -1136,7 +1117,7 @@ function iniciarReloj() {
 }
 
 // ============================================================
-// CALENDARIO Y FECHA DE MARCAJE
+// CALENDARIO
 // ============================================================
 function actualizarCalendario() {
   const ahora = new Date();
@@ -1151,21 +1132,12 @@ function actualizarCalendario() {
   document.getElementById('infoFeriado').textContent = info;
 }
 
-function actualizarFechaMarcaje() {
-  const ahora = new Date();
-  const dias = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
-  const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-  const fechaStr = `${dias[ahora.getDay()]}, ${ahora.getDate()} de ${meses[ahora.getMonth()]} de ${ahora.getFullYear()}`;
-  document.getElementById('fechaMarcajeDia').textContent = fechaStr;
-}
-
 // ============================================================
 // VALIDACIÓN DE FECHA (no futura)
 // ============================================================
 function validarFechaDispositivo() {
   const ahora = new Date();
   const hoyStr = hoy();
-  // Si la fecha del dispositivo es mayor a hoy (futura), mostrar advertencia
   const hoyDate = new Date(hoyStr);
   const diffDias = Math.floor((ahora - hoyDate) / (1000 * 60 * 60 * 24));
   if (diffDias > 1) {
@@ -1442,7 +1414,6 @@ function actualizarHistorial() {
     empleadosFiltrados = empleados.filter(e => e.id === filtroEmpleadoId);
   }
 
-  // Coloreado por semana ISO
   const semanaMap = {};
   dias.forEach(fecha => {
     const weekNum = getISOWeek(fecha);
@@ -1611,7 +1582,6 @@ function eliminarRegistro() {
   const id = editandoRegistroId;
   const reg = registrosCache.find(r => r.id === id);
   if (!reg) { showToast('Registro no encontrado.', 'error'); return; }
-  // Eliminar de Firebase
   if (id && !id.startsWith('temp_')) {
     db.collection("jornada_registros").doc(id).delete()
       .then(() => {
@@ -1736,15 +1706,6 @@ function generarReporte() {
     mapa[key].registros.push(r);
   });
 
-  // Generar semanas usando ISO (mismo criterio que historial)
-  const semanas = [];
-  let cursor = new Date(fechaInicio);
-  // Ajustar al lunes más cercano (para alinear semanas ISO)
-  while (cursor.getDay() !== 1) cursor.setDate(cursor.getDate() - 1);
-  // Ahora cursor es el lunes más cercano al inicio del período
-  // Pero la primera semana del reporte debe comenzar en el día 11, no necesariamente en lunes.
-  // Usamos la misma lógica que el historial: agrupar por número de semana ISO.
-  // Simplemente recorremos el período y agrupamos por número de semana ISO.
   const semanasMap = {};
   let tempDate = new Date(fechaInicio);
   while (tempDate <= fechaFin) {
