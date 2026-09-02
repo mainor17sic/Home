@@ -764,7 +764,14 @@ let editandoEmpleadoIdGlobal = null;
 // ============================================================
 // FUNCIONES DE FECHA Y TURNOS
 // ============================================================
-function hoy() { return new Date().toISOString().split('T')[0]; }
+function hoy() {
+  const ahora = new Date();
+  const año = ahora.getFullYear();
+  const mes = String(ahora.getMonth() + 1).padStart(2, '0');
+  const dia = String(ahora.getDate()).padStart(2, '0');
+  return `${año}-${mes}-${dia}`;
+}
+
 function esDomingo(f) { return new Date(f + 'T00:00:00').getDay() === 0; }
 function esFeriado(f) { return feriados.includes(f); }
 function esNoLaborable(f) { return esDomingo(f) || esFeriado(f); }
@@ -942,7 +949,7 @@ function mostrarApp() {
     window._inicializado = true;
   } else {
     actualizarSelects();
-    actualizarCalendario(); // <--- FORZAMOS ACTUALIZACIÓN
+    actualizarCalendario();
     llenarSelectHistorial();
     if (esAdmin) llenarSelectEmpleados();
     generarReporte();
@@ -994,7 +1001,7 @@ function construirMenuInferior() {
       nav.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
       this.classList.add('active');
       if (tabId === 'principal') {
-        actualizarCalendario(); // <--- FORZAMOS ACTUALIZACIÓN
+        actualizarCalendario();
         actualizarSelects();
       } else if (tabId === 'reporte') {
         generarReporte();
@@ -1013,7 +1020,7 @@ function construirMenuInferior() {
   if (defaultBtn) {
     defaultBtn.classList.add('active');
     document.getElementById('principal').classList.add('active');
-    actualizarCalendario(); // <--- FORZAMOS ACTUALIZACIÓN
+    actualizarCalendario();
   }
 }
 
