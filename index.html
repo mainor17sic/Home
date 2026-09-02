@@ -1714,7 +1714,7 @@ function generarReporte() {
     mapa[key].registros.push(r);
   });
 
-  // Generar semanas usando ISO
+  // Generar semanas usando ISO (domingo a sábado)
   const semanasMap = {};
   let tempDate = new Date(fechaInicio);
   while (tempDate <= fechaFin) {
@@ -1755,7 +1755,7 @@ function generarReporte() {
         if (r.fecha >= s.inicio && r.fecha <= s.fin) {
           const horas = calcularHorasBrutas(r.entrada, r.salida, r.tiemposComida || 0);
           const calc = calcularExtrasYDescuento(horas, r.fecha, r.turno || 'Diurno', r.tipo);
-          // extras netas = extras - descuento
+          // 🟢 CAMBIO CLAVE: extras netas = extras - descuento
           extrasNetasSem += calc.extras - calc.descuento;
         }
       });
