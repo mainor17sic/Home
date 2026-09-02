@@ -942,7 +942,7 @@ function mostrarApp() {
     window._inicializado = true;
   } else {
     actualizarSelects();
-    actualizarCalendario();
+    actualizarCalendario(); // <--- FORZAMOS ACTUALIZACIÓN
     llenarSelectHistorial();
     if (esAdmin) llenarSelectEmpleados();
     generarReporte();
@@ -994,7 +994,7 @@ function construirMenuInferior() {
       nav.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
       this.classList.add('active');
       if (tabId === 'principal') {
-        actualizarCalendario();
+        actualizarCalendario(); // <--- FORZAMOS ACTUALIZACIÓN
         actualizarSelects();
       } else if (tabId === 'reporte') {
         generarReporte();
@@ -1013,6 +1013,7 @@ function construirMenuInferior() {
   if (defaultBtn) {
     defaultBtn.classList.add('active');
     document.getElementById('principal').classList.add('active');
+    actualizarCalendario(); // <--- FORZAMOS ACTUALIZACIÓN
   }
 }
 
