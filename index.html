@@ -427,17 +427,21 @@
     }
     .modal-box .botones-modal button { flex: 1; min-width: 80px; }
 
-    /* ===== TOASTS ===== */
+    /* ===== TOASTS (CORREGIDO) ===== */
     .toast-container {
       position: fixed;
       top: 20px;
       right: 20px;
-      z-index: 9999;
-      display: flex;
+      z-index: 99999 !important;
+      display: flex !important;
       flex-direction: column;
       gap: 10px;
       max-width: 380px;
       width: 100%;
+      pointer-events: none;
+    }
+    .toast-container .toast {
+      pointer-events: auto;
     }
     .toast {
       padding: 14px 18px;
@@ -445,12 +449,13 @@
       color: white;
       font-weight: 500;
       font-size: 0.9rem;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.25);
       display: flex;
       justify-content: space-between;
       align-items: center;
       animation: slideIn 0.3s ease;
       cursor: default;
+      border: 1px solid rgba(255,255,255,0.2);
     }
     .toast-success { background: var(--success); }
     .toast-error { background: var(--error); }
@@ -465,6 +470,7 @@
       cursor: pointer;
       padding: 0 4px;
       opacity: 0.7;
+      pointer-events: auto;
     }
     .toast .toast-close:hover { opacity: 1; }
     @keyframes slideIn {
@@ -722,11 +728,14 @@ if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
 // ============================================================
-// TOAST SYSTEM
+// TOAST SYSTEM (CORREGIDO)
 // ============================================================
 function showToast(message, type = 'info') {
   const container = document.getElementById('toastContainer');
-  if (!container) return;
+  if (!container) {
+    console.error('Contenedor de toasts no encontrado');
+    return;
+  }
   const toast = document.createElement('div');
   toast.className = `toast toast-${type}`;
   const icons = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
