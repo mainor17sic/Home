@@ -392,6 +392,8 @@
     .btn-warning { background: var(--warning); color: #1e293b; }
     .btn-warning:hover { background: #d97706; }
     .btn-sm { padding: 4px 10px; font-size: 0.75rem; }
+    .btn-outline { background: transparent; color: var(--primary); border: 2px solid var(--primary); }
+    .btn-outline:hover { background: var(--primary); color: white; }
 
     /* ===== MODALES ===== */
     .modal-overlay {
@@ -619,6 +621,43 @@
     </div>
   </div>
 
+  <!-- IMPORTAR (solo admin) -->
+  <div id="importar" class="tab-content">
+    <h2>📥 Importar jornada desde texto</h2>
+    <p style="color:var(--text-gray);">Pega el resumen de la jornada (con nombres, horas de entrada y salida). El sistema buscará a los empleados por nombre y creará los registros para la fecha seleccionada.</p>
+    <div class="form-row">
+      <textarea id="textoImportar" rows="10" style="width:100%; padding:12px; border-radius:8px; border:1px solid #cbd5e1; font-family:monospace; font-size:0.95rem;" placeholder="Ejemplo:&#10;Hora de entrada 5:00am&#10;Jason Sánchez&#10;Esau Mejia&#10;..."></textarea>
+    </div>
+    <div class="form-row">
+      <input type="date" id="fechaImportar" value="" style="flex:0 0 200px;" />
+      <button onclick="procesarImportacion()" class="btn-success" style="flex:0 0 auto;">📥 Procesar</button>
+      <button onclick="document.getElementById('textoImportar').value=''; document.getElementById('resumenImportacion').innerHTML=''; document.getElementById('importarOpciones').style.display='none';" class="btn-danger" style="flex:0 0 auto;">🗑️ Limpiar</button>
+    </div>
+
+    <!-- Área de resumen y confirmación -->
+    <div id="resumenImportacion" style="margin-top:16px;"></div>
+
+    <div id="importarOpciones" style="display:none; margin-top:16px; padding:16px; background:var(--bg-light); border-radius:8px;">
+      <div class="form-row">
+        <label style="font-weight:600;">🍽️ Tiempos de comida para todos:
+          <select id="selectComidaImportacion" style="flex:0 0 120px;">
+            <option value="0">0</option>
+            <option value="1">1 (0.5h)</option>
+            <option value="2">2 (1h)</option>
+          </select>
+        </label>
+      </div>
+      <div class="form-row">
+        <button onclick="confirmarImportacion()" class="btn-success" style="flex:0 0 auto;">✅ Confirmar importación</button>
+        <button onclick="cancelarImportacion()" class="btn-danger" style="flex:0 0 auto;">❌ Cancelar</button>
+      </div>
+    </div>
+
+    <div id="logImportar" style="background:var(--bg-light); padding:12px; border-radius:8px; min-height:60px; max-height:200px; overflow-y:auto; font-family:monospace; font-size:0.85rem; white-space:pre-wrap; margin-top:12px;">
+      Esperando acción...
+    </div>
+  </div>
+
   <!-- EMPLEADOS (solo admin) -->
   <div id="empleados" class="tab-content">
     <h2>Empleados</h2>
@@ -760,6 +799,9 @@ let salidaPendienteRegistro = null;
 let usuarioActual = null;
 let esAdmin = false;
 let editandoEmpleadoIdGlobal = null;
+
+// Variables para importación
+let registrosDetectados = [];
 
 // ============================================================
 // FUNCIONES DE FECHA Y TURNOS
@@ -974,7 +1016,6 @@ function mostrarApp() {
 function cerrarSesion() {
   localStorage.removeItem('jornada_usuario');
   localStorage.removeItem('jornada_pass');
-
   usuarioActual = null;
   esAdmin = false;
   window._inicializado = false;
@@ -1012,6 +1053,7 @@ function construirMenuInferior() {
     { tab: 'config', icon: '⚙️', label: 'Feriados' }
   ];
   if (esAdmin) {
+    items.push({ tab: 'importar', icon: '📥', label: 'Importar' });
     items.push({ tab: 'empleados', icon: '👤', label: 'Empleados' });
   }
   items.forEach(item => {
@@ -1043,6 +1085,8 @@ function construirMenuInferior() {
         mostrarEmpleados();
       } else if (tabId === 'config') {
         actualizarTablaFeriados();
+      } else if (tabId === 'importar') {
+        // No hace falta cargar nada especial
       }
     });
   });
@@ -1086,6 +1130,16 @@ async function init() {
   document.getElementById('btnEntradaP').addEventListener('click', marcarEntrada);
   document.getElementById('btnSalidaP').addEventListener('click', iniciarSalidaConComidas);
   document.getElementById('btnAhoraP').addEventListener('click', usarHoraActual);
+
+  // Inicializar fecha de importación
+  const fechaImport = document.getElementById('fechaImportar');
+  if (fechaImport) {
+    const hoyDate = new Date();
+    const año = hoyDate.getFullYear();
+    const mes = String(hoyDate.getMonth() + 1).padStart(2, '0');
+    const dia = String(hoyDate.getDate()).padStart(2, '0');
+    fechaImport.value = `${año}-${mes}-${dia}`;
+  }
 }
 
 // ============================================================
@@ -1703,7 +1757,7 @@ async function eliminarFeriado(fecha) {
 }
 
 // ============================================================
-// REPORTE MENSUAL (AHORA CON TODOS LOS EMPLEADOS)
+// REPORTE MENSUAL (con extras netas = extras - descuento)
 // ============================================================
 function llenarSelectMeses() {
   const sel = document.getElementById('mesReporte');
@@ -1727,7 +1781,6 @@ function llenarSelectMeses() {
 function generarReporte() {
   const mesVal = document.getElementById('mesReporte').value;
   if (!mesVal) return;
-
   const [year, month] = mesVal.split('-').map(Number);
   const fechaInicio = new Date(year, month - 1, 11);
   const fechaFin = new Date(year, month, 10);
@@ -1735,7 +1788,19 @@ function generarReporte() {
   const finStr = fechaFin.toISOString().split('T')[0];
   document.getElementById('periodoReporte').innerText = `${inicioStr} al ${finStr}`;
 
-  // ---- 1. Obtener todos los días del período ----
+  // Filtramos registros del período con entrada y salida
+  // AHORA SIN FILTRO POR EMPLEADO: todos ven todos los empleados
+  let registrosFiltrados = registrosCache.filter(r => r.fecha >= inicioStr && r.fecha <= finStr && r.entrada && r.salida);
+
+  // Agrupar por empleado
+  const mapa = {};
+  registrosFiltrados.forEach(r => {
+    const key = r.empleadoId;
+    if (!mapa[key]) mapa[key] = { empleadoId: key, nombre: r.nombre || 'Desconocido', turno: r.turno || 'Diurno', registros: [] };
+    mapa[key].registros.push(r);
+  });
+
+  // Incluir también los descuentos por sábado no trabajado (sin entrada/salida)
   const todosLosDias = [];
   let cursor = new Date(fechaInicio);
   while (cursor <= fechaFin) {
@@ -1743,29 +1808,6 @@ function generarReporte() {
     cursor.setDate(cursor.getDate() + 1);
   }
 
-  // ---- 2. Construir mapa con TODOS los empleados ----
-  const mapa = {};
-  empleados.forEach(emp => {
-    // Omitimos al admin si no queremos que aparezca
-    if (emp.rol === 'admin') return;
-    mapa[emp.id] = {
-      empleadoId: emp.id,
-      nombre: emp.nombre,
-      turno: emp.turno || 'Diurno', // Puedes tener un campo turno en el empleado, si no, usar 'Diurno' por defecto
-      registros: []
-    };
-  });
-
-  // ---- 3. Agregar registros reales (con entrada/salida) a cada empleado ----
-  registrosCache.forEach(r => {
-    if (r.fecha >= inicioStr && r.fecha <= finStr && r.entrada && r.salida) {
-      if (mapa[r.empleadoId]) {
-        mapa[r.empleadoId].registros.push(r);
-      }
-    }
-  });
-
-  // ---- 4. Agregar descuentos por sábados no trabajados a TODOS los empleados ----
   for (let empId in mapa) {
     const emp = mapa[empId];
     const turno = emp.turno || 'Diurno';
@@ -1792,7 +1834,7 @@ function generarReporte() {
     });
   }
 
-  // ---- 5. Generar semanas ----
+  // Generar semanas usando ISO (domingo a sábado)
   const semanasMap = {};
   let tempDate = new Date(fechaInicio);
   while (tempDate <= fechaFin) {
@@ -1817,12 +1859,10 @@ function generarReporte() {
     fin: semanasMap[key].fin
   }));
 
-  // ---- 6. Construir la tabla HTML ----
   let html = '<table><thead><tr><th>Empleado (Turno)</th>';
   semanasList.forEach(s => { html += `<th>${s.label}</th>`; });
   html += `<th>Total Extras Netas</th></tr></thead><tbody>`;
 
-  // Recorrer cada empleado en el mapa
   for (let empId in mapa) {
     const emp = mapa[empId];
     const nombre = emp.nombre;
@@ -1896,6 +1936,320 @@ function generarPDF() {
 
   pdf.save(`Reporte_Extras_${periodo.replace(/\s/g, '_')}.pdf`);
   showToast('✅ PDF generado correctamente.', 'success');
+}
+
+// ============================================================
+// IMPORTACIÓN DE JORNADA (solo admin)
+// ============================================================
+function normalizarNombre(nombre) {
+  return nombre.trim()
+    .toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, ' ');
+}
+
+function buscarEmpleadoPorNombre(nombreBuscado) {
+  const normalizado = normalizarNombre(nombreBuscado);
+  return empleados.find(e => normalizarNombre(e.nombre) === normalizado);
+}
+
+function parsearHora(texto) {
+  texto = texto.trim().toLowerCase().replace(/\s/g, '');
+  let horas = 0, minutos = 0, esPM = false;
+  const match = texto.match(/(\d{1,2}):?(\d{2})?\s*(am|pm)?/);
+  if (!match) return null;
+  horas = parseInt(match[1]);
+  minutos = parseInt(match[2] || '0');
+  const meridiem = match[3] || '';
+  if (meridiem === 'pm' && horas < 12) horas += 12;
+  if (meridiem === 'am' && horas === 12) horas = 0;
+  return `${String(horas).padStart(2,'0')}:${String(minutos).padStart(2,'0')}`;
+}
+
+function logImportar(mensaje, tipo = 'info') {
+  const log = document.getElementById('logImportar');
+  const iconos = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
+  const clase = tipo === 'error' ? 'color:var(--error);' : (tipo === 'warning' ? 'color:var(--warning);' : 'color:var(--text-dark);');
+  log.innerHTML += `<div style="${clase} padding:2px 0;">${iconos[tipo] || 'ℹ️'} ${mensaje}</div>`;
+  log.scrollTop = log.scrollHeight;
+}
+
+function limpiarLogsImport() {
+  document.getElementById('logImportar').innerHTML = '';
+}
+
+function procesarImportacion() {
+  if (!esAdmin) {
+    showToast('Solo el administrador puede importar.', 'error');
+    return;
+  }
+
+  const texto = document.getElementById('textoImportar').value;
+  const fecha = document.getElementById('fechaImportar').value;
+  if (!texto.trim()) {
+    showToast('Ingresa un texto válido.', 'warning');
+    return;
+  }
+  if (!fecha) {
+    showToast('Selecciona una fecha.', 'warning');
+    return;
+  }
+
+  limpiarLogsImport();
+  logImportar('🔍 Procesando texto...', 'info');
+
+  // 1. Dividir en líneas
+  const lineas = texto.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+  // 2. Variables
+  let entradaActual = null;
+  let salidaGeneral = null;
+  const empleadosConEntrada = {}; // nombre -> horaEntrada
+  const excepcionesSalida = {};   // nombre -> horaSalida
+
+  // 3. Recorrer líneas
+  for (let i = 0; i < lineas.length; i++) {
+    let linea = lineas[i];
+    const lower = linea.toLowerCase();
+
+    if (lower.includes('hora de entrada') || lower.includes('entrada')) {
+      const matchHora = linea.match(/(\d{1,2}:\d{2}\s*(?:am|pm)?|\d{1,2}\s*(?:am|pm)?)/i);
+      if (matchHora) {
+        const hora = parsearHora(matchHora[0]);
+        if (hora) entradaActual = hora;
+        logImportar(`⏰ Hora de entrada detectada: ${entradaActual}`, 'info');
+      }
+      continue;
+    }
+
+    if (lower.includes('hora de salida') || lower.includes('salida')) {
+      const matchHora = linea.match(/(\d{1,2}:\d{2}\s*(?:am|pm)?|\d{1,2}\s*(?:am|pm)?)/i);
+      if (matchHora) {
+        const hora = parsearHora(matchHora[0]);
+        if (hora) salidaGeneral = hora;
+        logImportar(`⏰ Hora de salida general: ${salidaGeneral}`, 'info');
+      }
+      continue;
+    }
+
+    // Excepciones: "Mario jolon se retiró a las 5:30"
+    const excepcionMatch = linea.match(/(.+?)\s*(?:se retiró|salió|se fue)\s*(?:a las|a la|alas|a las)\s*(\d{1,2}:\d{2}\s*(?:am|pm)?|\d{1,2}\s*(?:am|pm)?)/i);
+    if (excepcionMatch) {
+      let nombre = excepcionMatch[1].trim();
+      const horaStr = excepcionMatch[2].trim();
+      const hora = parsearHora(horaStr);
+      if (hora) {
+        nombre = nombre.replace(/^(solo|solamente|únicamente)\s*/i, '').trim();
+        excepcionesSalida[nombre] = hora;
+        logImportar(`🔁 Excepción: ${nombre} sale a las ${hora}`, 'warning');
+      }
+      continue;
+    }
+
+    // Si la línea parece un nombre (sin palabras clave)
+    if (entradaActual && !lower.includes('hora') && !lower.includes('entrada') && !lower.includes('salida') && !lower.includes('retiró')) {
+      const nombres = linea.split(/,|\s+y\s+/).map(n => n.trim()).filter(n => n.length > 0);
+      for (let n of nombres) {
+        if (/\d/.test(n)) continue;
+        empleadosConEntrada[n] = entradaActual;
+        logImportar(`👤 ${n} → entrada ${entradaActual}`, 'info');
+      }
+    }
+  }
+
+  // Fallback salida general
+  if (!salidaGeneral) {
+    const matchSalida = texto.match(/salida\s*(?:general)?\s*(\d{1,2}:\d{2}\s*(?:am|pm)?|\d{1,2}\s*(?:am|pm)?)/i);
+    if (matchSalida) {
+      salidaGeneral = parsearHora(matchSalida[1]);
+      if (salidaGeneral) logImportar(`⏰ Salida general (fallback): ${salidaGeneral}`, 'info');
+    }
+  }
+
+  // Construir lista de registros detectados
+  registrosDetectados = [];
+  for (let nombre in empleadosConEntrada) {
+    let horaEntrada = empleadosConEntrada[nombre];
+    let horaSalida = salidaGeneral;
+    for (let exNombre in excepcionesSalida) {
+      if (normalizarNombre(nombre) === normalizarNombre(exNombre)) {
+        horaSalida = excepcionesSalida[exNombre];
+        break;
+      }
+    }
+    if (horaSalida) {
+      const emp = buscarEmpleadoPorNombre(nombre);
+      registrosDetectados.push({
+        nombre: nombre,
+        entrada: horaEntrada,
+        salida: horaSalida,
+        encontrado: !!emp,
+        empleadoId: emp ? emp.id : null
+      });
+    } else {
+      registrosDetectados.push({
+        nombre: nombre,
+        entrada: horaEntrada,
+        salida: null,
+        encontrado: false,
+        empleadoId: null
+      });
+    }
+  }
+
+  if (registrosDetectados.length === 0) {
+    logImportar('❌ No se detectaron registros. Revisa el formato.', 'error');
+    showToast('No se detectaron registros.', 'error');
+    return;
+  }
+
+  // Mostrar resumen
+  mostrarResumenImportacion(fecha);
+}
+
+function mostrarResumenImportacion(fecha) {
+  const contenedor = document.getElementById('resumenImportacion');
+  let html = `
+    <h3 style="margin-bottom:8px;">📋 Resumen de registros a importar (${fecha})</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Empleado</th><th>Entrada</th><th>Salida</th><th>Estado</th></tr>
+        </thead>
+        <tbody>
+  `;
+  let todosEncontrados = true;
+  registrosDetectados.forEach(item => {
+    const encontrado = item.encontrado && item.empleadoId && item.salida !== null;
+    if (!encontrado) todosEncontrados = false;
+    const estado = encontrado ? '✅ Encontrado' : '❌ No encontrado o sin salida';
+    const color = encontrado ? 'color:var(--success);' : 'color:var(--error);';
+    html += `
+      <tr>
+        <td>${item.nombre}</td>
+        <td>${item.entrada || '—'}</td>
+        <td>${item.salida || '—'}</td>
+        <td style="${color}">${estado}</td>
+      </tr>
+    `;
+  });
+  html += `</tbody></table></div>`;
+  if (!todosEncontrados) {
+    html += `<p style="color:var(--error); margin-top:8px;">⚠️ Algunos empleados no se encontraron o les falta salida. Serán omitidos.</p>`;
+  }
+  contenedor.innerHTML = html;
+
+  // Mostrar opciones de confirmación
+  const opcionesDiv = document.getElementById('importarOpciones');
+  opcionesDiv.style.display = 'block';
+  // Resetear selector de comidas
+  document.getElementById('selectComidaImportacion').value = '0';
+
+  logImportar(`📌 Se detectaron ${registrosDetectados.length} registros. Revisa el resumen y confirma.`, 'info');
+}
+
+function confirmarImportacion() {
+  if (!esAdmin) { showToast('Solo administrador.', 'error'); return; }
+  const fecha = document.getElementById('fechaImportar').value;
+  const tiemposComida = parseInt(document.getElementById('selectComidaImportacion').value);
+
+  const validos = registrosDetectados.filter(item => item.encontrado && item.empleadoId && item.salida !== null);
+  if (validos.length === 0) {
+    showToast('No hay registros válidos para importar.', 'error');
+    return;
+  }
+
+  logImportar(`⏳ Importando ${validos.length} registros con ${tiemposComida} tiempo(s) de comida...`, 'info');
+
+  let importados = 0;
+  let errores = 0;
+
+  validos.forEach(async (item) => {
+    const emp = empleados.find(e => e.id === item.empleadoId);
+    if (!emp) {
+      logImportar(`❌ Empleado ${item.nombre} no encontrado (ID perdido)`, 'error');
+      errores++;
+      return;
+    }
+
+    // Verificar si ya existe registro para este empleado en esta fecha
+    const existente = registrosCache.find(r => r.empleadoId === emp.id && r.fecha === fecha);
+    const datos = {
+      empleadoId: emp.id,
+      nombre: emp.nombre,
+      fecha: fecha,
+      entrada: item.entrada,
+      salida: item.salida,
+      turno: determinarTurno(item.entrada),
+      tiemposComida: tiemposComida,
+      tipo: 'normal',
+      timestamp: new Date().toISOString()
+    };
+
+    if (existente) {
+      // Actualizar
+      const id = existente.id;
+      if (id && !id.startsWith('temp_')) {
+        try {
+          await db.collection("jornada_registros").doc(id).update({
+            entrada: item.entrada,
+            salida: item.salida,
+            turno: datos.turno,
+            tiemposComida: tiemposComida,
+            tipo: 'normal',
+            timestampSalida: new Date().toISOString()
+          });
+          Object.assign(existente, datos);
+          logImportar(`🔄 Actualizado: ${emp.nombre}`, 'success');
+          importados++;
+        } catch (e) {
+          logImportar(`❌ Error al actualizar ${emp.nombre}: ${e.message}`, 'error');
+          errores++;
+        }
+      } else {
+        // local
+        Object.assign(existente, datos);
+        guardarLocal();
+        logImportar(`🔄 Actualizado localmente: ${emp.nombre}`, 'warning');
+        importados++;
+      }
+    } else {
+      // Nuevo
+      try {
+        const docRef = await db.collection("jornada_registros").add(datos);
+        datos.id = docRef.id;
+        registrosCache.push(datos);
+        guardarLocal();
+        logImportar(`✅ Importado: ${emp.nombre}`, 'success');
+        importados++;
+      } catch (e) {
+        datos.id = 'temp_' + Date.now() + '_' + Math.random();
+        registrosCache.push(datos);
+        guardarLocal();
+        logImportar(`⚠️ Importado localmente: ${emp.nombre} (sin conexión)`, 'warning');
+        importados++;
+      }
+    }
+
+    // Cuando todos terminen, resumen final
+    if (importados + errores === validos.length) {
+      logImportar(`\n📊 Importación finalizada. ${importados} registros procesados, ${errores} errores.`, 'info');
+      showToast(`Importación finalizada. ${importados} registros.`, importados > 0 ? 'success' : 'error');
+      actualizarHistorial();
+      // Ocultar opciones y resumen
+      document.getElementById('importarOpciones').style.display = 'none';
+      document.getElementById('resumenImportacion').innerHTML = '';
+      registrosDetectados = [];
+    }
+  });
+}
+
+function cancelarImportacion() {
+  registrosDetectados = [];
+  document.getElementById('importarOpciones').style.display = 'none';
+  document.getElementById('resumenImportacion').innerHTML = '';
+  logImportar('❌ Importación cancelada.', 'warning');
+  showToast('Importación cancelada.', 'info');
 }
 
 // ============================================================
