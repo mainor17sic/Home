@@ -907,7 +907,6 @@ async function iniciarSesion() {
   if (!usuario || !pass) {
     errorDiv.textContent = 'Ingresa usuario y contraseña.';
     errorDiv.style.display = 'block';
-    // Si hay credenciales guardadas y son vacías, borrar
     localStorage.removeItem('jornada_usuario');
     localStorage.removeItem('jornada_pass');
     return;
@@ -930,7 +929,6 @@ async function iniciarSesion() {
         usuarioActual = { id: doc.id, nombre: data.nombre, usuario: data.usuario, rol: 'empleado', empleadoId: doc.id };
       }
 
-      // ✅ Guardar credenciales en localStorage
       localStorage.setItem('jornada_usuario', usuario);
       localStorage.setItem('jornada_pass', pass);
 
@@ -939,7 +937,6 @@ async function iniciarSesion() {
       return;
     }
 
-    // Credenciales incorrectas: borrar lo guardado
     errorDiv.textContent = 'Usuario o contraseña incorrectos.';
     errorDiv.style.display = 'block';
     localStorage.removeItem('jornada_usuario');
@@ -975,7 +972,6 @@ function mostrarApp() {
 }
 
 function cerrarSesion() {
-  // ✅ Borrar credenciales guardadas
   localStorage.removeItem('jornada_usuario');
   localStorage.removeItem('jornada_pass');
 
@@ -999,9 +995,7 @@ async function autoLogin() {
   if (usuarioGuardado && passGuardado) {
     document.getElementById('loginUsuario').value = usuarioGuardado;
     document.getElementById('loginPassword').value = passGuardado;
-    // Intentar login automático
     await iniciarSesion();
-    // Si falla, la función ya borró las credenciales y mostró el error
   }
 }
 
@@ -1709,13 +1703,12 @@ async function eliminarFeriado(fecha) {
 }
 
 // ============================================================
-// REPORTE MENSUAL (con extras netas = extras - descuento)
+// REPORTE MENSUAL (AHORA CON TODOS LOS EMPLEADOS)
 // ============================================================
 function llenarSelectMeses() {
   const sel = document.getElementById('mesReporte');
   sel.innerHTML = '';
   const ahora = new Date();
-  // Ahora empieza en el mes anterior (igual que Historial)
   for (let i = 0; i < 12; i++) {
     const d = new Date(ahora.getFullYear(), ahora.getMonth() - i - 1, 1);
     const val = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
@@ -1725,7 +1718,6 @@ function llenarSelectMeses() {
     opt.textContent = label.charAt(0).toUpperCase() + label.slice(1);
     sel.appendChild(opt);
   }
-  // Seleccionar el mes anterior
   const mesInicio = new Date(ahora.getFullYear(), ahora.getMonth() - 1, 1);
   const valorInicio = mesInicio.getFullYear() + '-' + String(mesInicio.getMonth() + 1).padStart(2, '0');
   sel.value = valorInicio;
@@ -1735,6 +1727,7 @@ function llenarSelectMeses() {
 function generarReporte() {
   const mesVal = document.getElementById('mesReporte').value;
   if (!mesVal) return;
+
   const [year, month] = mesVal.split('-').map(Number);
   const fechaInicio = new Date(year, month - 1, 11);
   const fechaFin = new Date(year, month, 10);
@@ -1742,21 +1735,7 @@ function generarReporte() {
   const finStr = fechaFin.toISOString().split('T')[0];
   document.getElementById('periodoReporte').innerText = `${inicioStr} al ${finStr}`;
 
-  // Filtramos registros del período con entrada y salida
-  let registrosFiltrados = registrosCache.filter(r => r.fecha >= inicioStr && r.fecha <= finStr && r.entrada && r.salida);
-  if (!esAdmin) {
-    registrosFiltrados = registrosFiltrados.filter(r => r.empleadoId === usuarioActual.empleadoId);
-  }
-
-  // Agrupar por empleado
-  const mapa = {};
-  registrosFiltrados.forEach(r => {
-    const key = r.empleadoId;
-    if (!mapa[key]) mapa[key] = { empleadoId: key, nombre: r.nombre || 'Desconocido', turno: r.turno || 'Diurno', registros: [] };
-    mapa[key].registros.push(r);
-  });
-
-  // Incluir también los descuentos por sábado no trabajado (sin entrada/salida)
+  // ---- 1. Obtener todos los días del período ----
   const todosLosDias = [];
   let cursor = new Date(fechaInicio);
   while (cursor <= fechaFin) {
@@ -1764,6 +1743,29 @@ function generarReporte() {
     cursor.setDate(cursor.getDate() + 1);
   }
 
+  // ---- 2. Construir mapa con TODOS los empleados ----
+  const mapa = {};
+  empleados.forEach(emp => {
+    // Omitimos al admin si no queremos que aparezca
+    if (emp.rol === 'admin') return;
+    mapa[emp.id] = {
+      empleadoId: emp.id,
+      nombre: emp.nombre,
+      turno: emp.turno || 'Diurno', // Puedes tener un campo turno en el empleado, si no, usar 'Diurno' por defecto
+      registros: []
+    };
+  });
+
+  // ---- 3. Agregar registros reales (con entrada/salida) a cada empleado ----
+  registrosCache.forEach(r => {
+    if (r.fecha >= inicioStr && r.fecha <= finStr && r.entrada && r.salida) {
+      if (mapa[r.empleadoId]) {
+        mapa[r.empleadoId].registros.push(r);
+      }
+    }
+  });
+
+  // ---- 4. Agregar descuentos por sábados no trabajados a TODOS los empleados ----
   for (let empId in mapa) {
     const emp = mapa[empId];
     const turno = emp.turno || 'Diurno';
@@ -1790,7 +1792,7 @@ function generarReporte() {
     });
   }
 
-  // Generar semanas usando ISO (domingo a sábado)
+  // ---- 5. Generar semanas ----
   const semanasMap = {};
   let tempDate = new Date(fechaInicio);
   while (tempDate <= fechaFin) {
@@ -1815,10 +1817,12 @@ function generarReporte() {
     fin: semanasMap[key].fin
   }));
 
+  // ---- 6. Construir la tabla HTML ----
   let html = '<table><thead><tr><th>Empleado (Turno)</th>';
   semanasList.forEach(s => { html += `<th>${s.label}</th>`; });
   html += `<th>Total Extras Netas</th></tr></thead><tbody>`;
 
+  // Recorrer cada empleado en el mapa
   for (let empId in mapa) {
     const emp = mapa[empId];
     const nombre = emp.nombre;
