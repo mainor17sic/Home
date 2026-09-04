@@ -577,9 +577,16 @@
         <option value="Nocturno">Nocturno</option>
       </select>
       <select id="filtroEmpleado" style="flex:0 0 180px; display:none;">
-        <option value="todos">Todos los empleados</option>
+        <!-- Se llena con JavaScript solo con nombres, sin "Todos" -->
       </select>
+      <!-- El botón Mostrar se mantiene por si el usuario quiere recargar manualmente -->
       <button onclick="actualizarHistorial()" class="btn-success">📅 Mostrar</button>
+    </div>
+    <!-- Controles de paginación -->
+    <div id="paginacionHistorial" style="display:flex; justify-content:space-between; align-items:center; margin:8px 0;">
+      <button id="btnPaginaAnterior" class="btn-outline" onclick="cambiarPagina(-1)" disabled>⬅ Anterior</button>
+      <span id="infoPagina" style="font-weight:600;">Página 1 de 1</span>
+      <button id="btnPaginaSiguiente" class="btn-outline" onclick="cambiarPagina(1)" disabled>Siguiente ➡</button>
     </div>
     <div class="table-wrap" id="historialTableWrap">
       <table id="historialTable">
@@ -599,7 +606,9 @@
             <th>Acciones</th>
           </tr>
         </thead>
-        <tbody id="tablaHistorial"></tbody>
+        <tbody id="tablaHistorial">
+          <!-- Vacío por defecto (sin datos) -->
+        </tbody>
       </table>
     </div>
   </div>
@@ -802,6 +811,12 @@ let editandoEmpleadoIdGlobal = null;
 
 // Variables para importación
 let registrosDetectados = [];
+
+// Variables para paginación y filtro
+let paginaActual = 1;
+let filasPorPagina = 50;
+let registrosFiltradosGlobal = [];
+let filtroEmpleadoActivo = null; // null = sin filtrar, id del empleado = filtrar
 
 // ============================================================
 // FUNCIONES DE FECHA Y TURNOS
@@ -1080,7 +1095,19 @@ function construirMenuInferior() {
         generarReporte();
       } else if (tabId === 'historial') {
         llenarSelectHistorial();
-        actualizarHistorial();
+        llenarSelectEmpleados(); // Carga el selector sin datos en tabla
+        // No llamamos a actualizarHistorial() para que la tabla quede vacía
+        // El usuario debe seleccionar un empleado para ver datos
+        // Pero si ya hay un filtro activo, podríamos mostrar los datos automáticamente
+        if (filtroEmpleadoActivo) {
+          actualizarHistorial();
+        } else {
+          // Asegurar tabla vacía
+          document.getElementById('tablaHistorial').innerHTML = '';
+          document.getElementById('infoPagina').textContent = 'Selecciona un empleado';
+          document.getElementById('btnPaginaAnterior').disabled = true;
+          document.getElementById('btnPaginaSiguiente').disabled = true;
+        }
       } else if (tabId === 'empleados') {
         mostrarEmpleados();
       } else if (tabId === 'config') {
@@ -1140,6 +1167,27 @@ async function init() {
     const dia = String(hoyDate.getDate()).padStart(2, '0');
     fechaImport.value = `${año}-${mes}-${dia}`;
   }
+
+  // Eventos para actualización automática en historial (mes y turno)
+  document.getElementById('mesHistorial').addEventListener('change', function() {
+    if (filtroEmpleadoActivo) {
+      paginaActual = 1;
+      actualizarHistorial();
+    }
+  });
+  document.getElementById('filtroTurno').addEventListener('change', function() {
+    if (filtroEmpleadoActivo) {
+      paginaActual = 1;
+      actualizarHistorial();
+    }
+  });
+  document.getElementById('filasPorPagina').addEventListener('change', function() {
+    filasPorPagina = parseInt(this.value);
+    paginaActual = 1;
+    if (filtroEmpleadoActivo) {
+      renderizarPagina();
+    }
+  });
 }
 
 // ============================================================
@@ -1445,14 +1493,47 @@ async function guardarEdicionEmpleado() {
 }
 
 // ============================================================
-// SELECTOR EMPLEADOS PARA HISTORIAL
+// SELECTOR EMPLEADOS PARA HISTORIAL (SOLO ADMIN, SIN "TODOS")
 // ============================================================
 function llenarSelectEmpleados() {
   const sel = document.getElementById('filtroEmpleado');
-  if (!esAdmin) { sel.style.display = 'none'; return; }
+  if (!esAdmin) {
+    sel.style.display = 'none';
+    return;
+  }
   sel.style.display = 'inline-block';
-  sel.innerHTML = '<option value="todos">Todos los empleados</option>';
-  empleados.forEach(e => { if (e.rol === 'admin') return; sel.innerHTML += `<option value="${e.id}">${e.nombre}</option>`; });
+  // Limpiar y poner placeholder (sin "Todos")
+  sel.innerHTML = '<option value="">Selecciona empleado</option>';
+  empleados.forEach(e => {
+    if (e.rol === 'admin') return;
+    sel.innerHTML += `<option value="${e.id}">${e.nombre}</option>`;
+  });
+  // Asegurar que el valor sea vacío (sin filtro) al cargar
+  sel.value = '';
+  filtroEmpleadoActivo = null;
+
+  // Eliminar eventos anteriores para evitar duplicados
+  sel.removeEventListener('change', aplicarFiltroEmpleado);
+  // Asignar evento change para que actualice automáticamente
+  sel.addEventListener('change', aplicarFiltroEmpleado);
+}
+
+function aplicarFiltroEmpleado() {
+  const sel = document.getElementById('filtroEmpleado');
+  const valor = sel.value;
+  if (valor && valor !== '') {
+    filtroEmpleadoActivo = valor;
+  } else {
+    filtroEmpleadoActivo = null;
+    // Limpiar tabla si no hay empleado seleccionado
+    document.getElementById('tablaHistorial').innerHTML = '';
+    document.getElementById('infoPagina').textContent = 'Selecciona un empleado';
+    document.getElementById('btnPaginaAnterior').disabled = true;
+    document.getElementById('btnPaginaSiguiente').disabled = true;
+    return;
+  }
+  paginaActual = 1;
+  actualizarHistorial();
 }
 
 // ============================================================
@@ -1474,14 +1555,23 @@ function llenarSelectHistorial() {
   const mesInicio = new Date(ahora.getFullYear(), ahora.getMonth() - 1, 1);
   const valorInicio = mesInicio.getFullYear() + '-' + String(mesInicio.getMonth() + 1).padStart(2, '0');
   sel.value = valorInicio;
-  actualizarHistorial();
+  // No llamamos a actualizarHistorial aquí; lo hará el filtro o el botón Mostrar
 }
 
 function actualizarHistorial() {
+  // Solo mostrar si hay un filtro activo (empleado seleccionado) o si es admin con filtro
+  if (esAdmin && !filtroEmpleadoActivo) {
+    // Si es admin y no hay filtro, no mostrar datos (tabla vacía)
+    document.getElementById('tablaHistorial').innerHTML = '';
+    document.getElementById('infoPagina').textContent = 'Selecciona un empleado';
+    document.getElementById('btnPaginaAnterior').disabled = true;
+    document.getElementById('btnPaginaSiguiente').disabled = true;
+    return;
+  }
+
   const mesVal = document.getElementById('mesHistorial').value;
   if (!mesVal) return;
   const filtroTurno = document.getElementById('filtroTurno').value;
-  const filtroEmpleadoId = document.getElementById('filtroEmpleado').value;
 
   const [year, month] = mesVal.split('-').map(Number);
   const fechaInicio = new Date(year, month - 1, 11);
@@ -1503,8 +1593,12 @@ function actualizarHistorial() {
   let empleadosFiltrados = empleados;
   if (!esAdmin) {
     empleadosFiltrados = empleados.filter(e => e.id === usuarioActual.empleadoId);
-  } else if (filtroEmpleadoId && filtroEmpleadoId !== 'todos') {
-    empleadosFiltrados = empleados.filter(e => e.id === filtroEmpleadoId);
+  } else {
+    // Si hay un filtro activo (por el selector), usarlo
+    if (filtroEmpleadoActivo) {
+      empleadosFiltrados = empleados.filter(e => e.id === filtroEmpleadoActivo);
+    }
+    // Si no hay filtro, empleadosFiltrados = empleados (pero no se llega aquí porque arriba retornamos)
   }
 
   const semanaMap = {};
@@ -1519,6 +1613,8 @@ function actualizarHistorial() {
     weekColorMap[key] = idx % 2 === 0 ? 'fila-semana-par' : 'fila-semana-impar';
   });
 
+  // Construir lista de registros a mostrar (sin paginar aún)
+  const registrosMostrar = [];
   empleadosFiltrados.forEach(emp => {
     dias.forEach(fecha => {
       let registro = registrosCache.find(r => r.empleadoId === emp.id && r.fecha === fecha);
@@ -1570,31 +1666,86 @@ function actualizarHistorial() {
         accionesHtml = `<button class="btn-warning btn-sm" onclick="abrirModalEditar('${emp.id}','${fecha}')">✏️ Editar</button>`;
       } else { accionesHtml = '—'; }
 
-      const weekNum = getISOWeek(fecha);
-      const rowClass = weekColorMap[weekNum] || '';
-
-      tbody.innerHTML += `
-        <tr class="${rowClass}">
-          <td>${fecha}</td>
-          <td><span class="dia-azul">${nombreDia}</span></td>
-          <td>${emp.nombre}</td>
-          <td>${entrada}</td>
-          <td>${salida}</td>
-          <td>${horasStr}</td>
-          <td>${extrasStr}</td>
-          <td>${descuentoStr}</td>
-          <td>${comidasStr}</td>
-          <td><span class="badge badge-azul">${turno}</span></td>
-          <td><span class="badge ${badgeClass}">${tipoLabel}</span></td>
-          <td>${accionesHtml}</td>
-        </tr>
-      `;
+      registrosMostrar.push({
+        fecha, nombreDia, empleado: emp.nombre, entrada, salida,
+        horasStr, extrasStr, descuentoStr, comidasStr,
+        turno, tipoLabel, badgeClass, accionesHtml,
+        weekNum: getISOWeek(fecha)
+      });
     });
   });
 
-  if (tbody.innerHTML === '') {
-    tbody.innerHTML = `<tr><td colspan="12" style="text-align:center;color:var(--text-gray);">No hay registros para este período</td></tr>`;
+  // Ordenar por fecha descendente (más reciente primero)
+  registrosMostrar.sort((a,b) => b.fecha.localeCompare(a.fecha));
+
+  // Guardar globalmente para paginación
+  registrosFiltradosGlobal = registrosMostrar;
+
+  // Obtener filas por página desde el selector
+  const filasSelect = document.getElementById('filasPorPagina');
+  if (filasSelect) filasPorPagina = parseInt(filasSelect.value) || 50;
+
+  // Resetear a página 1
+  paginaActual = 1;
+  renderizarPagina();
+}
+
+function renderizarPagina() {
+  const tbody = document.getElementById('tablaHistorial');
+  const totalRegistros = registrosFiltradosGlobal.length;
+  const totalPaginas = Math.ceil(totalRegistros / filasPorPagina);
+
+  // Asegurar que la página actual esté dentro del rango
+  if (paginaActual < 1) paginaActual = 1;
+  if (paginaActual > totalPaginas) paginaActual = totalPaginas;
+
+  const inicio = (paginaActual - 1) * filasPorPagina;
+  const fin = Math.min(inicio + filasPorPagina, totalRegistros);
+  const paginaRegistros = registrosFiltradosGlobal.slice(inicio, fin);
+
+  // Generar el HTML de la tabla
+  let html = '';
+  const weekColorMap = {};
+  let idx = 0;
+  paginaRegistros.forEach(row => {
+    const weekNum = row.weekNum;
+    if (!weekColorMap[weekNum]) {
+      weekColorMap[weekNum] = idx % 2 === 0 ? 'fila-semana-par' : 'fila-semana-impar';
+      idx++;
+    }
+    const rowClass = weekColorMap[weekNum] || '';
+    html += `
+      <tr class="${rowClass}">
+        <td>${row.fecha}</td>
+        <td><span class="dia-azul">${row.nombreDia}</span></td>
+        <td>${row.empleado}</td>
+        <td>${row.entrada}</td>
+        <td>${row.salida}</td>
+        <td>${row.horasStr}</td>
+        <td>${row.extrasStr}</td>
+        <td>${row.descuentoStr}</td>
+        <td>${row.comidasStr}</td>
+        <td><span class="badge badge-azul">${row.turno}</span></td>
+        <td><span class="badge ${row.badgeClass}">${row.tipoLabel}</span></td>
+        <td>${row.accionesHtml}</td>
+      </tr>
+    `;
+  });
+
+  if (html === '') {
+    html = `<tr><td colspan="12" style="text-align:center;color:var(--text-gray);">No hay registros para este período</td></tr>`;
   }
+  tbody.innerHTML = html;
+
+  // Actualizar controles de paginación
+  document.getElementById('infoPagina').textContent = totalRegistros > 0 ? `Página ${paginaActual} de ${totalPaginas || 1}` : 'Sin registros';
+  document.getElementById('btnPaginaAnterior').disabled = (paginaActual <= 1 || totalRegistros === 0);
+  document.getElementById('btnPaginaSiguiente').disabled = (paginaActual >= totalPaginas || totalRegistros === 0);
+}
+
+function cambiarPagina(delta) {
+  paginaActual += delta;
+  renderizarPagina();
 }
 
 // ============================================================
@@ -1788,8 +1939,7 @@ function generarReporte() {
   const finStr = fechaFin.toISOString().split('T')[0];
   document.getElementById('periodoReporte').innerText = `${inicioStr} al ${finStr}`;
 
-  // Filtramos registros del período con entrada y salida
-  // AHORA SIN FILTRO POR EMPLEADO: todos ven todos los empleados
+  // Filtramos registros del período con entrada y salida (todos los empleados, sin filtro)
   let registrosFiltrados = registrosCache.filter(r => r.fecha >= inicioStr && r.fecha <= finStr && r.entrada && r.salida);
 
   // Agrupar por empleado
@@ -1939,7 +2089,7 @@ function generarPDF() {
 }
 
 // ============================================================
-// IMPORTACIÓN DE JORNADA (mejorada)
+// IMPORTACIÓN DE JORNADA CON SALIDA EDITABLE
 // ============================================================
 function normalizarNombre(nombre) {
   return nombre.trim()
@@ -1968,7 +2118,6 @@ function parsearHora(texto) {
 
 function esLineaValidaParaNombre(linea) {
   const lower = linea.toLowerCase();
-  // Ignorar líneas que contengan palabras clave de tiempo o comida
   if (lower.includes('hora de entrada') || lower.includes('hora de salida') ||
       lower.includes('entrada') || lower.includes('salida') ||
       lower.includes('tiempo') || lower.includes('comida') ||
@@ -1982,7 +2131,6 @@ function esLineaValidaParaNombre(linea) {
       lower.includes(':')) {
     return false;
   }
-  // Descartar líneas muy cortas o con solo números
   if (linea.trim().length < 3) return false;
   if (/\d/.test(linea) && !/[a-zA-Z]/.test(linea)) return false;
   return true;
@@ -2020,21 +2168,17 @@ function procesarImportacion() {
   limpiarLogsImport();
   logImportar('🔍 Procesando texto...', 'info');
 
-  // 1. Dividir en líneas
   const lineas = texto.split('\n').map(l => l.trim()).filter(l => l.length > 0);
 
-  // 2. Variables
   let entradaActual = null;
   let salidaGeneral = null;
-  const empleadosConEntrada = {}; // nombre -> horaEntrada
-  const excepcionesSalida = {};   // nombre -> horaSalida
+  const empleadosConEntrada = {};
+  const excepcionesSalida = {};
 
-  // 3. Recorrer líneas
   for (let i = 0; i < lineas.length; i++) {
     let linea = lineas[i];
     const lower = linea.toLowerCase();
 
-    // Detectar "hora de entrada" o "entrada"
     if (lower.includes('hora de entrada') || lower.includes('entrada')) {
       const matchHora = linea.match(/(\d{1,2}:\d{2}\s*(?:am|pm)?|\d{1,2}\s*(?:am|pm)?)/i);
       if (matchHora) {
@@ -2045,7 +2189,6 @@ function procesarImportacion() {
       continue;
     }
 
-    // Detectar "hora de salida" o "salida"
     if (lower.includes('hora de salida') || lower.includes('salida')) {
       const matchHora = linea.match(/(\d{1,2}:\d{2}\s*(?:am|pm)?|\d{1,2}\s*(?:am|pm)?)/i);
       if (matchHora) {
@@ -2056,20 +2199,15 @@ function procesarImportacion() {
       continue;
     }
 
-    // Excepciones: "Solo José tomas y Esau Mejia se retiraron a las 4:30pm"
-    // Capturar nombres compuestos separados por "y" o comas
     const excepcionMatch = linea.match(/(.+?)\s*(?:se retiró|salió|se fue)\s*(?:a las|a la|alas|a las)\s*(\d{1,2}:\d{2}\s*(?:am|pm)?|\d{1,2}\s*(?:am|pm)?)/i);
     if (excepcionMatch) {
       let nombresParte = excepcionMatch[1].trim();
       const horaStr = excepcionMatch[2].trim();
       const hora = parsearHora(horaStr);
       if (hora) {
-        // Limpiar "Solo" o "solamente" al inicio
         nombresParte = nombresParte.replace(/^(solo|solamente|únicamente)\s*/i, '').trim();
-        // Dividir por " y " o " , " para obtener múltiples nombres
         const nombres = nombresParte.split(/\s+y\s+|\s*,\s*/).map(n => n.trim()).filter(n => n.length > 0);
         for (let n of nombres) {
-          // Limpiar posibles palabras sobrantes
           n = n.replace(/^(a las|a la|alas)\s*/i, '').trim();
           if (n.length > 0) {
             excepcionesSalida[n] = hora;
@@ -2080,19 +2218,16 @@ function procesarImportacion() {
       continue;
     }
 
-    // Si la línea es válida para ser un nombre (sin palabras clave de tiempo/comida)
     if (entradaActual && esLineaValidaParaNombre(linea)) {
-      // Puede ser varios nombres en una misma línea separados por comas o "y"
       const nombres = linea.split(/\s*y\s+|\s*,\s*/).map(n => n.trim()).filter(n => n.length > 0);
       for (let n of nombres) {
-        if (/\d/.test(n)) continue; // Si tiene números, no es nombre
+        if (/\d/.test(n)) continue;
         empleadosConEntrada[n] = entradaActual;
         logImportar(`👤 ${n} → entrada ${entradaActual}`, 'info');
       }
     }
   }
 
-  // Fallback salida general si no se detectó
   if (!salidaGeneral) {
     const matchSalida = texto.match(/salida\s*(?:general)?\s*(\d{1,2}:\d{2}\s*(?:am|pm)?|\d{1,2}\s*(?:am|pm)?)/i);
     if (matchSalida) {
@@ -2101,12 +2236,10 @@ function procesarImportacion() {
     }
   }
 
-  // Construir lista de registros detectados
   registrosDetectados = [];
   for (let nombre in empleadosConEntrada) {
     let horaEntrada = empleadosConEntrada[nombre];
     let horaSalida = salidaGeneral;
-    // Buscar excepción de salida
     for (let exNombre in excepcionesSalida) {
       if (normalizarNombre(nombre) === normalizarNombre(exNombre)) {
         horaSalida = excepcionesSalida[exNombre];
@@ -2139,7 +2272,6 @@ function procesarImportacion() {
     return;
   }
 
-  // Mostrar resumen
   mostrarResumenImportacion(fecha);
 }
 
@@ -2147,46 +2279,63 @@ function mostrarResumenImportacion(fecha) {
   const contenedor = document.getElementById('resumenImportacion');
   let html = `
     <h3 style="margin-bottom:8px;">📋 Resumen de registros a importar (${fecha})</h3>
+    <p style="font-size:0.9rem; color:var(--text-gray);">✏️ Haz clic en la hora de salida para editarla si es necesario.</p>
     <div class="table-wrap">
       <table>
         <thead>
-          <tr><th>Empleado</th><th>Entrada</th><th>Salida</th><th>Estado</th></tr>
+          <tr><th>Empleado</th><th>Entrada</th><th>Salida (editable)</th><th>Estado</th></tr>
         </thead>
         <tbody>
   `;
-  let todosEncontrados = true;
-  registrosDetectados.forEach(item => {
+
+  registrosDetectados.forEach((item, index) => {
     const encontrado = item.encontrado && item.empleadoId && item.salida !== null;
-    if (!encontrado) todosEncontrados = false;
     const estado = encontrado ? '✅ Encontrado' : '❌ No encontrado o sin salida';
     const color = encontrado ? 'color:var(--success);' : 'color:var(--error);';
+    const salidaValue = item.salida || '';
+    
     html += `
       <tr>
         <td>${item.nombre}</td>
         <td>${item.entrada || '—'}</td>
-        <td>${item.salida || '—'}</td>
+        <td>
+          <input type="time" id="salida_${index}" value="${salidaValue}" 
+                 style="padding:4px 8px; border:1px solid #cbd5e1; border-radius:4px; width:120px;"
+                 ${!encontrado ? 'disabled style="background:#f1f5f9;"' : ''} />
+        </td>
         <td style="${color}">${estado}</td>
       </tr>
     `;
   });
+
   html += `</tbody></table></div>`;
-  if (!todosEncontrados) {
-    html += `<p style="color:var(--error); margin-top:8px;">⚠️ Algunos empleados no se encontraron o les falta salida. Serán omitidos.</p>`;
+  
+  const hayError = registrosDetectados.some(item => !item.encontrado || !item.salida);
+  if (hayError) {
+    html += `<p style="color:var(--error); margin-top:8px;">⚠️ Algunos empleados no se encontraron o les falta salida. Serán omitidos al importar.</p>`;
   }
+
   contenedor.innerHTML = html;
 
-  // Mostrar opciones de confirmación
   const opcionesDiv = document.getElementById('importarOpciones');
   opcionesDiv.style.display = 'block';
   document.getElementById('selectComidaImportacion').value = '0';
 
-  logImportar(`📌 Se detectaron ${registrosDetectados.length} registros. Revisa el resumen y confirma.`, 'info');
+  logImportar(`📌 Se detectaron ${registrosDetectados.length} registros. Revisa el resumen, edita si es necesario y confirma.`, 'info');
 }
 
 function confirmarImportacion() {
   if (!esAdmin) { showToast('Solo administrador.', 'error'); return; }
   const fecha = document.getElementById('fechaImportar').value;
   const tiemposComida = parseInt(document.getElementById('selectComidaImportacion').value);
+
+  // Leer los valores editados de los inputs de salida
+  registrosDetectados.forEach((item, index) => {
+    const inputSalida = document.getElementById(`salida_${index}`);
+    if (inputSalida) {
+      item.salida = inputSalida.value || null;
+    }
+  });
 
   const validos = registrosDetectados.filter(item => item.encontrado && item.empleadoId && item.salida !== null);
   if (validos.length === 0) {
