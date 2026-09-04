@@ -40,6 +40,33 @@
       padding-bottom: 80px;
     }
 
+    /* Spinner global */
+    #global-spinner {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(4px);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      font-size: 1.2rem;
+      color: var(--primary);
+      transition: opacity 0.4s;
+    }
+    #global-spinner.hidden { opacity: 0; pointer-events: none; }
+    .spinner {
+      width: 50px; height: 50px;
+      border: 6px solid #e2e8f0;
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+      margin-bottom: 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Login */
     #login-screen {
       display: flex;
       justify-content: center;
@@ -77,8 +104,19 @@
       font-weight: 600;
       cursor: pointer;
       transition: 0.2s;
+      position: relative;
     }
-    .login-box button:hover { background: var(--secondary); }
+    .login-box button:disabled { opacity: 0.6; cursor: not-allowed; }
+    .login-box button .spinner-btn {
+      display: inline-block;
+      width: 20px; height: 20px;
+      border: 3px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
     .login-error { color: var(--error); margin-top: 12px; text-align: center; display: none; }
 
     #app-container {
@@ -290,14 +328,25 @@
       cursor: pointer;
       transition: 0.2s;
       min-width: 100px;
+      position: relative;
     }
-    .botones-marcar button:hover { transform: translateY(-2px); }
+    .botones-marcar button:disabled { opacity: 0.6; cursor: not-allowed; }
+    .botones-marcar button .spinner-btn {
+      display: inline-block;
+      width: 18px; height: 18px;
+      border: 3px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
     .btn-entrada { background: var(--accent); color: var(--primary); }
-    .btn-entrada:hover { background: #c5a032; }
+    .btn-entrada:hover:not(:disabled) { background: #c5a032; }
     .btn-salida { background: var(--error); color: white; }
-    .btn-salida:hover { background: #dc2626; }
+    .btn-salida:hover:not(:disabled) { background: #dc2626; }
     .btn-ahora { background: var(--primary); color: white; }
-    .btn-ahora:hover { background: var(--secondary); }
+    .btn-ahora:hover:not(:disabled) { background: var(--secondary); }
 
     .mensaje-confirmacion {
       margin-top: 16px;
@@ -374,17 +423,29 @@
       border: none;
       font-weight: 600;
       cursor: pointer;
+      position: relative;
     }
-    button:hover { background: var(--secondary); }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    button .spinner-btn {
+      display: inline-block;
+      width: 18px; height: 18px;
+      border: 3px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+    button:hover:not(:disabled) { background: var(--secondary); }
     .btn-success { background: var(--success); }
-    .btn-success:hover { background: #059669; }
+    .btn-success:hover:not(:disabled) { background: #059669; }
     .btn-danger { background: var(--error); }
-    .btn-danger:hover { background: #dc2626; }
+    .btn-danger:hover:not(:disabled) { background: #dc2626; }
     .btn-warning { background: var(--warning); color: #1e293b; }
-    .btn-warning:hover { background: #d97706; }
+    .btn-warning:hover:not(:disabled) { background: #d97706; }
     .btn-sm { padding: 4px 10px; font-size: 0.75rem; }
     .btn-outline { background: transparent; color: var(--primary); border: 2px solid var(--primary); }
-    .btn-outline:hover { background: var(--primary); color: white; }
+    .btn-outline:hover:not(:disabled) { background: var(--primary); color: white; }
 
     .modal-overlay {
       display: none;
@@ -482,6 +543,12 @@
 </head>
 <body>
 
+<!-- ===== SPINNER GLOBAL ===== -->
+<div id="global-spinner">
+  <div class="spinner"></div>
+  <span>Cargando datos...</span>
+</div>
+
 <!-- ===== PANTALLA DE LOGIN ===== -->
 <div id="login-screen">
   <div class="login-box">
@@ -489,7 +556,7 @@
     <p>Ingresa tus credenciales</p>
     <input type="text" id="loginUsuario" placeholder="Usuario" />
     <input type="password" id="loginPassword" placeholder="Contraseña" />
-    <button onclick="iniciarSesion()">Ingresar</button>
+    <button id="btnLogin" onclick="iniciarSesion()">Ingresar</button>
     <div id="loginError" class="login-error">Usuario o contraseña incorrectos</div>
   </div>
 </div>
@@ -538,7 +605,6 @@
       <select id="mesReporte"><option value="">Selecciona mes</option></select>
       <button onclick="generarReporte()" class="btn-success">📊 Generar</button>
       <button onclick="generarPDF()" class="btn-warning">📄 PDF</button>
-      <button onclick="generarReporte()" class="btn-outline" style="flex:0 0 auto;">🔄 Forzar</button>
     </div>
     <p style="font-size:0.9rem; color:var(--text-gray);">Período: <span id="periodoReporte">—</span></p>
     <div id="contenedorReporte" class="table-wrap">
@@ -609,7 +675,6 @@
     <div class="form-row">
       <input type="date" id="fechaImportar" value="" style="flex:0 0 200px;" />
       <button onclick="procesarImportacion()" class="btn-success" style="flex:0 0 auto;">📥 Procesar</button>
-      <button onclick="subirPendientesManual()" class="btn-warning" style="flex:0 0 auto;">⬆️ Subir pendientes</button>
       <button onclick="document.getElementById('textoImportar').value=''; document.getElementById('resumenImportacion').innerHTML=''; document.getElementById('importarOpciones').style.display='none'; document.getElementById('logImportar').innerHTML='Esperando acción...';" class="btn-danger" style="flex:0 0 auto;">🗑️ Limpiar</button>
     </div>
     <div id="resumenImportacion" style="margin-top:16px;"></div>
@@ -740,7 +805,7 @@ function showToast(message, type = 'info') {
     <button class="toast-close" onclick="this.parentElement.remove()">×</button>
   `;
   container.appendChild(toast);
-  setTimeout(() => { if (toast.parentElement) toast.remove(); }, 4000);
+  setTimeout(() => { if (toast.parentElement) toast.remove(); }, 5000);
 }
 
 // ============================================================
@@ -749,31 +814,33 @@ function showToast(message, type = 'info') {
 let empleados = [];
 let feriados = [];
 let registrosCache = [];
-const LS_KEY = 'jornada_local';
-const PENDING_KEY = 'jornada_pending';
-let pendingUploads = [];
-
-const FERIADOS_POR_DEFECTO = [
-  "2026-01-01", "2026-04-02", "2026-04-03", "2026-05-01",
-  "2026-06-30", "2026-08-15", "2026-09-15", "2026-10-20",
-  "2026-11-01", "2026-12-25"
-];
-
+let usuarioActual = null;
+let esAdmin = false;
 let editandoRegistroId = null;
 let editandoEmpleadoId = null;
 let editandoFecha = null;
 let salidaPendienteEmpleado = null;
 let salidaPendienteHora = null;
 let salidaPendienteRegistro = null;
-let usuarioActual = null;
-let esAdmin = false;
-let editandoEmpleadoIdGlobal = null;
-
 let registrosDetectados = [];
 let paginaActual = 1;
 let filasPorPagina = 50;
 let registrosFiltradosGlobal = [];
 let filtroEmpleadoActivo = null;
+
+// Control de carga
+let loadingCount = 0;
+function showGlobalSpinner() {
+  loadingCount++;
+  document.getElementById('global-spinner').classList.remove('hidden');
+}
+function hideGlobalSpinner() {
+  loadingCount--;
+  if (loadingCount <= 0) {
+    loadingCount = 0;
+    document.getElementById('global-spinner').classList.add('hidden');
+  }
+}
 
 // ============================================================
 // FUNCIONES DE FECHA Y TURNOS
@@ -851,40 +918,20 @@ function calcularExtrasYDescuento(horasBrutas, fecha, turno, tipo) {
 }
 
 // ============================================================
-// OFFLINE Y SINCRONIZACIÓN
+// SINCRONIZACIÓN EN TIEMPO REAL (SOLO NUBE)
 // ============================================================
-function guardarLocal() {
-  try { localStorage.setItem(LS_KEY, JSON.stringify({ empleados, feriados, registros: registrosCache })); } catch(e) {}
-}
-function cargarLocal() {
-  try {
-    const raw = localStorage.getItem(LS_KEY);
-    if (raw) {
-      const data = JSON.parse(raw);
-      if (data.empleados) empleados = data.empleados;
-      if (data.feriados) feriados = data.feriados;
-      if (data.registros) registrosCache = data.registros;
-      return true;
-    }
-  } catch(e) {}
-  return false;
-}
-function guardarPendientes() {
-  try { localStorage.setItem(PENDING_KEY, JSON.stringify(pendingUploads)); } catch(e) {}
-}
-function cargarPendientes() {
-  try {
-    const raw = localStorage.getItem(PENDING_KEY);
-    if (raw) pendingUploads = JSON.parse(raw);
-  } catch(e) { pendingUploads = []; }
-}
 async function sincronizarEmpleados() {
   try {
     const snap = await db.collection("jornada_empleados").orderBy("nombre").get();
     const temp = [];
     snap.forEach(d => temp.push({ id: d.id, ...d.data() }));
-    if (temp.length) { empleados = temp; guardarLocal(); }
-  } catch(e) {}
+    empleados = temp;
+    return true;
+  } catch(e) {
+    console.error('Error sincronizando empleados:', e);
+    showToast('Error al cargar empleados. Verifica tu conexión.', 'error');
+    return false;
+  }
 }
 async function sincronizarFeriados() {
   try {
@@ -895,51 +942,24 @@ async function sincronizarFeriados() {
       await db.collection("jornada_config").doc("feriados").set({ lista: FERIADOS_POR_DEFECTO });
       feriados = [...FERIADOS_POR_DEFECTO];
     }
-    guardarLocal();
-  } catch(e) {}
-}
-async function subirPendientes() {
-  cargarPendientes();
-  if (pendingUploads.length === 0) return;
-  console.log(`📤 Intentando subir ${pendingUploads.length} registros pendientes...`);
-  const nuevosPendientes = [];
-  for (let tempId of pendingUploads) {
-    const registro = registrosCache.find(r => r.id === tempId);
-    if (!registro) continue;
-    if (!registro.empleadoId || !registro.fecha || !registro.entrada) {
-      console.warn(`⚠️ Registro ${tempId} incompleto, omitiendo`);
-      continue;
-    }
-    try {
-      const { id, ...data } = registro;
-      const docRef = await db.collection("jornada_registros").add(data);
-      registro.id = docRef.id;
-      console.log(`✅ Registro ${tempId} subido a Firestore con ID ${docRef.id}`);
-    } catch (e) {
-      console.error(`❌ Error subiendo ${tempId}:`, e);
-      nuevosPendientes.push(tempId);
-    }
+    return true;
+  } catch(e) {
+    console.error('Error sincronizando feriados:', e);
+    showToast('Error al cargar feriados. Verifica tu conexión.', 'error');
+    return false;
   }
-  pendingUploads = nuevosPendientes;
-  guardarPendientes();
-  guardarLocal();
-  console.log(`📊 Pendientes restantes: ${pendingUploads.length}`);
 }
 async function sincronizarRegistros() {
   try {
     const snap = await db.collection("jornada_registros").orderBy("fecha","desc").orderBy("timestamp","desc").get();
     const temp = [];
     snap.forEach(d => temp.push({ id: d.id, ...d.data() }));
-    if (temp.length) {
-      registrosCache = temp;
-      guardarLocal();
-      console.log(`✅ Registros sincronizados: ${temp.length}`);
-    } else {
-      console.warn('⚠️ No hay registros en Firestore');
-    }
-    await subirPendientes();
+    registrosCache = temp;
+    return true;
   } catch(e) {
-    console.error('❌ Error sincronizando registros:', e);
+    console.error('Error sincronizando registros:', e);
+    showToast('Error al cargar historial. Verifica tu conexión.', 'error');
+    return false;
   }
 }
 
@@ -947,6 +967,10 @@ async function sincronizarRegistros() {
 // LOGIN
 // ============================================================
 async function iniciarSesion() {
+  const btn = document.getElementById('btnLogin');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-btn"></span> Cargando...';
+
   const usuario = document.getElementById('loginUsuario').value.trim();
   const pass = document.getElementById('loginPassword').value.trim();
   const errorDiv = document.getElementById('loginError');
@@ -954,8 +978,8 @@ async function iniciarSesion() {
   if (!usuario || !pass) {
     errorDiv.textContent = 'Ingresa usuario y contraseña.';
     errorDiv.style.display = 'block';
-    localStorage.removeItem('jornada_usuario');
-    localStorage.removeItem('jornada_pass');
+    btn.disabled = false;
+    btn.innerHTML = 'Ingresar';
     return;
   }
   try {
@@ -981,16 +1005,16 @@ async function iniciarSesion() {
     }
     errorDiv.textContent = 'Usuario o contraseña incorrectos.';
     errorDiv.style.display = 'block';
-    localStorage.removeItem('jornada_usuario');
-    localStorage.removeItem('jornada_pass');
   } catch(e) {
     errorDiv.textContent = 'Error al conectar con la base de datos.';
     errorDiv.style.display = 'block';
     console.error(e);
-    localStorage.removeItem('jornada_usuario');
-    localStorage.removeItem('jornada_pass');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'Ingresar';
   }
 }
+
 function mostrarApp() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app-container').style.display = 'block';
@@ -1008,6 +1032,7 @@ function mostrarApp() {
     generarReporte();
   }
 }
+
 function cerrarSesion() {
   localStorage.removeItem('jornada_usuario');
   localStorage.removeItem('jornada_pass');
@@ -1021,6 +1046,7 @@ function cerrarSesion() {
   document.getElementById('loginPassword').value = '';
   showToast('Sesión cerrada', 'info');
 }
+
 async function autoLogin() {
   const usuarioGuardado = localStorage.getItem('jornada_usuario');
   const passGuardado = localStorage.getItem('jornada_pass');
@@ -1028,6 +1054,9 @@ async function autoLogin() {
     document.getElementById('loginUsuario').value = usuarioGuardado;
     document.getElementById('loginPassword').value = passGuardado;
     await iniciarSesion();
+  } else {
+    // Ocultar spinner global porque ya no es necesario
+    hideGlobalSpinner();
   }
 }
 
@@ -1102,30 +1131,37 @@ function construirMenuInferior() {
 // INICIALIZACIÓN
 // ============================================================
 async function init() {
-  cargarLocal();
-  cargarPendientes();
-  await sincronizarFeriados();
-  await sincronizarEmpleados();
-  await sincronizarRegistros();
+  showGlobalSpinner();
 
+  // Cargar datos iniciales
+  await Promise.all([
+    sincronizarEmpleados(),
+    sincronizarFeriados(),
+    sincronizarRegistros()
+  ]);
+
+  // Escuchas en tiempo real
   db.collection("jornada_empleados").onSnapshot(() => {
     console.log('📡 Cambio en empleados detectado');
-    sincronizarEmpleados();
-    actualizarSelects();
-    mostrarEmpleados();
-    if (esAdmin) llenarSelectEmpleados();
-    refrescarVistas();
+    sincronizarEmpleados().then(() => {
+      actualizarSelects();
+      mostrarEmpleados();
+      if (esAdmin) llenarSelectEmpleados();
+      refrescarVistas();
+    });
   });
   db.collection("jornada_config").doc("feriados").onSnapshot(() => {
     console.log('📡 Cambio en feriados detectado');
-    sincronizarFeriados();
-    actualizarTablaFeriados();
-    refrescarVistas();
+    sincronizarFeriados().then(() => {
+      actualizarTablaFeriados();
+      refrescarVistas();
+    });
   });
   db.collection("jornada_registros").onSnapshot(() => {
     console.log('📡 Cambio en registros detectado');
-    sincronizarRegistros();
-    refrescarVistas();
+    sincronizarRegistros().then(() => {
+      refrescarVistas();
+    });
   });
 
   actualizarSelects();
@@ -1157,17 +1193,14 @@ async function init() {
   document.getElementById('filtroTurno').addEventListener('change', function() {
     if (filtroEmpleadoActivo) { paginaActual = 1; actualizarHistorial(); }
   });
-  document.getElementById('filasPorPagina').addEventListener('change', function() {
-    filasPorPagina = parseInt(this.value);
-    paginaActual = 1;
-    if (filtroEmpleadoActivo) renderizarPagina();
-  });
 
   document.addEventListener('visibilitychange', function() {
     if (!document.hidden) {
       refrescarVistas();
     }
   });
+
+  hideGlobalSpinner();
 }
 
 // ============================================================
@@ -1175,12 +1208,8 @@ async function init() {
 // ============================================================
 function refrescarVistas() {
   const pestañaActiva = document.querySelector('.tab-content.active');
-  if (!pestañaActiva) {
-    console.warn('⚠️ No hay pestaña activa');
-    return;
-  }
+  if (!pestañaActiva) return;
   const id = pestañaActiva.id;
-  console.log(`🔄 Refrescando vista: ${id}`);
   if (id === 'principal') {
     actualizarSelects();
     actualizarCalendario();
@@ -1195,53 +1224,6 @@ function refrescarVistas() {
   } else if (id === 'empleados') {
     mostrarEmpleados();
   }
-}
-
-// ============================================================
-// SUBIR PENDIENTES MANUAL (BOTÓN)
-// ============================================================
-async function subirPendientesManual() {
-  if (!esAdmin) {
-    showToast('Solo el administrador puede realizar esta acción.', 'error');
-    return;
-  }
-  cargarPendientes();
-  if (pendingUploads.length === 0) {
-    logImportar('✅ No hay registros pendientes de subir.', 'info');
-    showToast('No hay registros pendientes de subir.', 'info');
-    return;
-  }
-  logImportar(`⏳ Iniciando subida manual de ${pendingUploads.length} registros...`, 'info');
-  let subidos = 0, errores = 0;
-  const nuevosPendientes = [];
-  for (let tempId of pendingUploads) {
-    const registro = registrosCache.find(r => r.id === tempId);
-    if (!registro) {
-      logImportar(`⚠️ Registro ${tempId} no encontrado en caché, omitiendo.`, 'warning');
-      continue;
-    }
-    if (!registro.empleadoId || !registro.fecha || !registro.entrada) {
-      logImportar(`⚠️ Registro ${tempId} incompleto, omitiendo.`, 'warning');
-      continue;
-    }
-    try {
-      const { id, ...data } = registro;
-      const docRef = await db.collection("jornada_registros").add(data);
-      registro.id = docRef.id;
-      logImportar(`✅ Registro ${tempId} subido exitosamente.`, 'success');
-      subidos++;
-    } catch (e) {
-      logImportar(`❌ Error subiendo ${tempId}: ${e.message}`, 'error');
-      errores++;
-      nuevosPendientes.push(tempId);
-    }
-  }
-  pendingUploads = nuevosPendientes;
-  guardarPendientes();
-  guardarLocal();
-  logImportar(`📊 Subida manual finalizada: ${subidos} subidos, ${errores} errores, ${pendingUploads.length} pendientes.`, 'info');
-  showToast(`Subida manual: ${subidos} registros subidos.`, subidos > 0 ? 'success' : 'error');
-  refrescarVistas();
 }
 
 // ============================================================
@@ -1325,31 +1307,29 @@ function actualizarCalendario() {
   const info = esFeriado(hoyStr) ? '🔴 Hoy es feriado' : (esDomingo(hoyStr) ? '🔵 Domingo (no laborable)' : '🟢 Día laborable');
   document.getElementById('infoFeriado').textContent = info;
 }
-function validarFechaDispositivo() {
-  const ahora = new Date();
-  const hoyStr = hoy();
-  const hoyDate = new Date(hoyStr);
-  const diffDias = Math.floor((ahora - hoyDate) / (1000 * 60 * 60 * 24));
-  if (diffDias > 1) {
-    showToast('⚠️ La fecha de tu dispositivo está adelantada. Ajusta el reloj para marcar correctamente.', 'warning');
-    return false;
-  }
-  if (diffDias < -1) {
-    showToast('⚠️ La fecha de tu dispositivo está atrasada. Ajusta el reloj para marcar correctamente.', 'warning');
-    return false;
-  }
-  return true;
-}
 
 // ============================================================
-// MARCACIÓN
+// MARCACIÓN (con spinners)
 // ============================================================
 function obtenerEmpleadoSeleccionado() {
   const id = document.getElementById('selectEmpleadoPrincipal').value;
   return empleados.find(e => e.id === id);
 }
-function marcarEntrada() {
-  if (!validarFechaDispositivo()) return;
+
+function setButtonLoading(btnId, loading) {
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+  if (loading) {
+    btn.disabled = true;
+    btn._originalText = btn.innerHTML;
+    btn.innerHTML = `<span class="spinner-btn"></span> Cargando...`;
+  } else {
+    btn.disabled = false;
+    btn.innerHTML = btn._originalText || btn.innerHTML;
+  }
+}
+
+async function marcarEntrada() {
   const emp = obtenerEmpleadoSeleccionado();
   if (!emp) { showToast('⚠️ Selecciona un empleado.', 'warning'); return; }
   if (!esAdmin && usuarioActual.empleadoId !== emp.id) {
@@ -1369,23 +1349,23 @@ function marcarEntrada() {
     turno, tiemposComida: 0, tipo: 'normal',
     timestamp: new Date().toISOString()
   };
-  db.collection("jornada_registros").add(nuevo)
-    .then(docRef => { nuevo.id = docRef.id; registrosCache.push(nuevo); guardarLocal();
-      showToast(`✅ Entrada registrada para ${emp.nombre} a las ${entrada} (Turno: ${turno})`, 'success');
-      actualizarHistorial();
-    })
-    .catch(() => { 
-      nuevo.id = 'temp_'+Date.now()+'_'+Math.random(); 
-      registrosCache.push(nuevo); 
-      guardarLocal();
-      pendingUploads.push(nuevo.id);
-      guardarPendientes();
-      showToast(`⚠️ Entrada guardada localmente para ${emp.nombre}`, 'warning');
-      actualizarHistorial();
-    });
+
+  setButtonLoading('btnEntradaP', true);
+  try {
+    const docRef = await db.collection("jornada_registros").add(nuevo);
+    nuevo.id = docRef.id;
+    registrosCache.push(nuevo);
+    showToast(`✅ Entrada registrada para ${emp.nombre} a las ${entrada} (Turno: ${turno})`, 'success');
+    actualizarHistorial();
+  } catch(e) {
+    console.error(e);
+    showToast('❌ Error de conexión. No se pudo registrar la entrada. Revisa tu internet.', 'error');
+  } finally {
+    setButtonLoading('btnEntradaP', false);
+  }
 }
+
 function iniciarSalidaConComidas() {
-  if (!validarFechaDispositivo()) return;
   const emp = obtenerEmpleadoSeleccionado();
   if (!emp) { showToast('⚠️ Selecciona un empleado.', 'warning'); return; }
   if (!esAdmin && usuarioActual.empleadoId !== emp.id) {
@@ -1404,48 +1384,44 @@ function iniciarSalidaConComidas() {
   salidaPendienteRegistro = registro;
   document.getElementById('modalComidaSalida').style.display = 'flex';
 }
-function confirmarComidaSalida() {
+
+async function confirmarComidaSalida() {
   const tiempos = parseInt(document.getElementById('selectComidaSalida').value);
   const emp = salidaPendienteEmpleado, salida = salidaPendienteHora, registro = salidaPendienteRegistro;
   if (!emp || !registro) { cancelarComidaSalida(); return; }
   registro.salida = salida;
   registro.tiemposComida = tiempos;
   registro.timestampSalida = new Date().toISOString();
-  if (registro.id && !registro.id.startsWith('temp_')) {
-    db.collection("jornada_registros").doc(registro.id).update({ salida, tiemposComida: tiempos, timestampSalida: new Date().toISOString() })
-      .then(() => { guardarLocal();
-        showToast(`✅ Salida registrada para ${emp.nombre} a las ${salida} (${tiempos} tiempo(s) de comida)`, 'success');
-        actualizarHistorial(); cerrarComidaSalida();
-      })
-      .catch(() => { 
-        guardarLocal(); 
-        if (!registro.id.startsWith('temp_')) {
-          pendingUploads.push(registro.id);
-          guardarPendientes();
-        }
-        showToast(`⚠️ Salida guardada localmente para ${emp.nombre}`, 'warning'); 
-        actualizarHistorial(); 
-        cerrarComidaSalida(); 
-      });
-  } else { 
-    guardarLocal(); 
-    if (!registro.id.startsWith('temp_')) {
-      pendingUploads.push(registro.id);
-      guardarPendientes();
-    }
-    showToast(`✅ Salida registrada localmente para ${emp.nombre}`, 'success'); 
-    actualizarHistorial(); 
-    cerrarComidaSalida(); 
+
+  // Deshabilitar botones del modal
+  const modalBtns = document.querySelectorAll('#modalComidaSalida .botones-modal button');
+  modalBtns.forEach(b => b.disabled = true);
+
+  try {
+    await db.collection("jornada_registros").doc(registro.id).update({
+      salida, tiemposComida: tiempos, timestampSalida: new Date().toISOString()
+    });
+    showToast(`✅ Salida registrada para ${emp.nombre} a las ${salida} (${tiempos} tiempo(s) de comida)`, 'success');
+    actualizarHistorial();
+  } catch(e) {
+    console.error(e);
+    showToast('❌ Error de conexión. No se pudo registrar la salida.', 'error');
+  } finally {
+    modalBtns.forEach(b => b.disabled = false);
+    cerrarComidaSalida();
   }
 }
+
 function cancelarComidaSalida() { cerrarComidaSalida(); showToast('❌ Salida cancelada.', 'error'); }
 function cerrarComidaSalida() { document.getElementById('modalComidaSalida').style.display = 'none'; salidaPendienteEmpleado = null; salidaPendienteHora = null; salidaPendienteRegistro = null; }
+
 function usarHoraActual() {
   const ahora = new Date().toLocaleTimeString('es-GT', { hour:'2-digit', minute:'2-digit' });
   document.getElementById('horaEntradaP').value = ahora;
   document.getElementById('horaSalidaP').value = ahora;
   showToast(`🔄 Hora actual establecida: ${ahora}`, 'info');
 }
+
 function actualizarSelects() {
   const sel = document.getElementById('selectEmpleadoPrincipal');
   sel.innerHTML = '';
@@ -1487,6 +1463,7 @@ function mostrarEmpleados() {
     tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--text-gray);">No hay empleados registrados.</td></tr>`;
   }
 }
+
 async function agregarEmpleado() {
   if (!esAdmin) { showToast('Solo el administrador puede agregar empleados.', 'error'); return; }
   const nombre = document.getElementById('nombreEmp').value.trim();
@@ -1495,29 +1472,50 @@ async function agregarEmpleado() {
   const salario = parseFloat(document.getElementById('salarioEmp').value) || 0;
   if (!nombre || !usuario || !pass) { showToast('Nombre, usuario y contraseña son obligatorios.', 'warning'); return; }
   if (empleados.some(e => e.usuario === usuario)) { showToast('Ese usuario ya está registrado.', 'error'); return; }
+
+  const btn = document.querySelector('#empleados .btn-success');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-btn"></span> Cargando...';
+
   try {
-    const ref = await db.collection("jornada_empleados").add({ nombre, usuario, contraseña: pass, salarioHora: salario, rol: 'empleado' });
+    const ref = await db.collection("jornada_empleados").add({
+      nombre, usuario, contraseña: pass, salarioHora: salario, rol: 'empleado'
+    });
     empleados.push({ id: ref.id, nombre, usuario, contraseña: pass, salarioHora: salario, rol: 'empleado' });
-    guardarLocal();
-    document.getElementById('nombreEmp').value = ''; document.getElementById('usuarioEmp').value = ''; document.getElementById('passEmp').value = ''; document.getElementById('salarioEmp').value = '';
+    document.getElementById('nombreEmp').value = '';
+    document.getElementById('usuarioEmp').value = '';
+    document.getElementById('passEmp').value = '';
+    document.getElementById('salarioEmp').value = '';
     actualizarSelects(); mostrarEmpleados(); if (esAdmin) llenarSelectEmpleados();
     showToast('✅ Empleado agregado correctamente.', 'success');
-  } catch(e) { showToast('Error al guardar empleado.', 'error'); }
+  } catch(e) {
+    console.error(e);
+    showToast('❌ Error al guardar empleado. Verifica tu conexión.', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '➕ Agregar';
+  }
 }
+
 async function eliminarEmpleado(id) {
   if (!esAdmin) { showToast('Solo el administrador puede eliminar empleados.', 'error'); return; }
   if (!confirm('¿Eliminar este empleado y todos sus registros?')) return;
   try {
     const regs = registrosCache.filter(r => r.empleadoId === id);
-    for (let r of regs) { if (r.id && !r.id.startsWith('temp_')) await db.collection("jornada_registros").doc(r.id).delete(); }
+    for (let r of regs) {
+      if (r.id && !r.id.startsWith('temp_')) await db.collection("jornada_registros").doc(r.id).delete();
+    }
     await db.collection("jornada_empleados").doc(id).delete();
     empleados = empleados.filter(e => e.id !== id);
     registrosCache = registrosCache.filter(r => r.empleadoId !== id);
-    guardarLocal();
     actualizarSelects(); mostrarEmpleados(); actualizarHistorial(); if (esAdmin) llenarSelectEmpleados();
     showToast('✅ Empleado eliminado.', 'success');
-  } catch(e) { showToast('Error al eliminar.', 'error'); }
+  } catch(e) {
+    console.error(e);
+    showToast('❌ Error al eliminar empleado.', 'error');
+  }
 }
+
 function abrirModalEditarEmpleado(id) {
   const emp = empleados.find(e => e.id === id);
   if (!emp) return;
@@ -1530,6 +1528,7 @@ function abrirModalEditarEmpleado(id) {
   document.getElementById('modalEditarEmpleado').classList.add('active');
 }
 function cerrarModalEmpleado() { document.getElementById('modalEditarEmpleado').classList.remove('active'); editandoEmpleadoIdGlobal = null; }
+
 async function guardarEdicionEmpleado() {
   const id = editandoEmpleadoIdGlobal;
   if (!id) return;
@@ -1540,21 +1539,31 @@ async function guardarEdicionEmpleado() {
   if (!nombre || !usuario) { document.getElementById('modalMensajeEmp').textContent = 'Nombre y usuario son obligatorios.'; return; }
   const duplicado = empleados.find(e => e.usuario === usuario && e.id !== id);
   if (duplicado) { document.getElementById('modalMensajeEmp').textContent = 'Ese usuario ya está registrado.'; return; }
+
+  const btn = document.querySelector('#modalEditarEmpleado .btn-success');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-btn"></span> Guardando...';
+
   try {
     const updateData = { nombre, usuario, salarioHora: salario };
     if (nuevaPass) updateData.contraseña = nuevaPass;
     await db.collection("jornada_empleados").doc(id).update(updateData);
     const emp = empleados.find(e => e.id === id);
     if (emp) { emp.nombre = nombre; emp.usuario = usuario; if (nuevaPass) emp.contraseña = nuevaPass; emp.salarioHora = salario; }
-    guardarLocal();
     cerrarModalEmpleado();
     mostrarEmpleados(); actualizarSelects(); if (esAdmin) llenarSelectEmpleados();
     showToast('✅ Empleado actualizado.', 'success');
-  } catch(e) { document.getElementById('modalMensajeEmp').textContent = 'Error al guardar.'; console.error(e); }
+  } catch(e) {
+    console.error(e);
+    document.getElementById('modalMensajeEmp').textContent = 'Error al guardar. Verifica tu conexión.';
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '💾 Guardar';
+  }
 }
 
 // ============================================================
-// SELECTOR EMPLEADOS PARA HISTORIAL (SIN "TODOS", PRIMERO POR DEFECTO)
+// SELECTOR EMPLEADOS PARA HISTORIAL
 // ============================================================
 function llenarSelectEmpleados() {
   const sel = document.getElementById('filtroEmpleado');
@@ -1581,6 +1590,7 @@ function llenarSelectEmpleados() {
   sel.removeEventListener('change', aplicarFiltroEmpleado);
   sel.addEventListener('change', aplicarFiltroEmpleado);
 }
+
 function aplicarFiltroEmpleado() {
   const sel = document.getElementById('filtroEmpleado');
   const valor = sel.value;
@@ -1599,7 +1609,7 @@ function aplicarFiltroEmpleado() {
 }
 
 // ============================================================
-// HISTORIAL (CON PAGINACIÓN)
+// HISTORIAL (con paginación)
 // ============================================================
 function llenarSelectHistorial() {
   const sel = document.getElementById('mesHistorial');
@@ -1618,6 +1628,7 @@ function llenarSelectHistorial() {
   const valorInicio = mesInicio.getFullYear() + '-' + String(mesInicio.getMonth() + 1).padStart(2, '0');
   sel.value = valorInicio;
 }
+
 function actualizarHistorial() {
   if (!esAdmin) {
     const empId = usuarioActual.empleadoId;
@@ -1721,11 +1732,10 @@ function actualizarHistorial() {
   });
   registrosMostrar.sort((a,b) => b.fecha.localeCompare(a.fecha));
   registrosFiltradosGlobal = registrosMostrar;
-  const filasSelect = document.getElementById('filasPorPagina');
-  if (filasSelect) filasPorPagina = parseInt(filasSelect.value) || 50;
   paginaActual = 1;
   renderizarPagina();
 }
+
 function renderizarPagina() {
   const tbody = document.getElementById('tablaHistorial');
   const totalRegistros = registrosFiltradosGlobal.length;
@@ -1770,6 +1780,7 @@ function renderizarPagina() {
   document.getElementById('btnPaginaAnterior').disabled = (paginaActual <= 1 || totalRegistros === 0);
   document.getElementById('btnPaginaSiguiente').disabled = (paginaActual >= totalPaginas || totalRegistros === 0);
 }
+
 function cambiarPagina(delta) {
   paginaActual += delta;
   renderizarPagina();
@@ -1808,7 +1819,8 @@ function abrirModalEditar(empleadoId, fecha) {
   document.getElementById('modalEditar').classList.add('active');
 }
 function cerrarModal() { document.getElementById('modalEditar').classList.remove('active'); }
-function guardarEdicion() {
+
+async function guardarEdicion() {
   const entrada = document.getElementById('modalEntrada').value;
   const salida = document.getElementById('modalSalida').value;
   const tipo = document.getElementById('modalTipo').value;
@@ -1827,69 +1839,59 @@ function guardarEdicion() {
     entrada: entrada || null, salida: salida || null, turno, tiemposComida: tiempos, tipo,
     timestamp: new Date().toISOString()
   };
-  if (esNuevo) {
-    db.collection("jornada_registros").add(datos)
-      .then(docRef => { datos.id = docRef.id; registrosCache.push(datos); guardarLocal(); cerrarModal(); actualizarHistorial(); showToast('✅ Registro creado.', 'success'); })
-      .catch(() => { 
-        datos.id = 'temp_'+Date.now()+'_'+Math.random(); 
-        registrosCache.push(datos); 
-        guardarLocal();
-        pendingUploads.push(datos.id);
-        guardarPendientes();
-        cerrarModal(); 
-        actualizarHistorial(); 
-        showToast('⚠️ Guardado localmente.', 'warning'); 
-      });
-  } else {
-    const id = registro.id;
-    if (id && !id.startsWith('temp_')) {
-      db.collection("jornada_registros").doc(id).update({ entrada: entrada||null, salida: salida||null, turno, tiemposComida: tiempos, tipo, timestampSalida: new Date().toISOString() })
-        .then(() => { Object.assign(registro, { entrada: entrada||null, salida: salida||null, turno, tiemposComida: tiempos, tipo }); guardarLocal(); cerrarModal(); actualizarHistorial(); showToast('✅ Registro actualizado.', 'success'); })
-        .catch(() => { 
-          Object.assign(registro, { entrada: entrada||null, salida: salida||null, turno, tiemposComida: tiempos, tipo }); 
-          guardarLocal(); 
-          if (!registro.id.startsWith('temp_')) {
-            pendingUploads.push(registro.id);
-            guardarPendientes();
-          }
-          cerrarModal(); 
-          actualizarHistorial(); 
-          showToast('⚠️ Guardado localmente.', 'warning'); 
-        });
+
+  const btn = document.querySelector('#modalEditar .btn-success');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-btn"></span> Guardando...';
+
+  try {
+    if (esNuevo) {
+      const docRef = await db.collection("jornada_registros").add(datos);
+      datos.id = docRef.id;
+      registrosCache.push(datos);
     } else {
+      const id = registro.id;
+      await db.collection("jornada_registros").doc(id).update({
+        entrada: entrada||null, salida: salida||null, turno, tiemposComida: tiempos, tipo,
+        timestampSalida: new Date().toISOString()
+      });
       Object.assign(registro, { entrada: entrada||null, salida: salida||null, turno, tiemposComida: tiempos, tipo });
-      guardarLocal(); cerrarModal(); actualizarHistorial(); showToast('✅ Registro actualizado localmente.', 'success');
     }
+    cerrarModal();
+    actualizarHistorial();
+    showToast('✅ Registro guardado correctamente.', 'success');
+  } catch(e) {
+    console.error(e);
+    document.getElementById('modalMensaje').textContent = '❌ Error al guardar. Verifica tu conexión.';
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '💾 Guardar';
   }
 }
-function eliminarRegistro() {
+
+async function eliminarRegistro() {
   if (!editandoRegistroId) return;
   if (!confirm('¿Eliminar este registro permanentemente?')) return;
   const id = editandoRegistroId;
   const reg = registrosCache.find(r => r.id === id);
   if (!reg) { showToast('Registro no encontrado.', 'error'); return; }
-  if (id && !id.startsWith('temp_')) {
-    db.collection("jornada_registros").doc(id).delete()
-      .then(() => {
-        registrosCache = registrosCache.filter(r => r.id !== id);
-        guardarLocal();
-        cerrarModal();
-        actualizarHistorial();
-        showToast('✅ Registro eliminado.', 'success');
-      })
-      .catch(() => {
-        registrosCache = registrosCache.filter(r => r.id !== id);
-        guardarLocal();
-        cerrarModal();
-        actualizarHistorial();
-        showToast('⚠️ Eliminado localmente (sin conexión).', 'warning');
-      });
-  } else {
+
+  const btn = document.querySelector('#modalEditar .btn-danger:last-child');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-btn"></span> Eliminando...';
+
+  try {
+    await db.collection("jornada_registros").doc(id).delete();
     registrosCache = registrosCache.filter(r => r.id !== id);
-    guardarLocal();
     cerrarModal();
     actualizarHistorial();
-    showToast('✅ Registro eliminado localmente.', 'success');
+    showToast('✅ Registro eliminado.', 'success');
+  } catch(e) {
+    console.error(e);
+    document.getElementById('modalMensaje').textContent = '❌ Error al eliminar. Verifica tu conexión.';
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '🗑️ Eliminar';
   }
 }
 
@@ -1913,11 +1915,17 @@ function actualizarTablaFeriados() {
     tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;color:var(--text-gray);">No hay feriados</td></tr>`;
   }
 }
+
 async function agregarFeriado() {
   if (!esAdmin) { showToast('Solo el administrador puede modificar feriados.', 'error'); return; }
   const fecha = document.getElementById('nuevoFeriado').value;
   if (!fecha) { showToast('Selecciona una fecha.', 'warning'); return; }
   if (feriados.includes(fecha)) { showToast('Ya está en la lista.', 'warning'); return; }
+
+  const btn = document.querySelector('#config .btn-success');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-btn"></span> Agregando...';
+
   try {
     const docRef = db.collection("jornada_config").doc("feriados");
     const doc = await docRef.get();
@@ -1925,15 +1933,26 @@ async function agregarFeriado() {
     lista.push(fecha);
     await docRef.set({ lista });
     feriados = lista;
-    guardarLocal();
     document.getElementById('nuevoFeriado').value = '';
     actualizarTablaFeriados();
     showToast('✅ Feriado agregado.', 'success');
-  } catch(e) { feriados.push(fecha); guardarLocal(); actualizarTablaFeriados(); showToast('⚠️ Guardado localmente.', 'warning'); }
+  } catch(e) {
+    console.error(e);
+    showToast('❌ Error al agregar feriado. Verifica tu conexión.', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '➕ Agregar';
+  }
 }
+
 async function eliminarFeriado(fecha) {
   if (!esAdmin) { showToast('Solo el administrador puede modificar feriados.', 'error'); return; }
   if (!confirm('¿Eliminar feriado?')) return;
+
+  const btn = event.target;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-btn"></span>';
+
   try {
     const docRef = db.collection("jornada_config").doc("feriados");
     const doc = await docRef.get();
@@ -1941,14 +1960,19 @@ async function eliminarFeriado(fecha) {
     const nueva = lista.filter(f => f !== fecha);
     await docRef.set({ lista: nueva });
     feriados = nueva;
-    guardarLocal();
     actualizarTablaFeriados();
     showToast('✅ Feriado eliminado.', 'success');
-  } catch(e) { feriados = feriados.filter(f => f !== fecha); guardarLocal(); actualizarTablaFeriados(); showToast('⚠️ Guardado localmente.', 'warning'); }
+  } catch(e) {
+    console.error(e);
+    showToast('❌ Error al eliminar feriado.', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'Eliminar';
+  }
 }
 
 // ============================================================
-// REPORTE MENSUAL (SIN NÚMEROS NEGATIVOS EN SEMANAS SIN DATOS)
+// REPORTE MENSUAL
 // ============================================================
 function llenarSelectMeses() {
   const sel = document.getElementById('mesReporte');
@@ -1968,6 +1992,7 @@ function llenarSelectMeses() {
   sel.value = valorInicio;
   generarReporte();
 }
+
 function generarReporte() {
   const mesVal = document.getElementById('mesReporte').value;
   if (!mesVal) return;
@@ -2089,6 +2114,7 @@ function generarReporte() {
   html += '</tbody></table>';
   document.getElementById('contenedorReporte').innerHTML = html;
 }
+
 function generarPDF() {
   const contenido = document.getElementById('contenedorReporte');
   const tabla = contenido.querySelector('table');
@@ -2123,8 +2149,14 @@ function generarPDF() {
 }
 
 // ============================================================
-// IMPORTACIÓN CON SALIDA EDITABLE
+// IMPORTACIÓN CON SALIDA EDITABLE (100% nube)
 // ============================================================
+const FERIADOS_POR_DEFECTO = [
+  "2026-01-01", "2026-04-02", "2026-04-03", "2026-05-01",
+  "2026-06-30", "2026-08-15", "2026-09-15", "2026-10-20",
+  "2026-11-01", "2026-12-25"
+];
+
 function normalizarNombre(nombre) {
   return nombre.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, ' ');
 }
@@ -2173,6 +2205,7 @@ function logImportar(mensaje, tipo = 'info') {
 function limpiarLogsImport() {
   document.getElementById('logImportar').innerHTML = '';
 }
+
 function procesarImportacion() {
   if (!esAdmin) {
     showToast('Solo el administrador puede importar.', 'error');
@@ -2274,6 +2307,7 @@ function procesarImportacion() {
   }
   mostrarResumenImportacion(fecha);
 }
+
 function mostrarResumenImportacion(fecha) {
   const contenedor = document.getElementById('resumenImportacion');
   let html = `
@@ -2312,18 +2346,18 @@ function mostrarResumenImportacion(fecha) {
   document.getElementById('selectComidaImportacion').value = '0';
   logImportar(`📌 Se detectaron ${registrosDetectados.length} registros. Revisa el resumen, edita si es necesario y confirma.`, 'info');
 }
-function confirmarImportacion() {
+
+async function confirmarImportacion() {
   if (!esAdmin) { showToast('Solo administrador.', 'error'); return; }
   const fecha = document.getElementById('fechaImportar').value;
   const tiemposComida = parseInt(document.getElementById('selectComidaImportacion').value);
 
-  // Leer los inputs y actualizar SOLO si el usuario escribió algo
+  // Leer inputs y actualizar salidas
   registrosDetectados.forEach((item, index) => {
     const inputSalida = document.getElementById(`salida_${index}`);
     if (inputSalida && inputSalida.value) {
-      item.salida = inputSalida.value; // Usar el valor editado
+      item.salida = inputSalida.value;
     }
-    // Si el input está vacío, NO cambiamos item.salida (se mantiene el detectado)
   });
 
   const validos = registrosDetectados.filter(item => item.encontrado && item.empleadoId && item.salida !== null);
@@ -2334,80 +2368,63 @@ function confirmarImportacion() {
 
   logImportar(`⏳ Importando ${validos.length} registros con ${tiemposComida} tiempo(s) de comida...`, 'info');
 
+  const btn = document.querySelector('#importarOpciones .btn-success');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-btn"></span> Importando...';
+
   let importados = 0, errores = 0;
-  validos.forEach(async (item) => {
-    const emp = empleados.find(e => e.id === item.empleadoId);
-    if (!emp) {
-      logImportar(`❌ Empleado ${item.nombre} no encontrado (ID perdido)`, 'error');
-      errores++;
-      return;
-    }
+  try {
+    for (let item of validos) {
+      const emp = empleados.find(e => e.id === item.empleadoId);
+      if (!emp) {
+        logImportar(`❌ Empleado ${item.nombre} no encontrado`, 'error');
+        errores++;
+        continue;
+      }
+      const existente = registrosCache.find(r => r.empleadoId === emp.id && r.fecha === fecha);
+      const datos = {
+        empleadoId: emp.id, nombre: emp.nombre, fecha,
+        entrada: item.entrada, salida: item.salida,
+        turno: determinarTurno(item.entrada),
+        tiemposComida, tipo: 'normal',
+        timestamp: new Date().toISOString()
+      };
 
-    const existente = registrosCache.find(r => r.empleadoId === emp.id && r.fecha === fecha);
-    const datos = {
-      empleadoId: emp.id, nombre: emp.nombre, fecha,
-      entrada: item.entrada, salida: item.salida,
-      turno: determinarTurno(item.entrada),
-      tiemposComida, tipo: 'normal',
-      timestamp: new Date().toISOString()
-    };
-
-    if (existente) {
-      const id = existente.id;
-      if (id && !id.startsWith('temp_')) {
-        try {
-          await db.collection("jornada_registros").doc(id).update({
+      try {
+        if (existente) {
+          await db.collection("jornada_registros").doc(existente.id).update({
             entrada: item.entrada, salida: item.salida,
             turno: datos.turno, tiemposComida, tipo: 'normal',
             timestampSalida: new Date().toISOString()
           });
           Object.assign(existente, datos);
           logImportar(`🔄 Actualizado: ${emp.nombre}`, 'success');
-          importados++;
-        } catch (e) {
-          logImportar(`❌ Error al actualizar ${emp.nombre}: ${e.message}`, 'error');
-          errores++;
+        } else {
+          const docRef = await db.collection("jornada_registros").add(datos);
+          datos.id = docRef.id;
+          registrosCache.push(datos);
+          logImportar(`✅ Importado: ${emp.nombre}`, 'success');
         }
-      } else {
-        Object.assign(existente, datos);
-        guardarLocal();
-        if (!existente.id.startsWith('temp_')) {
-          pendingUploads.push(existente.id);
-          guardarPendientes();
-        }
-        logImportar(`🔄 Actualizado localmente: ${emp.nombre}`, 'warning');
         importados++;
-      }
-    } else {
-      try {
-        const docRef = await db.collection("jornada_registros").add(datos);
-        datos.id = docRef.id;
-        registrosCache.push(datos);
-        guardarLocal();
-        logImportar(`✅ Importado: ${emp.nombre}`, 'success');
-        importados++;
-      } catch (e) {
-        datos.id = 'temp_' + Date.now() + '_' + Math.random();
-        registrosCache.push(datos);
-        guardarLocal();
-        pendingUploads.push(datos.id);
-        guardarPendientes();
-        logImportar(`⚠️ Importado localmente: ${emp.nombre} (sin conexión)`, 'warning');
-        importados++;
+      } catch(e) {
+        logImportar(`❌ Error en ${emp.nombre}: ${e.message}`, 'error');
+        errores++;
       }
     }
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '✅ Confirmar importación';
+  }
 
-    if (importados + errores === validos.length) {
-      logImportar(`\n📊 Importación finalizada. ${importados} registros procesados, ${errores} errores.`, 'info');
-      showToast(`Importación finalizada. ${importados} registros.`, importados > 0 ? 'success' : 'error');
-      actualizarHistorial();
-      document.getElementById('importarOpciones').style.display = 'none';
-      document.getElementById('resumenImportacion').innerHTML = '';
-      registrosDetectados = [];
-      refrescarVistas();
-    }
-  });
+  logImportar(`\n📊 Importación finalizada. ${importados} registros procesados, ${errores} errores.`, 'info');
+  showToast(`Importación finalizada. ${importados} registros.`, importados > 0 ? 'success' : 'error');
+  actualizarHistorial();
+  document.getElementById('importarOpciones').style.display = 'none';
+  document.getElementById('resumenImportacion').innerHTML = '';
+  registrosDetectados = [];
+  refrescarVistas();
 }
+
 function cancelarImportacion() {
   registrosDetectados = [];
   document.getElementById('importarOpciones').style.display = 'none';
@@ -2434,6 +2451,14 @@ function cancelarImportacion() {
     }
   } catch(e) { console.warn("No se pudo crear admin:", e); }
 })();
+
+// Ocultar spinner global tras cargar la página
+window.addEventListener('load', function() {
+  // Si después de 5 segundos el spinner sigue visible, lo ocultamos (por si autoLogin falla)
+  setTimeout(() => {
+    hideGlobalSpinner();
+  }, 5000);
+});
 
 autoLogin();
 </script>
