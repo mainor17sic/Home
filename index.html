@@ -673,7 +673,7 @@ function calcularHorasBrutas(entrada, salida, tiemposComida) {
   if (s < e) s += 24;
   const brutas = s - e;
   const descComida = (tiemposComida || 0) * 0.5;
-  return Math.round((brutas - descComida) * 100) / 100;
+  return Math.round((brutas - descComida) * 100) / 100; // mantiene 2 decimales internamente
 }
 function determinarTurno(horaEntrada) {
   if (!horaEntrada) return 'Diurno';
@@ -719,10 +719,8 @@ function calcularExtrasYDescuento(horasBrutas, fecha, turno, tipo) {
 // INICIALIZACIÓN
 // ============================================================
 async function init() {
-  // Cargar empleados y feriados desde Firestore
   await cargarEmpleados();
   await cargarFeriados();
-  // Escuchar cambios en tiempo real
   db.collection("jornada_empleados").onSnapshot(() => {
     cargarEmpleados();
     actualizarSelects();
@@ -769,7 +767,6 @@ async function init() {
     }
   });
 
-  // Navegación por pestañas
   document.querySelectorAll('.nav-item').forEach(btn => {
     btn.addEventListener('click', function() {
       const tabId = this.dataset.tab;
@@ -935,7 +932,6 @@ async function marcarEntrada() {
   const entrada = document.getElementById('horaEntradaP').value || new Date().toLocaleTimeString('es-GT', { hour:'2-digit', minute:'2-digit' });
   const turno = determinarTurno(entrada);
 
-  // Verificar si ya tiene entrada activa
   const snap = await db.collection("jornada_registros")
     .where("empleadoId", "==", emp.id)
     .where("fecha", "==", fecha)
@@ -974,7 +970,6 @@ function iniciarSalidaConComidas() {
   const fecha = hoy();
   const salida = document.getElementById('horaSalidaP').value || new Date().toLocaleTimeString('es-GT', { hour:'2-digit', minute:'2-digit' });
 
-  // Buscar entrada activa
   db.collection("jornada_registros")
     .where("empleadoId", "==", emp.id)
     .where("fecha", "==", fecha)
@@ -1105,7 +1100,6 @@ function actualizarHistorial() {
     return;
   }
 
-  // 🔥 Obtener TODOS los registros del empleado (sin filtro de fecha)
   db.collection("jornada_registros")
     .where("empleadoId", "==", emp.id)
     .get()
@@ -1113,10 +1107,8 @@ function actualizarHistorial() {
       const registros = [];
       snap.forEach(doc => registros.push({ id: doc.id, ...doc.data() }));
 
-      // Filtrar por rango de fechas en memoria
       const registrosFiltrados = registros.filter(r => r.fecha >= inicioStr && r.fecha <= finStr);
 
-      // Generar todos los días del período
       const dias = [];
       let cursor = new Date(fechaInicio);
       while (cursor <= fechaFin) {
@@ -1174,9 +1166,10 @@ function actualizarHistorial() {
             tipoLabel = 'Sábado no trabajado'; badgeClass = 'badge-rojo';
           } else { tipoLabel = 'Falta'; badgeClass = 'badge-rojo'; }
         }
-        const horasStr = (asistio && horasBrutas > 0) ? horasBrutas.toFixed(2)+'h' : '—';
-        const extrasStr = (asistio && extras > 0) ? extras.toFixed(2)+'h' : '—';
-        const descuentoStr = (descuento > 0) ? descuento.toFixed(2)+'h' : '—';
+        // Mostrar con un solo decimal (redondeo a décimas)
+        const horasStr = (asistio && horasBrutas > 0) ? horasBrutas.toFixed(1)+'h' : '—';
+        const extrasStr = (asistio && extras > 0) ? extras.toFixed(1)+'h' : '—';
+        const descuentoStr = (descuento > 0) ? descuento.toFixed(1)+'h' : '—';
         const comidasStr = tiempos > 0 ? tiempos : '—';
         const accionesHtml = `<button class="btn-warning btn-sm" onclick="abrirModalEditar('${emp.id}','${fecha}')">✏️ Editar</button>`;
 
@@ -1260,7 +1253,6 @@ function abrirModalEditar(empleadoId, fecha) {
   editandoFecha = fecha;
   editandoRegistroId = null;
 
-  // Buscar el registro en Firestore
   db.collection("jornada_registros")
     .where("empleadoId", "==", empleadoId)
     .where("fecha", "==", fecha)
@@ -1441,7 +1433,6 @@ function generarReporte() {
   const finStr = fechaFin.toISOString().split('T')[0];
   document.getElementById('periodoReporte').innerText = `${inicioStr} al ${finStr}`;
 
-  // Obtener todos los registros del período
   db.collection("jornada_registros")
     .where("fecha", ">=", inicioStr)
     .where("fecha", "<=", finStr)
@@ -1539,20 +1530,20 @@ function generarReporte() {
                 extrasNetasSem += calc.extras - calc.descuento;
               }
             });
-            extrasNetasSem = Math.round(extrasNetasSem * 100) / 100;
+            extrasNetasSem = Math.round(extrasNetasSem * 10) / 10; // redondear a 1 decimal
             totalExtrasNetas += extrasNetasSem;
             tieneDatosEnAlgunaSemana = true;
-            html += `<td>${extrasNetasSem.toFixed(2)}</td>`;
+            html += `<td>${extrasNetasSem.toFixed(1)}</td>`;
           } else {
             html += `<td style="color:var(--text-gray);">—</td>`;
           }
         });
 
-        totalExtrasNetas = Math.round(totalExtrasNetas * 100) / 100;
+        totalExtrasNetas = Math.round(totalExtrasNetas * 10) / 10;
         if (!tieneDatosEnAlgunaSemana) {
           html += `<td style="color:var(--text-gray);">—</td>`;
         } else {
-          html += `<td><strong>${totalExtrasNetas.toFixed(2)}</strong></td>`;
+          html += `<td><strong>${totalExtrasNetas.toFixed(1)}</strong></td>`;
         }
         html += `</tr>`;
       }
