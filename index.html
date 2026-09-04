@@ -1116,11 +1116,29 @@ function actualizarHistorial() {
         cursor.setDate(cursor.getDate() + 1);
       }
 
+      // ===== NUEVO: Calcular turno por semana (basado en registros reales) =====
+      const turnoPorSemana = {};
+      registrosFiltrados.forEach(r => {
+        if (r.entrada && r.salida) {
+          const fechaObj = new Date(r.fecha + 'T00:00:00');
+          const weekNum = getISOWeek(fechaObj);
+          const year = fechaObj.getFullYear();
+          const weekKey = `${year}-${weekNum}`;
+          if (!turnoPorSemana[weekKey]) {
+            turnoPorSemana[weekKey] = r.turno || 'Diurno';
+          }
+          // Si ya existe, no sobrescribimos (podríamos tomar el más frecuente)
+        }
+      });
+
       const semanaMap = {};
       dias.forEach(fecha => {
-        const weekNum = getISOWeek(fecha);
-        if (!semanaMap[weekNum]) semanaMap[weekNum] = [];
-        semanaMap[weekNum].push(fecha);
+        const fechaObj = new Date(fecha + 'T00:00:00');
+        const weekNum = getISOWeek(fechaObj);
+        const year = fechaObj.getFullYear();
+        const weekKey = `${year}-${weekNum}`;
+        if (!semanaMap[weekKey]) semanaMap[weekKey] = [];
+        semanaMap[weekKey].push(fecha);
       });
       const weekKeys = Object.keys(semanaMap).sort((a,b) => a-b);
       const weekColorMap = {};
@@ -1161,9 +1179,25 @@ function actualizarHistorial() {
           if (dia === 0) { tipoLabel = 'Domingo (no laborable)'; badgeClass = 'badge-gris'; }
           else if (esFeriado(fecha)) { tipoLabel = 'Feriado (no laborable)'; badgeClass = 'badge-gris'; }
           else if (dia === 6) {
-            const jornada = getJornadaMaxima(fecha, turno);
-            descuento = jornada;
-            tipoLabel = 'Sábado no trabajado'; badgeClass = 'badge-rojo';
+            // SÁBADO NO TRABAJADO: calcular descuento según turno de esa semana
+            const fechaObj = new Date(fecha + 'T00:00:00');
+            const weekNum = getISOWeek(fechaObj);
+            const year = fechaObj.getFullYear();
+            const weekKey = `${year}-${weekNum}`;
+            const turnoSemana = turnoPorSemana[weekKey];
+            if (turnoSemana) {
+              const jornada = getJornadaMaxima(fecha, turnoSemana);
+              if (jornada > 0) {
+                descuento = jornada;
+              } else {
+                descuento = 0;
+              }
+            } else {
+              // Si no hay actividad en esa semana, no descuenta
+              descuento = 0;
+            }
+            tipoLabel = 'Sábado no trabajado';
+            badgeClass = 'badge-rojo';
           } else { tipoLabel = 'Falta'; badgeClass = 'badge-rojo'; }
         }
         // Mostrar con un solo decimal (redondeo a décimas)
@@ -1173,11 +1207,16 @@ function actualizarHistorial() {
         const comidasStr = tiempos > 0 ? tiempos : '—';
         const accionesHtml = `<button class="btn-warning btn-sm" onclick="abrirModalEditar('${emp.id}','${fecha}')">✏️ Editar</button>`;
 
+        const fechaObj2 = new Date(fecha + 'T00:00:00');
+        const weekNum2 = getISOWeek(fechaObj2);
+        const year2 = fechaObj2.getFullYear();
+        const weekKey2 = `${year2}-${weekNum2}`;
+
         registrosMostrar.push({
           fecha, nombreDia, empleado: emp.nombre, entrada, salida,
           horasStr, extrasStr, descuentoStr, comidasStr,
           turno, tipoLabel, badgeClass, accionesHtml,
-          weekNum: getISOWeek(fecha)
+          weekNum: weekKey2
         });
       });
 
@@ -1454,32 +1493,56 @@ function generarReporte() {
         mapa[key].registros.push(r);
       });
 
-      const todosLosDias = [];
-      let cursor = new Date(fechaInicio);
-      while (cursor <= fechaFin) {
-        todosLosDias.push(cursor.toISOString().split('T')[0]);
-        cursor.setDate(cursor.getDate() + 1);
-      }
-
+      // Ahora, para cada empleado, agrupar por semana y asignar el turno de esa semana (similar al historial)
       for (let empId in mapa) {
         const emp = mapa[empId];
-        const turno = emp.turno || 'Diurno';
-        const semanasConRegistro = new Set();
+        // Recolectar todos los días del período
+        const todosLosDias = [];
+        let cursor = new Date(fechaInicio);
+        while (cursor <= fechaFin) {
+          todosLosDias.push(cursor.toISOString().split('T')[0]);
+          cursor.setDate(cursor.getDate() + 1);
+        }
+
+        // Obtener turno por semana (basado en registros reales)
+        const turnoPorSemana = {};
         emp.registros.forEach(r => {
-          semanasConRegistro.add(getISOWeek(r.fecha));
+          if (r.entrada && r.salida) {
+            const fechaObj = new Date(r.fecha + 'T00:00:00');
+            const weekNum = getISOWeek(fechaObj);
+            const year = fechaObj.getFullYear();
+            const weekKey = `${year}-${weekNum}`;
+            if (!turnoPorSemana[weekKey]) {
+              turnoPorSemana[weekKey] = r.turno || 'Diurno';
+            }
+          }
         });
+
+        // Añadir sábados no trabajados (con descuento por semana)
+        const semanasConRegistro = new Set(Object.keys(turnoPorSemana));
         todosLosDias.forEach(fecha => {
           const dia = diaSemana(fecha);
           if (dia === 6 && !esNoLaborable(fecha)) {
-            const weekNum = getISOWeek(fecha);
-            if (semanasConRegistro.has(weekNum)) {
-              const existe = emp.registros.some(r => r.fecha === fecha);
-              if (!existe) {
-                const jornada = getJornadaMaxima(fecha, turno);
-                if (jornada > 0) {
+            const fechaObj = new Date(fecha + 'T00:00:00');
+            const weekNum = getISOWeek(fechaObj);
+            const year = fechaObj.getFullYear();
+            const weekKey = `${year}-${weekNum}`;
+            if (semanasConRegistro.has(weekKey)) {
+              const turno = turnoPorSemana[weekKey];
+              const jornada = getJornadaMaxima(fecha, turno);
+              if (jornada > 0) {
+                // Si no existe ya un registro para ese día, añadir ficticio
+                const existe = emp.registros.some(r => r.fecha === fecha);
+                if (!existe) {
                   emp.registros.push({
-                    fecha, entrada: null, salida: null, turno, tipo: 'normal', tiemposComida: 0,
-                    _esDescuento: true, _descuento: jornada
+                    fecha,
+                    entrada: null,
+                    salida: null,
+                    turno,
+                    tipo: 'normal',
+                    tiemposComida: 0,
+                    _esDescuento: true,
+                    _descuento: jornada
                   });
                 }
               }
@@ -1488,18 +1551,21 @@ function generarReporte() {
         });
       }
 
+      // Construir semanas del período
       const semanasMap = {};
       let tempDate = new Date(fechaInicio);
       while (tempDate <= fechaFin) {
         const weekNum = getISOWeek(tempDate);
-        if (!semanasMap[weekNum]) semanasMap[weekNum] = { inicio: null, fin: null };
+        const year = tempDate.getFullYear();
+        const weekKey = `${year}-${weekNum}`;
+        if (!semanasMap[weekKey]) semanasMap[weekKey] = { inicio: null, fin: null };
         const fechaStr = tempDate.toISOString().split('T')[0];
-        if (!semanasMap[weekNum].inicio || fechaStr < semanasMap[weekNum].inicio) semanasMap[weekNum].inicio = fechaStr;
-        if (!semanasMap[weekNum].fin || fechaStr > semanasMap[weekNum].fin) semanasMap[weekNum].fin = fechaStr;
+        if (!semanasMap[weekKey].inicio || fechaStr < semanasMap[weekKey].inicio) semanasMap[weekKey].inicio = fechaStr;
+        if (!semanasMap[weekKey].fin || fechaStr > semanasMap[weekKey].fin) semanasMap[weekKey].fin = fechaStr;
         tempDate.setDate(tempDate.getDate() + 1);
       }
       const semanasOrdenadas = Object.keys(semanasMap).sort((a,b) => a-b);
-      const semanasList = semanasOrdenadas.map(key => ({ label: `Semana ${key}`, inicio: semanasMap[key].inicio, fin: semanasMap[key].fin }));
+      const semanasList = semanasOrdenadas.map(key => ({ label: `Semana ${key.split('-')[1]}`, inicio: semanasMap[key].inicio, fin: semanasMap[key].fin }));
 
       let html = '<table><thead><tr><th>Empleado (Turno)</th>';
       semanasList.forEach(s => { html += `<th>${s.label}</th>`; });
@@ -1526,11 +1592,17 @@ function generarReporte() {
               }
               if (r.entrada && r.salida) {
                 const horas = calcularHorasBrutas(r.entrada, r.salida, r.tiemposComida || 0);
-                const calc = calcularExtrasYDescuento(horas, r.fecha, turno, r.tipo || 'normal');
+                // Usar el turno de la semana para el cálculo (si está disponible)
+                const fechaObj = new Date(r.fecha + 'T00:00:00');
+                const weekNum = getISOWeek(fechaObj);
+                const year = fechaObj.getFullYear();
+                const weekKey = `${year}-${weekNum}`;
+                const turnoSemana = turnoPorSemana[weekKey] || r.turno || 'Diurno';
+                const calc = calcularExtrasYDescuento(horas, r.fecha, turnoSemana, r.tipo || 'normal');
                 extrasNetasSem += calc.extras - calc.descuento;
               }
             });
-            extrasNetasSem = Math.round(extrasNetasSem * 10) / 10; // redondear a 1 decimal
+            extrasNetasSem = Math.round(extrasNetasSem * 10) / 10;
             totalExtrasNetas += extrasNetasSem;
             tieneDatosEnAlgunaSemana = true;
             html += `<td>${extrasNetasSem.toFixed(1)}</td>`;
