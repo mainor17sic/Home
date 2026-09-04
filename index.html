@@ -40,7 +40,6 @@
       padding-bottom: 80px;
     }
 
-    /* ===== PANTALLA DE LOGIN ===== */
     #login-screen {
       display: flex;
       justify-content: center;
@@ -82,7 +81,6 @@
     .login-box button:hover { background: var(--secondary); }
     .login-error { color: var(--error); margin-top: 12px; text-align: center; display: none; }
 
-    /* ===== CONTENEDOR PRINCIPAL ===== */
     #app-container {
       max-width: 1300px;
       margin: 0 auto;
@@ -93,7 +91,6 @@
       min-height: 100vh;
     }
 
-    /* ===== HEADER ===== */
     .app-header {
       display: flex;
       justify-content: space-between;
@@ -136,7 +133,6 @@
       margin-bottom: 16px;
     }
 
-    /* ===== MENÚ INFERIOR FIJO ===== */
     .bottom-nav {
       position: fixed;
       bottom: 0;
@@ -190,7 +186,6 @@
     }
     .bottom-nav .nav-item:hover { color: white; }
 
-    /* ===== CONTENIDO DE PESTAÑAS ===== */
     .tab-content {
       display: none;
       animation: fadeIn 0.25s ease;
@@ -201,7 +196,6 @@
       to { opacity: 1; transform: translateY(0); }
     }
 
-    /* ===== RELOJ Y CALENDARIO ===== */
     #principal {
       position: relative;
       min-height: 480px;
@@ -319,7 +313,6 @@
       justify-content: center;
     }
 
-    /* ===== TABLAS ===== */
     .table-wrap {
       overflow-x: auto;
       margin: 12px 0;
@@ -356,11 +349,9 @@
     .badge-gris { background: #e2e8f0; color: #475569; }
     .dia-azul { color: var(--primary); font-weight: 600; }
 
-    /* ===== FILAS POR SEMANA (historial) ===== */
     .fila-semana-par { background-color: #f8fafc; }
     .fila-semana-impar { background-color: #ffffff; }
 
-    /* ===== FORMULARIOS ===== */
     .form-row {
       display: flex;
       flex-wrap: wrap;
@@ -392,8 +383,9 @@
     .btn-warning { background: var(--warning); color: #1e293b; }
     .btn-warning:hover { background: #d97706; }
     .btn-sm { padding: 4px 10px; font-size: 0.75rem; }
+    .btn-outline { background: transparent; color: var(--primary); border: 2px solid var(--primary); }
+    .btn-outline:hover { background: var(--primary); color: white; }
 
-    /* ===== MODALES ===== */
     .modal-overlay {
       display: none;
       position: fixed;
@@ -427,7 +419,6 @@
     }
     .modal-box .botones-modal button { flex: 1; min-width: 80px; }
 
-    /* ===== TOASTS ===== */
     .toast-container {
       position: fixed;
       top: 20px;
@@ -472,7 +463,6 @@
       to { transform: translateX(0); opacity: 1; }
     }
 
-    /* ===== RESPONSIVE ===== */
     @media (max-width: 640px) {
       .app-header h1 { font-size: 1.2rem; }
       .app-header .user-info span { font-size: 0.8rem; }
@@ -506,7 +496,6 @@
 
 <!-- ===== APLICACIÓN PRINCIPAL ===== -->
 <div id="app-container" style="display:none;">
-  <!-- HEADER -->
   <div class="app-header">
     <h1>⏱️ Control de Jornada</h1>
     <div class="user-info">
@@ -516,7 +505,6 @@
   </div>
   <p class="subtitulo">Guatemala • Período: 11 al 10 de cada mes • Feriados oficiales</p>
 
-  <!-- ===== CONTENIDO DE PESTAÑAS ===== -->
   <!-- INICIO -->
   <div id="principal" class="tab-content active">
     <canvas id="relojCanvas"></canvas>
@@ -525,26 +513,20 @@
         <span id="diaSemana"></span>, <span id="diaNumero"></span> de <span id="mesNombre"></span> de <span id="anio"></span>
         <small id="infoFeriado"></small>
       </div>
-
       <div class="form-marcar">
         <select id="selectEmpleadoPrincipal">
           <option value="">Selecciona empleado</option>
         </select>
-
         <div class="hora-row">
           <label>Entrada manual <input type="time" id="horaEntradaP" step="60" /></label>
           <label>Salida manual <input type="time" id="horaSalidaP" step="60" /></label>
         </div>
-
         <div class="botones-marcar">
           <button class="btn-entrada" id="btnEntradaP">✅ Entrada</button>
           <button class="btn-salida" id="btnSalidaP">❌ Salida</button>
           <button class="btn-ahora" id="btnAhoraP">🔄 Usar actual</button>
         </div>
-
-        <div class="mensaje-confirmacion" id="mensajeP">
-          Esperando acción...
-        </div>
+        <div class="mensaje-confirmacion" id="mensajeP">Esperando acción...</div>
       </div>
     </div>
   </div>
@@ -556,6 +538,7 @@
       <select id="mesReporte"><option value="">Selecciona mes</option></select>
       <button onclick="generarReporte()" class="btn-success">📊 Generar</button>
       <button onclick="generarPDF()" class="btn-warning">📄 PDF</button>
+      <button onclick="generarReporte()" class="btn-outline" style="flex:0 0 auto;">🔄 Forzar</button>
     </div>
     <p style="font-size:0.9rem; color:var(--text-gray);">Período: <span id="periodoReporte">—</span></p>
     <div id="contenedorReporte" class="table-wrap">
@@ -574,30 +557,28 @@
         <option value="Mixto">Mixto</option>
         <option value="Nocturno">Nocturno</option>
       </select>
-      <select id="filtroEmpleado" style="flex:0 0 180px; display:none;">
-        <option value="todos">Todos los empleados</option>
+      <!-- Selector de empleado visible para todos -->
+      <select id="filtroEmpleado" style="flex:0 0 180px;">
+        <!-- Se llena con JavaScript -->
       </select>
       <button onclick="actualizarHistorial()" class="btn-success">📅 Mostrar</button>
+    </div>
+    <div id="paginacionHistorial" style="display:flex; justify-content:space-between; align-items:center; margin:8px 0;">
+      <button id="btnPaginaAnterior" class="btn-outline" onclick="cambiarPagina(-1)" disabled>⬅ Anterior</button>
+      <span id="infoPagina" style="font-weight:600;">Cargando...</span>
+      <button id="btnPaginaSiguiente" class="btn-outline" onclick="cambiarPagina(1)" disabled>Siguiente ➡</button>
     </div>
     <div class="table-wrap" id="historialTableWrap">
       <table id="historialTable">
         <thead>
           <tr>
-            <th>Fecha</th>
-            <th>Día</th>
-            <th>Empleado</th>
-            <th>Entrada</th>
-            <th>Salida</th>
-            <th>Horas</th>
-            <th>Extras</th>
-            <th>Descuento</th>
-            <th>Comidas</th>
-            <th>Turno</th>
-            <th>Tipo</th>
-            <th>Acciones</th>
+            <th>Fecha</th><th>Día</th><th>Empleado</th><th>Entrada</th><th>Salida</th>
+            <th>Horas</th><th>Extras</th><th>Descuento</th><th>Comidas</th><th>Turno</th><th>Tipo</th><th>Acciones</th>
           </tr>
         </thead>
-        <tbody id="tablaHistorial"></tbody>
+        <tbody id="tablaHistorial">
+          <!-- Se carga al seleccionar empleado -->
+        </tbody>
       </table>
     </div>
   </div>
@@ -619,6 +600,38 @@
     </div>
   </div>
 
+  <!-- IMPORTAR (solo admin) -->
+  <div id="importar" class="tab-content">
+    <h2>📥 Importar jornada desde texto</h2>
+    <p style="color:var(--text-gray);">Pega el resumen de la jornada. El sistema detectará empleados, horas de entrada y salida. Podrás editar la salida antes de importar.</p>
+    <div class="form-row">
+      <textarea id="textoImportar" rows="10" style="width:100%; padding:12px; border-radius:8px; border:1px solid #cbd5e1; font-family:monospace; font-size:0.95rem;" placeholder="Ejemplo:&#10;Hora de entrada 5:00am&#10;Jason Sánchez&#10;Esau Mejia&#10;..."></textarea>
+    </div>
+    <div class="form-row">
+      <input type="date" id="fechaImportar" value="" style="flex:0 0 200px;" />
+      <button onclick="procesarImportacion()" class="btn-success" style="flex:0 0 auto;">📥 Procesar</button>
+      <button onclick="subirPendientesManual()" class="btn-warning" style="flex:0 0 auto;">⬆️ Subir pendientes</button>
+      <button onclick="document.getElementById('textoImportar').value=''; document.getElementById('resumenImportacion').innerHTML=''; document.getElementById('importarOpciones').style.display='none'; document.getElementById('logImportar').innerHTML='Esperando acción...';" class="btn-danger" style="flex:0 0 auto;">🗑️ Limpiar</button>
+    </div>
+    <div id="resumenImportacion" style="margin-top:16px;"></div>
+    <div id="importarOpciones" style="display:none; margin-top:16px; padding:16px; background:var(--bg-light); border-radius:8px;">
+      <div class="form-row">
+        <label style="font-weight:600;">🍽️ Tiempos de comida para todos:
+          <select id="selectComidaImportacion" style="flex:0 0 120px;">
+            <option value="0">0</option>
+            <option value="1">1 (0.5h)</option>
+            <option value="2">2 (1h)</option>
+          </select>
+        </label>
+      </div>
+      <div class="form-row">
+        <button onclick="confirmarImportacion()" class="btn-success" style="flex:0 0 auto;">✅ Confirmar importación</button>
+        <button onclick="cancelarImportacion()" class="btn-danger" style="flex:0 0 auto;">❌ Cancelar</button>
+      </div>
+    </div>
+    <div id="logImportar" style="background:var(--bg-light); padding:12px; border-radius:8px; min-height:60px; max-height:200px; overflow-y:auto; font-family:monospace; font-size:0.85rem; white-space:pre-wrap; margin-top:12px;">Esperando acción...</div>
+  </div>
+
   <!-- EMPLEADOS (solo admin) -->
   <div id="empleados" class="tab-content">
     <h2>Empleados</h2>
@@ -638,13 +651,10 @@
   </div>
 </div>
 
-<!-- ===== MENÚ INFERIOR FIJO ===== -->
-<nav class="bottom-nav" id="bottomNav" style="display:none;">
-  <!-- Los botones se generan dinámicamente con JavaScript -->
-</nav>
+<!-- MENÚ INFERIOR FIJO -->
+<nav class="bottom-nav" id="bottomNav" style="display:none;"></nav>
 
-<!-- ===== MODALES ===== -->
-<!-- Editar registro -->
+<!-- MODALES -->
 <div class="modal-overlay" id="modalEditar">
   <div class="modal-box">
     <h3>✏️ Editar registro</h3>
@@ -670,7 +680,6 @@
   </div>
 </div>
 
-<!-- Editar empleado -->
 <div class="modal-overlay" id="modalEditarEmpleado">
   <div class="modal-box">
     <h3>✏️ Editar empleado</h3>
@@ -686,7 +695,6 @@
   </div>
 </div>
 
-<!-- Comidas al salir -->
 <div class="modal-comida" id="modalComidaSalida" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.3); backdrop-filter:blur(3px); z-index:1001; justify-content:center; align-items:center;">
   <div class="modal-box" style="max-width:400px; text-align:center;">
     <h3>🍽️ Tiempos de comida</h3>
@@ -703,7 +711,6 @@
   </div>
 </div>
 
-<!-- ===== TOAST CONTAINER ===== -->
 <div class="toast-container" id="toastContainer"></div>
 
 <script>
@@ -744,6 +751,8 @@ let empleados = [];
 let feriados = [];
 let registrosCache = [];
 const LS_KEY = 'jornada_local';
+const PENDING_KEY = 'jornada_pending';
+let pendingUploads = [];
 
 const FERIADOS_POR_DEFECTO = [
   "2026-01-01", "2026-04-02", "2026-04-03", "2026-05-01",
@@ -761,6 +770,12 @@ let usuarioActual = null;
 let esAdmin = false;
 let editandoEmpleadoIdGlobal = null;
 
+let registrosDetectados = [];
+let paginaActual = 1;
+let filasPorPagina = 50;
+let registrosFiltradosGlobal = [];
+let filtroEmpleadoActivo = null;
+
 // ============================================================
 // FUNCIONES DE FECHA Y TURNOS
 // ============================================================
@@ -771,12 +786,10 @@ function hoy() {
   const dia = String(ahora.getDate()).padStart(2, '0');
   return `${año}-${mes}-${dia}`;
 }
-
 function esDomingo(f) { return new Date(f + 'T00:00:00').getDay() === 0; }
 function esFeriado(f) { return feriados.includes(f); }
 function esNoLaborable(f) { return esDomingo(f) || esFeriado(f); }
 function diaSemana(f) { return new Date(f + 'T00:00:00').getDay(); }
-
 function getISOWeek(date) {
   const d = new Date(date);
   d.setHours(0,0,0,0);
@@ -784,13 +797,11 @@ function getISOWeek(date) {
   const week1 = new Date(d.getFullYear(), 0, 4);
   return 1 + Math.round(((d - week1) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
 }
-
 function horasDecimal(h) {
   if (!h) return 0;
   const p = h.split(':');
   return parseInt(p[0]) + parseInt(p[1])/60 + (parseInt(p[2])||0)/3600;
 }
-
 function calcularHorasBrutas(entrada, salida, tiemposComida) {
   if (!entrada || !salida) return 0;
   let e = horasDecimal(entrada);
@@ -800,7 +811,6 @@ function calcularHorasBrutas(entrada, salida, tiemposComida) {
   const descComida = (tiemposComida || 0) * 0.5;
   return Math.round((brutas - descComida) * 100) / 100;
 }
-
 function determinarTurno(horaEntrada) {
   if (!horaEntrada) return 'Diurno';
   const h = horasDecimal(horaEntrada);
@@ -810,7 +820,6 @@ function determinarTurno(horaEntrada) {
   if (h >= 18) return 'Nocturno';
   return 'Nocturno';
 }
-
 function getJornadaMaxima(fecha, turno) {
   const dia = diaSemana(fecha);
   const noLab = esNoLaborable(fecha);
@@ -826,7 +835,6 @@ function getJornadaMaxima(fecha, turno) {
   if (turno === 'Nocturno') return 6;
   return 0;
 }
-
 function calcularExtrasYDescuento(horasBrutas, fecha, turno, tipo) {
   if (tipo && tipo !== 'normal') return { extras: 0, descuento: 0, asistio: true };
   const jornada = getJornadaMaxima(fecha, turno);
@@ -844,7 +852,7 @@ function calcularExtrasYDescuento(horasBrutas, fecha, turno, tipo) {
 }
 
 // ============================================================
-// OFFLINE
+// OFFLINE Y SINCRONIZACIÓN
 // ============================================================
 function guardarLocal() {
   try { localStorage.setItem(LS_KEY, JSON.stringify({ empleados, feriados, registros: registrosCache })); } catch(e) {}
@@ -862,10 +870,15 @@ function cargarLocal() {
   } catch(e) {}
   return false;
 }
-
-// ============================================================
-// SINCRONIZACIÓN CON FIREBASE
-// ============================================================
+function guardarPendientes() {
+  try { localStorage.setItem(PENDING_KEY, JSON.stringify(pendingUploads)); } catch(e) {}
+}
+function cargarPendientes() {
+  try {
+    const raw = localStorage.getItem(PENDING_KEY);
+    if (raw) pendingUploads = JSON.parse(raw);
+  } catch(e) { pendingUploads = []; }
+}
 async function sincronizarEmpleados() {
   try {
     const snap = await db.collection("jornada_empleados").orderBy("nombre").get();
@@ -886,39 +899,71 @@ async function sincronizarFeriados() {
     guardarLocal();
   } catch(e) {}
 }
+async function subirPendientes() {
+  cargarPendientes();
+  if (pendingUploads.length === 0) return;
+  console.log(`📤 Intentando subir ${pendingUploads.length} registros pendientes...`);
+  const nuevosPendientes = [];
+  for (let tempId of pendingUploads) {
+    const registro = registrosCache.find(r => r.id === tempId);
+    if (!registro) continue;
+    if (!registro.empleadoId || !registro.fecha || !registro.entrada) {
+      console.warn(`⚠️ Registro ${tempId} incompleto, omitiendo`);
+      continue;
+    }
+    try {
+      const { id, ...data } = registro;
+      const docRef = await db.collection("jornada_registros").add(data);
+      registro.id = docRef.id;
+      console.log(`✅ Registro ${tempId} subido a Firestore con ID ${docRef.id}`);
+    } catch (e) {
+      console.error(`❌ Error subiendo ${tempId}:`, e);
+      nuevosPendientes.push(tempId);
+    }
+  }
+  pendingUploads = nuevosPendientes;
+  guardarPendientes();
+  guardarLocal();
+  console.log(`📊 Pendientes restantes: ${pendingUploads.length}`);
+}
 async function sincronizarRegistros() {
   try {
     const snap = await db.collection("jornada_registros").orderBy("fecha","desc").orderBy("timestamp","desc").get();
     const temp = [];
     snap.forEach(d => temp.push({ id: d.id, ...d.data() }));
-    if (temp.length) { registrosCache = temp; guardarLocal(); }
-  } catch(e) {}
+    if (temp.length) {
+      registrosCache = temp;
+      guardarLocal();
+      console.log(`✅ Registros sincronizados: ${temp.length}`);
+    } else {
+      console.warn('⚠️ No hay registros en Firestore');
+    }
+    await subirPendientes();
+  } catch(e) {
+    console.error('❌ Error sincronizando registros:', e);
+  }
 }
 
 // ============================================================
-// LOGIN (MODIFICADO CON PERSISTENCIA)
+// LOGIN
 // ============================================================
 async function iniciarSesion() {
   const usuario = document.getElementById('loginUsuario').value.trim();
   const pass = document.getElementById('loginPassword').value.trim();
   const errorDiv = document.getElementById('loginError');
   errorDiv.style.display = 'none';
-
   if (!usuario || !pass) {
     errorDiv.textContent = 'Ingresa usuario y contraseña.';
     errorDiv.style.display = 'block';
-    // Si hay credenciales guardadas y son vacías, borrar
     localStorage.removeItem('jornada_usuario');
     localStorage.removeItem('jornada_pass');
     return;
   }
-
   try {
     const snap = await db.collection("jornada_empleados")
       .where("usuario", "==", usuario)
       .where("contraseña", "==", pass)
       .get();
-
     if (!snap.empty) {
       const doc = snap.docs[0];
       const data = doc.data();
@@ -929,22 +974,16 @@ async function iniciarSesion() {
         esAdmin = false;
         usuarioActual = { id: doc.id, nombre: data.nombre, usuario: data.usuario, rol: 'empleado', empleadoId: doc.id };
       }
-
-      // ✅ Guardar credenciales en localStorage
       localStorage.setItem('jornada_usuario', usuario);
       localStorage.setItem('jornada_pass', pass);
-
       mostrarApp();
       showToast(`Bienvenido ${usuarioActual.nombre}`, 'success');
       return;
     }
-
-    // Credenciales incorrectas: borrar lo guardado
     errorDiv.textContent = 'Usuario o contraseña incorrectos.';
     errorDiv.style.display = 'block';
     localStorage.removeItem('jornada_usuario');
     localStorage.removeItem('jornada_pass');
-
   } catch(e) {
     errorDiv.textContent = 'Error al conectar con la base de datos.';
     errorDiv.style.display = 'block';
@@ -953,15 +992,12 @@ async function iniciarSesion() {
     localStorage.removeItem('jornada_pass');
   }
 }
-
 function mostrarApp() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app-container').style.display = 'block';
   document.getElementById('bottomNav').style.display = 'flex';
   document.getElementById('usuarioLogueado').textContent = `👤 ${usuarioActual.nombre} (${usuarioActual.rol === 'admin' ? 'Administrador' : 'Empleado'})`;
-
   construirMenuInferior();
-
   if (!window._inicializado) {
     init();
     window._inicializado = true;
@@ -969,16 +1005,13 @@ function mostrarApp() {
     actualizarSelects();
     actualizarCalendario();
     llenarSelectHistorial();
-    if (esAdmin) llenarSelectEmpleados();
+    llenarSelectEmpleados(); // Ahora para todos
     generarReporte();
   }
 }
-
 function cerrarSesion() {
-  // ✅ Borrar credenciales guardadas
   localStorage.removeItem('jornada_usuario');
   localStorage.removeItem('jornada_pass');
-
   usuarioActual = null;
   esAdmin = false;
   window._inicializado = false;
@@ -989,24 +1022,18 @@ function cerrarSesion() {
   document.getElementById('loginPassword').value = '';
   showToast('Sesión cerrada', 'info');
 }
-
-// ============================================================
-// AUTO-LOGIN AL CARGAR LA PÁGINA
-// ============================================================
 async function autoLogin() {
   const usuarioGuardado = localStorage.getItem('jornada_usuario');
   const passGuardado = localStorage.getItem('jornada_pass');
   if (usuarioGuardado && passGuardado) {
     document.getElementById('loginUsuario').value = usuarioGuardado;
     document.getElementById('loginPassword').value = passGuardado;
-    // Intentar login automático
     await iniciarSesion();
-    // Si falla, la función ya borró las credenciales y mostró el error
   }
 }
 
 // ============================================================
-// CONSTRUIR MENÚ INFERIOR DINÁMICO
+// CONSTRUIR MENÚ INFERIOR
 // ============================================================
 function construirMenuInferior() {
   const nav = document.getElementById('bottomNav');
@@ -1017,7 +1044,9 @@ function construirMenuInferior() {
     { tab: 'historial', icon: '📜', label: 'Historial' },
     { tab: 'config', icon: '⚙️', label: 'Feriados' }
   ];
+  // Solo el administrador ve importar y empleados
   if (esAdmin) {
+    items.push({ tab: 'importar', icon: '📥', label: 'Importar' });
     items.push({ tab: 'empleados', icon: '👤', label: 'Empleados' });
   }
   items.forEach(item => {
@@ -1027,7 +1056,6 @@ function construirMenuInferior() {
     btn.innerHTML = `<span class="icon">${item.icon}</span><span class="label">${item.label}</span>`;
     nav.appendChild(btn);
   });
-
   nav.querySelectorAll('.nav-item').forEach(btn => {
     btn.addEventListener('click', function(e) {
       const tabId = this.dataset.tab;
@@ -1044,7 +1072,15 @@ function construirMenuInferior() {
         generarReporte();
       } else if (tabId === 'historial') {
         llenarSelectHistorial();
-        actualizarHistorial();
+        llenarSelectEmpleados(); // Llenar siempre
+        if (filtroEmpleadoActivo) {
+          actualizarHistorial();
+        } else {
+          document.getElementById('tablaHistorial').innerHTML = '<tr><td colspan="12" style="text-align:center;color:var(--text-gray);">Selecciona un empleado.</td></tr>';
+          document.getElementById('infoPagina').textContent = 'Sin selección';
+          document.getElementById('btnPaginaAnterior').disabled = true;
+          document.getElementById('btnPaginaSiguiente').disabled = true;
+        }
       } else if (tabId === 'empleados') {
         mostrarEmpleados();
       } else if (tabId === 'config') {
@@ -1052,7 +1088,6 @@ function construirMenuInferior() {
       }
     });
   });
-
   const defaultBtn = nav.querySelector('.nav-item[data-tab="principal"]');
   if (defaultBtn) {
     defaultBtn.classList.add('active');
@@ -1066,25 +1101,37 @@ function construirMenuInferior() {
 // ============================================================
 async function init() {
   cargarLocal();
+  cargarPendientes();
   await sincronizarFeriados();
   await sincronizarEmpleados();
   await sincronizarRegistros();
 
   db.collection("jornada_empleados").onSnapshot(() => {
+    console.log('📡 Cambio en empleados detectado');
     sincronizarEmpleados();
     actualizarSelects();
     mostrarEmpleados();
-    if (esAdmin) llenarSelectEmpleados();
+    llenarSelectEmpleados();
+    refrescarVistas();
   });
-  db.collection("jornada_config").doc("feriados").onSnapshot(() => { sincronizarFeriados(); actualizarTablaFeriados(); });
-  db.collection("jornada_registros").onSnapshot(() => { sincronizarRegistros(); actualizarHistorial(); });
+  db.collection("jornada_config").doc("feriados").onSnapshot(() => {
+    console.log('📡 Cambio en feriados detectado');
+    sincronizarFeriados();
+    actualizarTablaFeriados();
+    refrescarVistas();
+  });
+  db.collection("jornada_registros").onSnapshot(() => {
+    console.log('📡 Cambio en registros detectado');
+    sincronizarRegistros();
+    refrescarVistas();
+  });
 
   actualizarSelects();
   mostrarEmpleados();
   actualizarTablaFeriados();
   llenarSelectMeses();
   llenarSelectHistorial();
-  if (esAdmin) llenarSelectEmpleados();
+  llenarSelectEmpleados(); // Llenar para todos
 
   iniciarReloj();
   actualizarCalendario();
@@ -1092,6 +1139,111 @@ async function init() {
   document.getElementById('btnEntradaP').addEventListener('click', marcarEntrada);
   document.getElementById('btnSalidaP').addEventListener('click', iniciarSalidaConComidas);
   document.getElementById('btnAhoraP').addEventListener('click', usarHoraActual);
+
+  const fechaImport = document.getElementById('fechaImportar');
+  if (fechaImport) {
+    const hoyDate = new Date();
+    const año = hoyDate.getFullYear();
+    const mes = String(hoyDate.getMonth() + 1).padStart(2, '0');
+    const dia = String(hoyDate.getDate()).padStart(2, '0');
+    fechaImport.value = `${año}-${mes}-${dia}`;
+  }
+
+  document.getElementById('mesHistorial').addEventListener('change', function() {
+    if (filtroEmpleadoActivo) { paginaActual = 1; actualizarHistorial(); }
+  });
+  document.getElementById('filtroTurno').addEventListener('change', function() {
+    if (filtroEmpleadoActivo) { paginaActual = 1; actualizarHistorial(); }
+  });
+  // Agregar event listener para filasPorPagina (opcional)
+  const filasSelect = document.getElementById('filasPorPagina');
+  if (filasSelect) {
+    filasSelect.addEventListener('change', function() {
+      filasPorPagina = parseInt(this.value);
+      paginaActual = 1;
+      if (filtroEmpleadoActivo) renderizarPagina();
+    });
+  }
+
+  document.addEventListener('visibilitychange', function() {
+    if (!document.hidden) {
+      refrescarVistas();
+    }
+  });
+}
+
+// ============================================================
+// REFRESCAR VISTAS (sincronización en tiempo real)
+// ============================================================
+function refrescarVistas() {
+  const pestañaActiva = document.querySelector('.tab-content.active');
+  if (!pestañaActiva) {
+    console.warn('⚠️ No hay pestaña activa');
+    return;
+  }
+  const id = pestañaActiva.id;
+  console.log(`🔄 Refrescando vista: ${id}`);
+  if (id === 'principal') {
+    actualizarSelects();
+    actualizarCalendario();
+  } else if (id === 'reporte') {
+    generarReporte();
+  } else if (id === 'historial') {
+    if (filtroEmpleadoActivo) {
+      actualizarHistorial();
+    }
+  } else if (id === 'config') {
+    actualizarTablaFeriados();
+  } else if (id === 'empleados') {
+    mostrarEmpleados();
+  }
+}
+
+// ============================================================
+// SUBIR PENDIENTES MANUAL (BOTÓN)
+// ============================================================
+async function subirPendientesManual() {
+  if (!esAdmin) {
+    showToast('Solo el administrador puede realizar esta acción.', 'error');
+    return;
+  }
+  cargarPendientes();
+  if (pendingUploads.length === 0) {
+    logImportar('✅ No hay registros pendientes de subir.', 'info');
+    showToast('No hay registros pendientes de subir.', 'info');
+    return;
+  }
+  logImportar(`⏳ Iniciando subida manual de ${pendingUploads.length} registros...`, 'info');
+  let subidos = 0, errores = 0;
+  const nuevosPendientes = [];
+  for (let tempId of pendingUploads) {
+    const registro = registrosCache.find(r => r.id === tempId);
+    if (!registro) {
+      logImportar(`⚠️ Registro ${tempId} no encontrado en caché, omitiendo.`, 'warning');
+      continue;
+    }
+    if (!registro.empleadoId || !registro.fecha || !registro.entrada) {
+      logImportar(`⚠️ Registro ${tempId} incompleto, omitiendo.`, 'warning');
+      continue;
+    }
+    try {
+      const { id, ...data } = registro;
+      const docRef = await db.collection("jornada_registros").add(data);
+      registro.id = docRef.id;
+      logImportar(`✅ Registro ${tempId} subido exitosamente.`, 'success');
+      subidos++;
+    } catch (e) {
+      logImportar(`❌ Error subiendo ${tempId}: ${e.message}`, 'error');
+      errores++;
+      nuevosPendientes.push(tempId);
+    }
+  }
+  pendingUploads = nuevosPendientes;
+  guardarPendientes();
+  guardarLocal();
+  logImportar(`📊 Subida manual finalizada: ${subidos} subidos, ${errores} errores, ${pendingUploads.length} pendientes.`, 'info');
+  showToast(`Subida manual: ${subidos} registros subidos.`, subidos > 0 ? 'success' : 'error');
+  refrescarVistas();
 }
 
 // ============================================================
@@ -1108,7 +1260,6 @@ function iniciarReloj() {
   }
   window.addEventListener('resize', resizeCanvas);
   resizeCanvas();
-
   function dibujarReloj() {
     const w = canvas.width, h = canvas.height;
     const cx = w/2, cy = h/2;
@@ -1176,10 +1327,6 @@ function actualizarCalendario() {
   const info = esFeriado(hoyStr) ? '🔴 Hoy es feriado' : (esDomingo(hoyStr) ? '🔵 Domingo (no laborable)' : '🟢 Día laborable');
   document.getElementById('infoFeriado').textContent = info;
 }
-
-// ============================================================
-// VALIDACIÓN DE FECHA (no futura)
-// ============================================================
 function validarFechaDispositivo() {
   const ahora = new Date();
   const hoyStr = hoy();
@@ -1203,7 +1350,6 @@ function obtenerEmpleadoSeleccionado() {
   const id = document.getElementById('selectEmpleadoPrincipal').value;
   return empleados.find(e => e.id === id);
 }
-
 function marcarEntrada() {
   if (!validarFechaDispositivo()) return;
   const emp = obtenerEmpleadoSeleccionado();
@@ -1230,12 +1376,16 @@ function marcarEntrada() {
       showToast(`✅ Entrada registrada para ${emp.nombre} a las ${entrada} (Turno: ${turno})`, 'success');
       actualizarHistorial();
     })
-    .catch(() => { nuevo.id = 'temp_'+Date.now(); registrosCache.push(nuevo); guardarLocal();
+    .catch(() => { 
+      nuevo.id = 'temp_'+Date.now()+'_'+Math.random(); 
+      registrosCache.push(nuevo); 
+      guardarLocal();
+      pendingUploads.push(nuevo.id);
+      guardarPendientes();
       showToast(`⚠️ Entrada guardada localmente para ${emp.nombre}`, 'warning');
       actualizarHistorial();
     });
 }
-
 function iniciarSalidaConComidas() {
   if (!validarFechaDispositivo()) return;
   const emp = obtenerEmpleadoSeleccionado();
@@ -1256,7 +1406,6 @@ function iniciarSalidaConComidas() {
   salidaPendienteRegistro = registro;
   document.getElementById('modalComidaSalida').style.display = 'flex';
 }
-
 function confirmarComidaSalida() {
   const tiempos = parseInt(document.getElementById('selectComidaSalida').value);
   const emp = salidaPendienteEmpleado, salida = salidaPendienteHora, registro = salidaPendienteRegistro;
@@ -1270,20 +1419,35 @@ function confirmarComidaSalida() {
         showToast(`✅ Salida registrada para ${emp.nombre} a las ${salida} (${tiempos} tiempo(s) de comida)`, 'success');
         actualizarHistorial(); cerrarComidaSalida();
       })
-      .catch(() => { guardarLocal(); showToast(`⚠️ Salida guardada localmente para ${emp.nombre}`, 'warning'); actualizarHistorial(); cerrarComidaSalida(); });
-  } else { guardarLocal(); showToast(`✅ Salida registrada localmente para ${emp.nombre}`, 'success'); actualizarHistorial(); cerrarComidaSalida(); }
+      .catch(() => { 
+        guardarLocal(); 
+        if (!registro.id.startsWith('temp_')) {
+          pendingUploads.push(registro.id);
+          guardarPendientes();
+        }
+        showToast(`⚠️ Salida guardada localmente para ${emp.nombre}`, 'warning'); 
+        actualizarHistorial(); 
+        cerrarComidaSalida(); 
+      });
+  } else { 
+    guardarLocal(); 
+    if (!registro.id.startsWith('temp_')) {
+      pendingUploads.push(registro.id);
+      guardarPendientes();
+    }
+    showToast(`✅ Salida registrada localmente para ${emp.nombre}`, 'success'); 
+    actualizarHistorial(); 
+    cerrarComidaSalida(); 
+  }
 }
-
 function cancelarComidaSalida() { cerrarComidaSalida(); showToast('❌ Salida cancelada.', 'error'); }
 function cerrarComidaSalida() { document.getElementById('modalComidaSalida').style.display = 'none'; salidaPendienteEmpleado = null; salidaPendienteHora = null; salidaPendienteRegistro = null; }
-
 function usarHoraActual() {
   const ahora = new Date().toLocaleTimeString('es-GT', { hour:'2-digit', minute:'2-digit' });
   document.getElementById('horaEntradaP').value = ahora;
   document.getElementById('horaSalidaP').value = ahora;
   showToast(`🔄 Hora actual establecida: ${ahora}`, 'info');
 }
-
 function actualizarSelects() {
   const sel = document.getElementById('selectEmpleadoPrincipal');
   sel.innerHTML = '';
@@ -1298,7 +1462,7 @@ function actualizarSelects() {
 }
 
 // ============================================================
-// EMPLEADOS
+// EMPLEADOS (gestión - solo admin)
 // ============================================================
 function mostrarEmpleados() {
   if (!esAdmin) {
@@ -1325,7 +1489,6 @@ function mostrarEmpleados() {
     tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--text-gray);">No hay empleados registrados.</td></tr>`;
   }
 }
-
 async function agregarEmpleado() {
   if (!esAdmin) { showToast('Solo el administrador puede agregar empleados.', 'error'); return; }
   const nombre = document.getElementById('nombreEmp').value.trim();
@@ -1339,11 +1502,10 @@ async function agregarEmpleado() {
     empleados.push({ id: ref.id, nombre, usuario, contraseña: pass, salarioHora: salario, rol: 'empleado' });
     guardarLocal();
     document.getElementById('nombreEmp').value = ''; document.getElementById('usuarioEmp').value = ''; document.getElementById('passEmp').value = ''; document.getElementById('salarioEmp').value = '';
-    actualizarSelects(); mostrarEmpleados(); if (esAdmin) llenarSelectEmpleados();
+    actualizarSelects(); mostrarEmpleados(); llenarSelectEmpleados();
     showToast('✅ Empleado agregado correctamente.', 'success');
   } catch(e) { showToast('Error al guardar empleado.', 'error'); }
 }
-
 async function eliminarEmpleado(id) {
   if (!esAdmin) { showToast('Solo el administrador puede eliminar empleados.', 'error'); return; }
   if (!confirm('¿Eliminar este empleado y todos sus registros?')) return;
@@ -1354,11 +1516,10 @@ async function eliminarEmpleado(id) {
     empleados = empleados.filter(e => e.id !== id);
     registrosCache = registrosCache.filter(r => r.empleadoId !== id);
     guardarLocal();
-    actualizarSelects(); mostrarEmpleados(); actualizarHistorial(); if (esAdmin) llenarSelectEmpleados();
+    actualizarSelects(); mostrarEmpleados(); actualizarHistorial(); llenarSelectEmpleados();
     showToast('✅ Empleado eliminado.', 'success');
   } catch(e) { showToast('Error al eliminar.', 'error'); }
 }
-
 function abrirModalEditarEmpleado(id) {
   const emp = empleados.find(e => e.id === id);
   if (!emp) return;
@@ -1370,9 +1531,7 @@ function abrirModalEditarEmpleado(id) {
   document.getElementById('modalMensajeEmp').textContent = '';
   document.getElementById('modalEditarEmpleado').classList.add('active');
 }
-
 function cerrarModalEmpleado() { document.getElementById('modalEditarEmpleado').classList.remove('active'); editandoEmpleadoIdGlobal = null; }
-
 async function guardarEdicionEmpleado() {
   const id = editandoEmpleadoIdGlobal;
   if (!id) return;
@@ -1391,24 +1550,54 @@ async function guardarEdicionEmpleado() {
     if (emp) { emp.nombre = nombre; emp.usuario = usuario; if (nuevaPass) emp.contraseña = nuevaPass; emp.salarioHora = salario; }
     guardarLocal();
     cerrarModalEmpleado();
-    mostrarEmpleados(); actualizarSelects(); if (esAdmin) llenarSelectEmpleados();
+    mostrarEmpleados(); actualizarSelects(); llenarSelectEmpleados();
     showToast('✅ Empleado actualizado.', 'success');
   } catch(e) { document.getElementById('modalMensajeEmp').textContent = 'Error al guardar.'; console.error(e); }
 }
 
 // ============================================================
-// SELECTOR EMPLEADOS PARA HISTORIAL
+// SELECTOR EMPLEADOS PARA HISTORIAL (visible para todos)
 // ============================================================
 function llenarSelectEmpleados() {
   const sel = document.getElementById('filtroEmpleado');
-  if (!esAdmin) { sel.style.display = 'none'; return; }
-  sel.style.display = 'inline-block';
-  sel.innerHTML = '<option value="todos">Todos los empleados</option>';
-  empleados.forEach(e => { if (e.rol === 'admin') return; sel.innerHTML += `<option value="${e.id}">${e.nombre}</option>`; });
+  sel.innerHTML = '';
+  empleados.forEach(e => {
+    if (e.rol === 'admin') return;
+    const opt = document.createElement('option');
+    opt.value = e.id;
+    opt.textContent = e.nombre;
+    sel.appendChild(opt);
+  });
+  // Seleccionar el primer empleado por defecto
+  if (sel.options.length > 0) {
+    sel.value = sel.options[0].value;
+    filtroEmpleadoActivo = sel.value;
+  } else {
+    sel.value = '';
+    filtroEmpleadoActivo = null;
+  }
+  sel.removeEventListener('change', aplicarFiltroEmpleado);
+  sel.addEventListener('change', aplicarFiltroEmpleado);
+}
+function aplicarFiltroEmpleado() {
+  const sel = document.getElementById('filtroEmpleado');
+  const valor = sel.value;
+  if (valor && valor !== '') {
+    filtroEmpleadoActivo = valor;
+  } else {
+    filtroEmpleadoActivo = null;
+    document.getElementById('tablaHistorial').innerHTML = '';
+    document.getElementById('infoPagina').textContent = 'Selecciona un empleado';
+    document.getElementById('btnPaginaAnterior').disabled = true;
+    document.getElementById('btnPaginaSiguiente').disabled = true;
+    return;
+  }
+  paginaActual = 1;
+  actualizarHistorial();
 }
 
 // ============================================================
-// HISTORIAL
+// HISTORIAL (CON PAGINACIÓN)
 // ============================================================
 function llenarSelectHistorial() {
   const sel = document.getElementById('mesHistorial');
@@ -1426,39 +1615,38 @@ function llenarSelectHistorial() {
   const mesInicio = new Date(ahora.getFullYear(), ahora.getMonth() - 1, 1);
   const valorInicio = mesInicio.getFullYear() + '-' + String(mesInicio.getMonth() + 1).padStart(2, '0');
   sel.value = valorInicio;
-  actualizarHistorial();
 }
-
 function actualizarHistorial() {
+  if (!filtroEmpleadoActivo) {
+    document.getElementById('tablaHistorial').innerHTML = '';
+    document.getElementById('infoPagina').textContent = 'Selecciona un empleado';
+    document.getElementById('btnPaginaAnterior').disabled = true;
+    document.getElementById('btnPaginaSiguiente').disabled = true;
+    return;
+  }
   const mesVal = document.getElementById('mesHistorial').value;
   if (!mesVal) return;
   const filtroTurno = document.getElementById('filtroTurno').value;
-  const filtroEmpleadoId = document.getElementById('filtroEmpleado').value;
-
   const [year, month] = mesVal.split('-').map(Number);
   const fechaInicio = new Date(year, month - 1, 11);
   const fechaFin = new Date(year, month, 10);
   const inicioStr = fechaInicio.toISOString().split('T')[0];
   const finStr = fechaFin.toISOString().split('T')[0];
-
   const dias = [];
   let cursor = new Date(fechaInicio);
   while (cursor <= fechaFin) {
     dias.push(cursor.toISOString().split('T')[0]);
     cursor.setDate(cursor.getDate() + 1);
   }
-
   const tbody = document.getElementById('tablaHistorial');
   tbody.innerHTML = '';
   const nombreDias = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
-
-  let empleadosFiltrados = empleados;
-  if (!esAdmin) {
-    empleadosFiltrados = empleados.filter(e => e.id === usuarioActual.empleadoId);
-  } else if (filtroEmpleadoId && filtroEmpleadoId !== 'todos') {
-    empleadosFiltrados = empleados.filter(e => e.id === filtroEmpleadoId);
+  // Filtramos por el empleado seleccionado
+  const empleadoFiltrado = empleados.find(e => e.id === filtroEmpleadoActivo);
+  if (!empleadoFiltrado) {
+    tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;color:var(--text-gray);">Empleado no encontrado.</td></tr>';
+    return;
   }
-
   const semanaMap = {};
   dias.forEach(fecha => {
     const weekNum = getISOWeek(fecha);
@@ -1470,91 +1658,124 @@ function actualizarHistorial() {
   weekKeys.forEach((key, idx) => {
     weekColorMap[key] = idx % 2 === 0 ? 'fila-semana-par' : 'fila-semana-impar';
   });
-
-  empleadosFiltrados.forEach(emp => {
-    dias.forEach(fecha => {
-      let registro = registrosCache.find(r => r.empleadoId === emp.id && r.fecha === fecha);
-      if (!registro) {
-        registro = { empleadoId: emp.id, nombre: emp.nombre, fecha, entrada: null, salida: null, turno: 'Diurno', tiemposComida: 0, tipo: 'normal', id: null };
-      }
-      if (filtroTurno !== 'todos' && registro.turno !== filtroTurno) {
-        if (!registro.id) return;
-      }
-      const dia = diaSemana(fecha);
-      const nombreDia = nombreDias[dia];
-      const entrada = registro.entrada || '—';
-      const salida = registro.salida || '—';
-      const turno = registro.turno || 'Diurno';
-      const tiempos = registro.tiemposComida || 0;
-      const tipo = registro.tipo || 'normal';
-
-      let horasBrutas = 0, extras = 0, descuento = 0, asistio = false;
-      let tipoLabel = 'Normal', badgeClass = 'badge-verde';
-
-      if (registro.entrada && registro.salida) {
-        horasBrutas = calcularHorasBrutas(registro.entrada, registro.salida, tiempos);
-        const calc = calcularExtrasYDescuento(horasBrutas, fecha, turno, tipo);
-        extras = calc.extras; descuento = calc.descuento; asistio = true;
-        tipoLabel = 'Trabajado'; badgeClass = 'badge-verde';
-      } else if (tipo !== 'normal') {
-        asistio = true;
-        if (tipo === 'vacaciones') { tipoLabel = 'Vacaciones'; badgeClass = 'badge-azul'; }
-        else if (tipo === 'personal') { tipoLabel = 'Personal'; badgeClass = 'badge-naranja'; }
-        else if (tipo === 'incapacidad') { tipoLabel = 'Incapacidad'; badgeClass = 'badge-gris'; }
-      } else {
-        asistio = false;
-        if (dia === 0) { tipoLabel = 'Domingo (no laborable)'; badgeClass = 'badge-gris'; }
-        else if (esFeriado(fecha)) { tipoLabel = 'Feriado (no laborable)'; badgeClass = 'badge-gris'; }
-        else if (dia === 6) {
-          const jornada = getJornadaMaxima(fecha, turno);
-          descuento = jornada;
-          tipoLabel = 'Sábado no trabajado'; badgeClass = 'badge-rojo';
-        } else { tipoLabel = 'Falta'; badgeClass = 'badge-rojo'; }
-      }
-
-      const horasStr = (asistio && horasBrutas > 0) ? horasBrutas.toFixed(2)+'h' : '—';
-      const extrasStr = (asistio && extras > 0) ? extras.toFixed(2)+'h' : '—';
-      const descuentoStr = (descuento > 0) ? descuento.toFixed(2)+'h' : '—';
-      const comidasStr = tiempos > 0 ? tiempos : '—';
-
-      let accionesHtml = '';
-      if (esAdmin || (usuarioActual && usuarioActual.empleadoId === emp.id)) {
-        accionesHtml = `<button class="btn-warning btn-sm" onclick="abrirModalEditar('${emp.id}','${fecha}')">✏️ Editar</button>`;
-      } else { accionesHtml = '—'; }
-
-      const weekNum = getISOWeek(fecha);
-      const rowClass = weekColorMap[weekNum] || '';
-
-      tbody.innerHTML += `
-        <tr class="${rowClass}">
-          <td>${fecha}</td>
-          <td><span class="dia-azul">${nombreDia}</span></td>
-          <td>${emp.nombre}</td>
-          <td>${entrada}</td>
-          <td>${salida}</td>
-          <td>${horasStr}</td>
-          <td>${extrasStr}</td>
-          <td>${descuentoStr}</td>
-          <td>${comidasStr}</td>
-          <td><span class="badge badge-azul">${turno}</span></td>
-          <td><span class="badge ${badgeClass}">${tipoLabel}</span></td>
-          <td>${accionesHtml}</td>
-        </tr>
-      `;
+  const registrosMostrar = [];
+  const emp = empleadoFiltrado;
+  dias.forEach(fecha => {
+    let registro = registrosCache.find(r => r.empleadoId === emp.id && r.fecha === fecha);
+    if (!registro) {
+      registro = { empleadoId: emp.id, nombre: emp.nombre, fecha, entrada: null, salida: null, turno: 'Diurno', tiemposComida: 0, tipo: 'normal', id: null };
+    }
+    if (filtroTurno !== 'todos' && registro.turno !== filtroTurno) {
+      if (!registro.id) return;
+    }
+    const dia = diaSemana(fecha);
+    const nombreDia = nombreDias[dia];
+    const entrada = registro.entrada || '—';
+    const salida = registro.salida || '—';
+    const turno = registro.turno || 'Diurno';
+    const tiempos = registro.tiemposComida || 0;
+    const tipo = registro.tipo || 'normal';
+    let horasBrutas = 0, extras = 0, descuento = 0, asistio = false;
+    let tipoLabel = 'Normal', badgeClass = 'badge-verde';
+    if (registro.entrada && registro.salida) {
+      horasBrutas = calcularHorasBrutas(registro.entrada, registro.salida, tiempos);
+      const calc = calcularExtrasYDescuento(horasBrutas, fecha, turno, tipo);
+      extras = calc.extras; descuento = calc.descuento; asistio = true;
+      tipoLabel = 'Trabajado'; badgeClass = 'badge-verde';
+    } else if (tipo !== 'normal') {
+      asistio = true;
+      if (tipo === 'vacaciones') { tipoLabel = 'Vacaciones'; badgeClass = 'badge-azul'; }
+      else if (tipo === 'personal') { tipoLabel = 'Personal'; badgeClass = 'badge-naranja'; }
+      else if (tipo === 'incapacidad') { tipoLabel = 'Incapacidad'; badgeClass = 'badge-gris'; }
+    } else {
+      asistio = false;
+      if (dia === 0) { tipoLabel = 'Domingo (no laborable)'; badgeClass = 'badge-gris'; }
+      else if (esFeriado(fecha)) { tipoLabel = 'Feriado (no laborable)'; badgeClass = 'badge-gris'; }
+      else if (dia === 6) {
+        const jornada = getJornadaMaxima(fecha, turno);
+        descuento = jornada;
+        tipoLabel = 'Sábado no trabajado'; badgeClass = 'badge-rojo';
+      } else { tipoLabel = 'Falta'; badgeClass = 'badge-rojo'; }
+    }
+    const horasStr = (asistio && horasBrutas > 0) ? horasBrutas.toFixed(2)+'h' : '—';
+    const extrasStr = (asistio && extras > 0) ? extras.toFixed(2)+'h' : '—';
+    const descuentoStr = (descuento > 0) ? descuento.toFixed(2)+'h' : '—';
+    const comidasStr = tiempos > 0 ? tiempos : '—';
+    // Solo el administrador puede editar cualquier registro; los empleados no tienen botón de editar.
+    let accionesHtml = '';
+    if (esAdmin) {
+      accionesHtml = `<button class="btn-warning btn-sm" onclick="abrirModalEditar('${emp.id}','${fecha}')">✏️ Editar</button>`;
+    } else {
+      accionesHtml = '—';
+    }
+    registrosMostrar.push({
+      fecha, nombreDia, empleado: emp.nombre, entrada, salida,
+      horasStr, extrasStr, descuentoStr, comidasStr,
+      turno, tipoLabel, badgeClass, accionesHtml,
+      weekNum: getISOWeek(fecha)
     });
   });
-
-  if (tbody.innerHTML === '') {
-    tbody.innerHTML = `<tr><td colspan="12" style="text-align:center;color:var(--text-gray);">No hay registros para este período</td></tr>`;
+  registrosMostrar.sort((a,b) => b.fecha.localeCompare(a.fecha));
+  registrosFiltradosGlobal = registrosMostrar;
+  // No hay selector de filas por página, usamos el fijo 50
+  paginaActual = 1;
+  renderizarPagina();
+}
+function renderizarPagina() {
+  const tbody = document.getElementById('tablaHistorial');
+  const totalRegistros = registrosFiltradosGlobal.length;
+  const totalPaginas = Math.ceil(totalRegistros / filasPorPagina);
+  if (paginaActual < 1) paginaActual = 1;
+  if (paginaActual > totalPaginas) paginaActual = totalPaginas;
+  const inicio = (paginaActual - 1) * filasPorPagina;
+  const fin = Math.min(inicio + filasPorPagina, totalRegistros);
+  const paginaRegistros = registrosFiltradosGlobal.slice(inicio, fin);
+  let html = '';
+  const weekColorMap = {};
+  let idx = 0;
+  paginaRegistros.forEach(row => {
+    const weekNum = row.weekNum;
+    if (!weekColorMap[weekNum]) {
+      weekColorMap[weekNum] = idx % 2 === 0 ? 'fila-semana-par' : 'fila-semana-impar';
+      idx++;
+    }
+    const rowClass = weekColorMap[weekNum] || '';
+    html += `
+      <tr class="${rowClass}">
+        <td>${row.fecha}</td>
+        <td><span class="dia-azul">${row.nombreDia}</span></td>
+        <td>${row.empleado}</td>
+        <td>${row.entrada}</td>
+        <td>${row.salida}</td>
+        <td>${row.horasStr}</td>
+        <td>${row.extrasStr}</td>
+        <td>${row.descuentoStr}</td>
+        <td>${row.comidasStr}</td>
+        <td><span class="badge badge-azul">${row.turno}</span></td>
+        <td><span class="badge ${row.badgeClass}">${row.tipoLabel}</span></td>
+        <td>${row.accionesHtml}</td>
+      </tr>
+    `;
+  });
+  if (html === '') {
+    html = `<tr><td colspan="12" style="text-align:center;color:var(--text-gray);">No hay registros para este período</td></tr>`;
   }
+  tbody.innerHTML = html;
+  document.getElementById('infoPagina').textContent = totalRegistros > 0 ? `Página ${paginaActual} de ${totalPaginas || 1}` : 'Sin registros';
+  document.getElementById('btnPaginaAnterior').disabled = (paginaActual <= 1 || totalRegistros === 0);
+  document.getElementById('btnPaginaSiguiente').disabled = (paginaActual >= totalPaginas || totalRegistros === 0);
+}
+function cambiarPagina(delta) {
+  paginaActual += delta;
+  renderizarPagina();
 }
 
 // ============================================================
-// MODAL DE EDICIÓN DE REGISTROS (con eliminar)
+// MODAL DE EDICIÓN DE REGISTROS (solo admin)
 // ============================================================
 function abrirModalEditar(empleadoId, fecha) {
-  if (!esAdmin && usuarioActual.empleadoId !== empleadoId) {
-    showToast('No tienes permiso para editar este registro.', 'error');
+  if (!esAdmin) {
+    showToast('No tienes permiso para editar registros.', 'error');
     return;
   }
   let registro = registrosCache.find(r => r.empleadoId === empleadoId && r.fecha === fecha);
@@ -1581,10 +1802,9 @@ function abrirModalEditar(empleadoId, fecha) {
   document.getElementById('modalMensaje').textContent = '';
   document.getElementById('modalEditar').classList.add('active');
 }
-
 function cerrarModal() { document.getElementById('modalEditar').classList.remove('active'); }
-
 function guardarEdicion() {
+  if (!esAdmin) { showToast('No autorizado.', 'error'); return; }
   const entrada = document.getElementById('modalEntrada').value;
   const salida = document.getElementById('modalSalida').value;
   const tipo = document.getElementById('modalTipo').value;
@@ -1606,22 +1826,40 @@ function guardarEdicion() {
   if (esNuevo) {
     db.collection("jornada_registros").add(datos)
       .then(docRef => { datos.id = docRef.id; registrosCache.push(datos); guardarLocal(); cerrarModal(); actualizarHistorial(); showToast('✅ Registro creado.', 'success'); })
-      .catch(() => { datos.id = 'temp_'+Date.now(); registrosCache.push(datos); guardarLocal(); cerrarModal(); actualizarHistorial(); showToast('⚠️ Guardado localmente.', 'warning'); });
+      .catch(() => { 
+        datos.id = 'temp_'+Date.now()+'_'+Math.random(); 
+        registrosCache.push(datos); 
+        guardarLocal();
+        pendingUploads.push(datos.id);
+        guardarPendientes();
+        cerrarModal(); 
+        actualizarHistorial(); 
+        showToast('⚠️ Guardado localmente.', 'warning'); 
+      });
   } else {
     const id = registro.id;
     if (id && !id.startsWith('temp_')) {
       db.collection("jornada_registros").doc(id).update({ entrada: entrada||null, salida: salida||null, turno, tiemposComida: tiempos, tipo, timestampSalida: new Date().toISOString() })
         .then(() => { Object.assign(registro, { entrada: entrada||null, salida: salida||null, turno, tiemposComida: tiempos, tipo }); guardarLocal(); cerrarModal(); actualizarHistorial(); showToast('✅ Registro actualizado.', 'success'); })
-        .catch(() => { Object.assign(registro, { entrada: entrada||null, salida: salida||null, turno, tiemposComida: tiempos, tipo }); guardarLocal(); cerrarModal(); actualizarHistorial(); showToast('⚠️ Guardado localmente.', 'warning'); });
+        .catch(() => { 
+          Object.assign(registro, { entrada: entrada||null, salida: salida||null, turno, tiemposComida: tiempos, tipo }); 
+          guardarLocal(); 
+          if (!registro.id.startsWith('temp_')) {
+            pendingUploads.push(registro.id);
+            guardarPendientes();
+          }
+          cerrarModal(); 
+          actualizarHistorial(); 
+          showToast('⚠️ Guardado localmente.', 'warning'); 
+        });
     } else {
       Object.assign(registro, { entrada: entrada||null, salida: salida||null, turno, tiemposComida: tiempos, tipo });
       guardarLocal(); cerrarModal(); actualizarHistorial(); showToast('✅ Registro actualizado localmente.', 'success');
     }
   }
 }
-
-// ===== ELIMINAR REGISTRO =====
 function eliminarRegistro() {
+  if (!esAdmin) { showToast('No autorizado.', 'error'); return; }
   if (!editandoRegistroId) return;
   if (!confirm('¿Eliminar este registro permanentemente?')) return;
   const id = editandoRegistroId;
@@ -1660,11 +1898,12 @@ function actualizarTablaFeriados() {
   tbody.innerHTML = '';
   feriados.sort().forEach(f => {
     const nombre = FERIADOS_POR_DEFECTO.includes(f) ? 'Oficial' : 'Personalizado';
+    const accionHtml = esAdmin ? `<button class="btn-danger btn-sm" onclick="eliminarFeriado('${f}')">Eliminar</button>` : '—';
     tbody.innerHTML += `
       <tr>
         <td>${f}</td>
         <td>${nombre}</td>
-        <td><button class="btn-danger btn-sm" onclick="eliminarFeriado('${f}')">Eliminar</button></td>
+        <td>${accionHtml}</td>
       </tr>
     `;
   });
@@ -1672,7 +1911,6 @@ function actualizarTablaFeriados() {
     tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;color:var(--text-gray);">No hay feriados</td></tr>`;
   }
 }
-
 async function agregarFeriado() {
   if (!esAdmin) { showToast('Solo el administrador puede modificar feriados.', 'error'); return; }
   const fecha = document.getElementById('nuevoFeriado').value;
@@ -1691,7 +1929,6 @@ async function agregarFeriado() {
     showToast('✅ Feriado agregado.', 'success');
   } catch(e) { feriados.push(fecha); guardarLocal(); actualizarTablaFeriados(); showToast('⚠️ Guardado localmente.', 'warning'); }
 }
-
 async function eliminarFeriado(fecha) {
   if (!esAdmin) { showToast('Solo el administrador puede modificar feriados.', 'error'); return; }
   if (!confirm('¿Eliminar feriado?')) return;
@@ -1709,13 +1946,12 @@ async function eliminarFeriado(fecha) {
 }
 
 // ============================================================
-// REPORTE MENSUAL (con extras netas = extras - descuento)
+// REPORTE MENSUAL (SIN FILTRO PARA EMPLEADOS - VEN TODOS)
 // ============================================================
 function llenarSelectMeses() {
   const sel = document.getElementById('mesReporte');
   sel.innerHTML = '';
   const ahora = new Date();
-  // Ahora empieza en el mes anterior (igual que Historial)
   for (let i = 0; i < 12; i++) {
     const d = new Date(ahora.getFullYear(), ahora.getMonth() - i - 1, 1);
     const val = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
@@ -1725,13 +1961,11 @@ function llenarSelectMeses() {
     opt.textContent = label.charAt(0).toUpperCase() + label.slice(1);
     sel.appendChild(opt);
   }
-  // Seleccionar el mes anterior
   const mesInicio = new Date(ahora.getFullYear(), ahora.getMonth() - 1, 1);
   const valorInicio = mesInicio.getFullYear() + '-' + String(mesInicio.getMonth() + 1).padStart(2, '0');
   sel.value = valorInicio;
   generarReporte();
 }
-
 function generarReporte() {
   const mesVal = document.getElementById('mesReporte').value;
   if (!mesVal) return;
@@ -1742,13 +1976,14 @@ function generarReporte() {
   const finStr = fechaFin.toISOString().split('T')[0];
   document.getElementById('periodoReporte').innerText = `${inicioStr} al ${finStr}`;
 
-  // Filtramos registros del período con entrada y salida
+  // 🔹 SIN FILTRO: todos los registros
   let registrosFiltrados = registrosCache.filter(r => r.fecha >= inicioStr && r.fecha <= finStr && r.entrada && r.salida);
-  if (!esAdmin) {
-    registrosFiltrados = registrosFiltrados.filter(r => r.empleadoId === usuarioActual.empleadoId);
+
+  if (registrosFiltrados.length === 0) {
+    document.getElementById('contenedorReporte').innerHTML = '<p style="color:var(--text-gray); text-align:center; padding:40px 0;">No hay registros con entrada y salida para este período.</p>';
+    return;
   }
 
-  // Agrupar por empleado
   const mapa = {};
   registrosFiltrados.forEach(r => {
     const key = r.empleadoId;
@@ -1756,7 +1991,6 @@ function generarReporte() {
     mapa[key].registros.push(r);
   });
 
-  // Incluir también los descuentos por sábado no trabajado (sin entrada/salida)
   const todosLosDias = [];
   let cursor = new Date(fechaInicio);
   while (cursor <= fechaFin) {
@@ -1767,53 +2001,42 @@ function generarReporte() {
   for (let empId in mapa) {
     const emp = mapa[empId];
     const turno = emp.turno || 'Diurno';
+    const semanasConRegistro = new Set();
+    emp.registros.forEach(r => {
+      semanasConRegistro.add(getISOWeek(r.fecha));
+    });
     todosLosDias.forEach(fecha => {
       const dia = diaSemana(fecha);
       if (dia === 6 && !esNoLaborable(fecha)) {
-        const existe = emp.registros.some(r => r.fecha === fecha);
-        if (!existe) {
-          const jornada = getJornadaMaxima(fecha, turno);
-          if (jornada > 0) {
-            emp.registros.push({
-              fecha: fecha,
-              entrada: null,
-              salida: null,
-              turno: turno,
-              tipo: 'normal',
-              tiemposComida: 0,
-              _esDescuento: true,
-              _descuento: jornada
-            });
+        const weekNum = getISOWeek(fecha);
+        if (semanasConRegistro.has(weekNum)) {
+          const existe = emp.registros.some(r => r.fecha === fecha);
+          if (!existe) {
+            const jornada = getJornadaMaxima(fecha, turno);
+            if (jornada > 0) {
+              emp.registros.push({
+                fecha, entrada: null, salida: null, turno, tipo: 'normal', tiemposComida: 0,
+                _esDescuento: true, _descuento: jornada
+              });
+            }
           }
         }
       }
     });
   }
 
-  // Generar semanas usando ISO (domingo a sábado)
   const semanasMap = {};
   let tempDate = new Date(fechaInicio);
   while (tempDate <= fechaFin) {
     const weekNum = getISOWeek(tempDate);
-    if (!semanasMap[weekNum]) {
-      semanasMap[weekNum] = { inicio: null, fin: null };
-    }
+    if (!semanasMap[weekNum]) semanasMap[weekNum] = { inicio: null, fin: null };
     const fechaStr = tempDate.toISOString().split('T')[0];
-    if (!semanasMap[weekNum].inicio || fechaStr < semanasMap[weekNum].inicio) {
-      semanasMap[weekNum].inicio = fechaStr;
-    }
-    if (!semanasMap[weekNum].fin || fechaStr > semanasMap[weekNum].fin) {
-      semanasMap[weekNum].fin = fechaStr;
-    }
+    if (!semanasMap[weekNum].inicio || fechaStr < semanasMap[weekNum].inicio) semanasMap[weekNum].inicio = fechaStr;
+    if (!semanasMap[weekNum].fin || fechaStr > semanasMap[weekNum].fin) semanasMap[weekNum].fin = fechaStr;
     tempDate.setDate(tempDate.getDate() + 1);
   }
-
   const semanasOrdenadas = Object.keys(semanasMap).sort((a,b) => a-b);
-  const semanasList = semanasOrdenadas.map(key => ({
-    label: `Semana ${key}`,
-    inicio: semanasMap[key].inicio,
-    fin: semanasMap[key].fin
-  }));
+  const semanasList = semanasOrdenadas.map(key => ({ label: `Semana ${key}`, inicio: semanasMap[key].inicio, fin: semanasMap[key].fin }));
 
   let html = '<table><thead><tr><th>Empleado (Turno)</th>';
   semanasList.forEach(s => { html += `<th>${s.label}</th>`; });
@@ -1825,11 +2048,15 @@ function generarReporte() {
     const turno = emp.turno || 'Diurno';
     html += `<tr><td><strong>${nombre}</strong> (${turno})</td>`;
     let totalExtrasNetas = 0;
+    let tieneDatosEnAlgunaSemana = false;
 
     semanasList.forEach(s => {
+      const registrosEnSemana = emp.registros.filter(r => r.fecha >= s.inicio && r.fecha <= s.fin);
       let extrasNetasSem = 0;
-      emp.registros.forEach(r => {
-        if (r.fecha >= s.inicio && r.fecha <= s.fin) {
+      const hayRegistros = registrosEnSemana.length > 0;
+
+      if (hayRegistros) {
+        registrosEnSemana.forEach(r => {
           if (r._esDescuento && r._descuento) {
             extrasNetasSem -= r._descuento;
             return;
@@ -1839,24 +2066,28 @@ function generarReporte() {
             const calc = calcularExtrasYDescuento(horas, r.fecha, turno, r.tipo || 'normal');
             extrasNetasSem += calc.extras - calc.descuento;
           }
-        }
-      });
-      extrasNetasSem = Math.round(extrasNetasSem * 100) / 100;
-      totalExtrasNetas += extrasNetasSem;
-      html += `<td>${extrasNetasSem.toFixed(2)}</td>`;
+        });
+        extrasNetasSem = Math.round(extrasNetasSem * 100) / 100;
+        totalExtrasNetas += extrasNetasSem;
+        tieneDatosEnAlgunaSemana = true;
+        html += `<td>${extrasNetasSem.toFixed(2)}</td>`;
+      } else {
+        html += `<td style="color:var(--text-gray);">—</td>`;
+      }
     });
 
     totalExtrasNetas = Math.round(totalExtrasNetas * 100) / 100;
-    html += `<td><strong>${totalExtrasNetas.toFixed(2)}</strong></td></tr>`;
+    if (!tieneDatosEnAlgunaSemana) {
+      html += `<td style="color:var(--text-gray);">—</td>`;
+    } else {
+      html += `<td><strong>${totalExtrasNetas.toFixed(2)}</strong></td>`;
+    }
+    html += `</tr>`;
   }
 
   html += '</tbody></table>';
   document.getElementById('contenedorReporte').innerHTML = html;
 }
-
-// ============================================================
-// PDF
-// ============================================================
 function generarPDF() {
   const contenido = document.getElementById('contenedorReporte');
   const tabla = contenido.querySelector('table');
@@ -1868,18 +2099,15 @@ function generarPDF() {
   pdf.setFontSize(10);
   const periodo = document.getElementById('periodoReporte').innerText;
   pdf.text(`Período: ${periodo}`, 14, 22);
-
   const headers = [];
   const headRow = tabla.querySelector('thead tr');
   headRow.querySelectorAll('th').forEach(th => headers.push(th.innerText.trim().replace(/\n/g, ' ').replace(/\s+/g, ' ')));
-
   const rows = [];
   tabla.querySelectorAll('tbody tr').forEach(tr => {
     const row = [];
     tr.querySelectorAll('td').forEach(td => row.push(td.innerText.trim()));
     rows.push(row);
   });
-
   pdf.autoTable({
     head: [headers],
     body: rows,
@@ -1889,13 +2117,306 @@ function generarPDF() {
     headStyles: { fillColor: [10, 28, 58], textColor: 255, fontSize: 9 },
     columnStyles: { 0: { cellWidth: 35 } }
   });
-
   pdf.save(`Reporte_Extras_${periodo.replace(/\s/g, '_')}.pdf`);
   showToast('✅ PDF generado correctamente.', 'success');
 }
 
 // ============================================================
-// CREAR ADMIN SI NO EXISTE
+// IMPORTACIÓN CON SALIDA EDITABLE (solo admin)
+// ============================================================
+function normalizarNombre(nombre) {
+  return nombre.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, ' ');
+}
+function buscarEmpleadoPorNombre(nombreBuscado) {
+  const normalizado = normalizarNombre(nombreBuscado);
+  return empleados.find(e => normalizarNombre(e.nombre) === normalizado);
+}
+function parsearHora(texto) {
+  texto = texto.trim().toLowerCase().replace(/\s/g, '');
+  let horas = 0, minutos = 0;
+  const match = texto.match(/(\d{1,2}):?(\d{2})?\s*(am|pm)?/);
+  if (!match) return null;
+  horas = parseInt(match[1]);
+  minutos = parseInt(match[2] || '0');
+  const meridiem = match[3] || '';
+  if (meridiem === 'pm' && horas < 12) horas += 12;
+  if (meridiem === 'am' && horas === 12) horas = 0;
+  return `${String(horas).padStart(2,'0')}:${String(minutos).padStart(2,'0')}`;
+}
+function esLineaValidaParaNombre(linea) {
+  const lower = linea.toLowerCase();
+  if (lower.includes('hora de entrada') || lower.includes('hora de salida') ||
+      lower.includes('entrada') || lower.includes('salida') ||
+      lower.includes('tiempo') || lower.includes('comida') ||
+      lower.includes('desayuno') || lower.includes('almuerzo') ||
+      lower.includes('min') || lower.includes('horas') ||
+      lower.includes('retiró') || lower.includes('salió') ||
+      lower.includes('se fue') || lower.includes('solo') ||
+      lower.includes('todos') || lower.includes('general') ||
+      lower.includes('turno') || lower.includes('mixto') ||
+      lower.includes('pm') || lower.includes('am') ||
+      lower.includes(':')) {
+    return false;
+  }
+  if (linea.trim().length < 3) return false;
+  if (/\d/.test(linea) && !/[a-zA-Z]/.test(linea)) return false;
+  return true;
+}
+function logImportar(mensaje, tipo = 'info') {
+  const log = document.getElementById('logImportar');
+  const iconos = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
+  const clase = tipo === 'error' ? 'color:var(--error);' : (tipo === 'warning' ? 'color:var(--warning);' : 'color:var(--text-dark);');
+  log.innerHTML += `<div style="${clase} padding:2px 0;">${iconos[tipo] || 'ℹ️'} ${mensaje}</div>`;
+  log.scrollTop = log.scrollHeight;
+}
+function limpiarLogsImport() {
+  document.getElementById('logImportar').innerHTML = '';
+}
+function procesarImportacion() {
+  if (!esAdmin) {
+    showToast('Solo el administrador puede importar.', 'error');
+    return;
+  }
+  const texto = document.getElementById('textoImportar').value;
+  const fecha = document.getElementById('fechaImportar').value;
+  if (!texto.trim()) { showToast('Ingresa un texto válido.', 'warning'); return; }
+  if (!fecha) { showToast('Selecciona una fecha.', 'warning'); return; }
+  limpiarLogsImport();
+  logImportar('🔍 Procesando texto...', 'info');
+  const lineas = texto.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  let entradaActual = null;
+  let salidaGeneral = null;
+  const empleadosConEntrada = {};
+  const excepcionesSalida = {};
+  for (let i = 0; i < lineas.length; i++) {
+    let linea = lineas[i];
+    const lower = linea.toLowerCase();
+    if (lower.includes('hora de entrada') || lower.includes('entrada')) {
+      const matchHora = linea.match(/(\d{1,2}:\d{2}\s*(?:am|pm)?|\d{1,2}\s*(?:am|pm)?)/i);
+      if (matchHora) {
+        const hora = parsearHora(matchHora[0]);
+        if (hora) entradaActual = hora;
+        logImportar(`⏰ Hora de entrada detectada: ${entradaActual}`, 'info');
+      }
+      continue;
+    }
+    if (lower.includes('hora de salida') || lower.includes('salida')) {
+      const matchHora = linea.match(/(\d{1,2}:\d{2}\s*(?:am|pm)?|\d{1,2}\s*(?:am|pm)?)/i);
+      if (matchHora) {
+        const hora = parsearHora(matchHora[0]);
+        if (hora) salidaGeneral = hora;
+        logImportar(`⏰ Hora de salida general: ${salidaGeneral}`, 'info');
+      }
+      continue;
+    }
+    const excepcionMatch = linea.match(/(.+?)\s*(?:se retiró|salió|se fue)\s*(?:a las|a la|alas|a las)\s*(\d{1,2}:\d{2}\s*(?:am|pm)?|\d{1,2}\s*(?:am|pm)?)/i);
+    if (excepcionMatch) {
+      let nombresParte = excepcionMatch[1].trim();
+      const horaStr = excepcionMatch[2].trim();
+      const hora = parsearHora(horaStr);
+      if (hora) {
+        nombresParte = nombresParte.replace(/^(solo|solamente|únicamente)\s*/i, '').trim();
+        const nombres = nombresParte.split(/\s+y\s+|\s*,\s*/).map(n => n.trim()).filter(n => n.length > 0);
+        for (let n of nombres) {
+          n = n.replace(/^(a las|a la|alas)\s*/i, '').trim();
+          if (n.length > 0) {
+            excepcionesSalida[n] = hora;
+            logImportar(`🔁 Excepción: ${n} sale a las ${hora}`, 'warning');
+          }
+        }
+      }
+      continue;
+    }
+    if (entradaActual && esLineaValidaParaNombre(linea)) {
+      const nombres = linea.split(/\s*y\s+|\s*,\s*/).map(n => n.trim()).filter(n => n.length > 0);
+      for (let n of nombres) {
+        if (/\d/.test(n)) continue;
+        empleadosConEntrada[n] = entradaActual;
+        logImportar(`👤 ${n} → entrada ${entradaActual}`, 'info');
+      }
+    }
+  }
+  if (!salidaGeneral) {
+    const matchSalida = texto.match(/salida\s*(?:general)?\s*(\d{1,2}:\d{2}\s*(?:am|pm)?|\d{1,2}\s*(?:am|pm)?)/i);
+    if (matchSalida) {
+      salidaGeneral = parsearHora(matchSalida[1]);
+      if (salidaGeneral) logImportar(`⏰ Salida general (fallback): ${salidaGeneral}`, 'info');
+    }
+  }
+  registrosDetectados = [];
+  for (let nombre in empleadosConEntrada) {
+    let horaEntrada = empleadosConEntrada[nombre];
+    let horaSalida = salidaGeneral;
+    for (let exNombre in excepcionesSalida) {
+      if (normalizarNombre(nombre) === normalizarNombre(exNombre)) {
+        horaSalida = excepcionesSalida[exNombre];
+        break;
+      }
+    }
+    if (horaSalida) {
+      const emp = buscarEmpleadoPorNombre(nombre);
+      registrosDetectados.push({
+        nombre, entrada: horaEntrada, salida: horaSalida,
+        encontrado: !!emp, empleadoId: emp ? emp.id : null
+      });
+    } else {
+      registrosDetectados.push({
+        nombre, entrada: horaEntrada, salida: null,
+        encontrado: false, empleadoId: null
+      });
+    }
+  }
+  if (registrosDetectados.length === 0) {
+    logImportar('❌ No se detectaron registros. Revisa el formato.', 'error');
+    showToast('No se detectaron registros.', 'error');
+    return;
+  }
+  mostrarResumenImportacion(fecha);
+}
+function mostrarResumenImportacion(fecha) {
+  const contenedor = document.getElementById('resumenImportacion');
+  let html = `
+    <h3 style="margin-bottom:8px;">📋 Resumen de registros a importar (${fecha})</h3>
+    <p style="font-size:0.9rem; color:var(--text-gray);">✏️ Haz clic en la hora de salida para editarla si es necesario.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Empleado</th><th>Entrada</th><th>Salida (editable)</th><th>Estado</th></tr></thead>
+        <tbody>
+  `;
+  registrosDetectados.forEach((item, index) => {
+    const encontrado = item.encontrado && item.empleadoId && item.salida !== null;
+    const estado = encontrado ? '✅ Encontrado' : '❌ No encontrado o sin salida';
+    const color = encontrado ? 'color:var(--success);' : 'color:var(--error);';
+    const salidaValue = item.salida || '';
+    html += `
+      <tr>
+        <td>${item.nombre}</td>
+        <td>${item.entrada || '—'}</td>
+        <td>
+          <input type="time" id="salida_${index}" value="${salidaValue}" 
+                 style="padding:4px 8px; border:1px solid #cbd5e1; border-radius:4px; width:120px;"
+                 ${!encontrado ? 'disabled style="background:#f1f5f9;"' : ''} />
+        </td>
+        <td style="${color}">${estado}</td>
+      </tr>
+    `;
+  });
+  html += `</tbody></table></div>`;
+  const hayError = registrosDetectados.some(item => !item.encontrado || !item.salida);
+  if (hayError) {
+    html += `<p style="color:var(--error); margin-top:8px;">⚠️ Algunos empleados no se encontraron o les falta salida. Serán omitidos al importar.</p>`;
+  }
+  contenedor.innerHTML = html;
+  document.getElementById('importarOpciones').style.display = 'block';
+  document.getElementById('selectComidaImportacion').value = '0';
+  logImportar(`📌 Se detectaron ${registrosDetectados.length} registros. Revisa el resumen, edita si es necesario y confirma.`, 'info');
+}
+function confirmarImportacion() {
+  if (!esAdmin) { showToast('Solo administrador.', 'error'); return; }
+  const fecha = document.getElementById('fechaImportar').value;
+  const tiemposComida = parseInt(document.getElementById('selectComidaImportacion').value);
+
+  // Leer los inputs y actualizar SOLO si el usuario escribió algo
+  registrosDetectados.forEach((item, index) => {
+    const inputSalida = document.getElementById(`salida_${index}`);
+    if (inputSalida && inputSalida.value) {
+      item.salida = inputSalida.value; // Usar el valor editado
+    }
+    // Si el input está vacío, NO cambiamos item.salida (se mantiene el detectado)
+  });
+
+  const validos = registrosDetectados.filter(item => item.encontrado && item.empleadoId && item.salida !== null);
+  if (validos.length === 0) {
+    showToast('No hay registros válidos para importar.', 'error');
+    return;
+  }
+
+  logImportar(`⏳ Importando ${validos.length} registros con ${tiemposComida} tiempo(s) de comida...`, 'info');
+
+  let importados = 0, errores = 0;
+  validos.forEach(async (item) => {
+    const emp = empleados.find(e => e.id === item.empleadoId);
+    if (!emp) {
+      logImportar(`❌ Empleado ${item.nombre} no encontrado (ID perdido)`, 'error');
+      errores++;
+      return;
+    }
+
+    const existente = registrosCache.find(r => r.empleadoId === emp.id && r.fecha === fecha);
+    const datos = {
+      empleadoId: emp.id, nombre: emp.nombre, fecha,
+      entrada: item.entrada, salida: item.salida,
+      turno: determinarTurno(item.entrada),
+      tiemposComida, tipo: 'normal',
+      timestamp: new Date().toISOString()
+    };
+
+    if (existente) {
+      const id = existente.id;
+      if (id && !id.startsWith('temp_')) {
+        try {
+          await db.collection("jornada_registros").doc(id).update({
+            entrada: item.entrada, salida: item.salida,
+            turno: datos.turno, tiemposComida, tipo: 'normal',
+            timestampSalida: new Date().toISOString()
+          });
+          Object.assign(existente, datos);
+          logImportar(`🔄 Actualizado: ${emp.nombre}`, 'success');
+          importados++;
+        } catch (e) {
+          logImportar(`❌ Error al actualizar ${emp.nombre}: ${e.message}`, 'error');
+          errores++;
+        }
+      } else {
+        Object.assign(existente, datos);
+        guardarLocal();
+        if (!existente.id.startsWith('temp_')) {
+          pendingUploads.push(existente.id);
+          guardarPendientes();
+        }
+        logImportar(`🔄 Actualizado localmente: ${emp.nombre}`, 'warning');
+        importados++;
+      }
+    } else {
+      try {
+        const docRef = await db.collection("jornada_registros").add(datos);
+        datos.id = docRef.id;
+        registrosCache.push(datos);
+        guardarLocal();
+        logImportar(`✅ Importado: ${emp.nombre}`, 'success');
+        importados++;
+      } catch (e) {
+        datos.id = 'temp_' + Date.now() + '_' + Math.random();
+        registrosCache.push(datos);
+        guardarLocal();
+        pendingUploads.push(datos.id);
+        guardarPendientes();
+        logImportar(`⚠️ Importado localmente: ${emp.nombre} (sin conexión)`, 'warning');
+        importados++;
+      }
+    }
+
+    if (importados + errores === validos.length) {
+      logImportar(`\n📊 Importación finalizada. ${importados} registros procesados, ${errores} errores.`, 'info');
+      showToast(`Importación finalizada. ${importados} registros.`, importados > 0 ? 'success' : 'error');
+      actualizarHistorial();
+      document.getElementById('importarOpciones').style.display = 'none';
+      document.getElementById('resumenImportacion').innerHTML = '';
+      registrosDetectados = [];
+      refrescarVistas();
+    }
+  });
+}
+function cancelarImportacion() {
+  registrosDetectados = [];
+  document.getElementById('importarOpciones').style.display = 'none';
+  document.getElementById('resumenImportacion').innerHTML = '';
+  logImportar('❌ Importación cancelada.', 'warning');
+  showToast('Importación cancelada.', 'info');
+}
+
+// ============================================================
+// CREAR ADMIN Y AUTO-LOGIN
 // ============================================================
 (async function crearAdmin() {
   try {
@@ -1913,11 +2434,7 @@ function generarPDF() {
   } catch(e) { console.warn("No se pudo crear admin:", e); }
 })();
 
-// ============================================================
-// EJECUTAR AUTO-LOGIN AL CARGAR LA PÁGINA
-// ============================================================
 autoLogin();
-
 </script>
 </body>
 </html>
