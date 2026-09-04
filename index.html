@@ -631,7 +631,7 @@
     <div class="form-row">
       <input type="date" id="fechaImportar" value="" style="flex:0 0 200px;" />
       <button onclick="procesarImportacion()" class="btn-success" style="flex:0 0 auto;">📥 Procesar</button>
-      <button onclick="document.getElementById('textoImportar').value=''; document.getElementById('resumenImportacion').innerHTML=''; document.getElementById('importarOpciones').style.display='none';" class="btn-danger" style="flex:0 0 auto;">🗑️ Limpiar</button>
+      <button onclick="document.getElementById('textoImportar').value=''; document.getElementById('resumenImportacion').innerHTML=''; document.getElementById('importarOpciones').style.display='none'; document.getElementById('logImportar').innerHTML='Esperando acción...';" class="btn-danger" style="flex:0 0 auto;">🗑️ Limpiar</button>
     </div>
 
     <!-- Área de resumen y confirmación -->
@@ -1939,7 +1939,7 @@ function generarPDF() {
 }
 
 // ============================================================
-// IMPORTACIÓN DE JORNADA (solo admin)
+// IMPORTACIÓN DE JORNADA (mejorada)
 // ============================================================
 function normalizarNombre(nombre) {
   return nombre.trim()
@@ -1955,7 +1955,7 @@ function buscarEmpleadoPorNombre(nombreBuscado) {
 
 function parsearHora(texto) {
   texto = texto.trim().toLowerCase().replace(/\s/g, '');
-  let horas = 0, minutos = 0, esPM = false;
+  let horas = 0, minutos = 0;
   const match = texto.match(/(\d{1,2}):?(\d{2})?\s*(am|pm)?/);
   if (!match) return null;
   horas = parseInt(match[1]);
@@ -1964,6 +1964,28 @@ function parsearHora(texto) {
   if (meridiem === 'pm' && horas < 12) horas += 12;
   if (meridiem === 'am' && horas === 12) horas = 0;
   return `${String(horas).padStart(2,'0')}:${String(minutos).padStart(2,'0')}`;
+}
+
+function esLineaValidaParaNombre(linea) {
+  const lower = linea.toLowerCase();
+  // Ignorar líneas que contengan palabras clave de tiempo o comida
+  if (lower.includes('hora de entrada') || lower.includes('hora de salida') ||
+      lower.includes('entrada') || lower.includes('salida') ||
+      lower.includes('tiempo') || lower.includes('comida') ||
+      lower.includes('desayuno') || lower.includes('almuerzo') ||
+      lower.includes('min') || lower.includes('horas') ||
+      lower.includes('retiró') || lower.includes('salió') ||
+      lower.includes('se fue') || lower.includes('solo') ||
+      lower.includes('todos') || lower.includes('general') ||
+      lower.includes('turno') || lower.includes('mixto') ||
+      lower.includes('pm') || lower.includes('am') ||
+      lower.includes(':')) {
+    return false;
+  }
+  // Descartar líneas muy cortas o con solo números
+  if (linea.trim().length < 3) return false;
+  if (/\d/.test(linea) && !/[a-zA-Z]/.test(linea)) return false;
+  return true;
 }
 
 function logImportar(mensaje, tipo = 'info') {
@@ -2012,6 +2034,7 @@ function procesarImportacion() {
     let linea = lineas[i];
     const lower = linea.toLowerCase();
 
+    // Detectar "hora de entrada" o "entrada"
     if (lower.includes('hora de entrada') || lower.includes('entrada')) {
       const matchHora = linea.match(/(\d{1,2}:\d{2}\s*(?:am|pm)?|\d{1,2}\s*(?:am|pm)?)/i);
       if (matchHora) {
@@ -2022,6 +2045,7 @@ function procesarImportacion() {
       continue;
     }
 
+    // Detectar "hora de salida" o "salida"
     if (lower.includes('hora de salida') || lower.includes('salida')) {
       const matchHora = linea.match(/(\d{1,2}:\d{2}\s*(?:am|pm)?|\d{1,2}\s*(?:am|pm)?)/i);
       if (matchHora) {
@@ -2032,32 +2056,43 @@ function procesarImportacion() {
       continue;
     }
 
-    // Excepciones: "Mario jolon se retiró a las 5:30"
+    // Excepciones: "Solo José tomas y Esau Mejia se retiraron a las 4:30pm"
+    // Capturar nombres compuestos separados por "y" o comas
     const excepcionMatch = linea.match(/(.+?)\s*(?:se retiró|salió|se fue)\s*(?:a las|a la|alas|a las)\s*(\d{1,2}:\d{2}\s*(?:am|pm)?|\d{1,2}\s*(?:am|pm)?)/i);
     if (excepcionMatch) {
-      let nombre = excepcionMatch[1].trim();
+      let nombresParte = excepcionMatch[1].trim();
       const horaStr = excepcionMatch[2].trim();
       const hora = parsearHora(horaStr);
       if (hora) {
-        nombre = nombre.replace(/^(solo|solamente|únicamente)\s*/i, '').trim();
-        excepcionesSalida[nombre] = hora;
-        logImportar(`🔁 Excepción: ${nombre} sale a las ${hora}`, 'warning');
+        // Limpiar "Solo" o "solamente" al inicio
+        nombresParte = nombresParte.replace(/^(solo|solamente|únicamente)\s*/i, '').trim();
+        // Dividir por " y " o " , " para obtener múltiples nombres
+        const nombres = nombresParte.split(/\s+y\s+|\s*,\s*/).map(n => n.trim()).filter(n => n.length > 0);
+        for (let n of nombres) {
+          // Limpiar posibles palabras sobrantes
+          n = n.replace(/^(a las|a la|alas)\s*/i, '').trim();
+          if (n.length > 0) {
+            excepcionesSalida[n] = hora;
+            logImportar(`🔁 Excepción: ${n} sale a las ${hora}`, 'warning');
+          }
+        }
       }
       continue;
     }
 
-    // Si la línea parece un nombre (sin palabras clave)
-    if (entradaActual && !lower.includes('hora') && !lower.includes('entrada') && !lower.includes('salida') && !lower.includes('retiró')) {
-      const nombres = linea.split(/,|\s+y\s+/).map(n => n.trim()).filter(n => n.length > 0);
+    // Si la línea es válida para ser un nombre (sin palabras clave de tiempo/comida)
+    if (entradaActual && esLineaValidaParaNombre(linea)) {
+      // Puede ser varios nombres en una misma línea separados por comas o "y"
+      const nombres = linea.split(/\s*y\s+|\s*,\s*/).map(n => n.trim()).filter(n => n.length > 0);
       for (let n of nombres) {
-        if (/\d/.test(n)) continue;
+        if (/\d/.test(n)) continue; // Si tiene números, no es nombre
         empleadosConEntrada[n] = entradaActual;
         logImportar(`👤 ${n} → entrada ${entradaActual}`, 'info');
       }
     }
   }
 
-  // Fallback salida general
+  // Fallback salida general si no se detectó
   if (!salidaGeneral) {
     const matchSalida = texto.match(/salida\s*(?:general)?\s*(\d{1,2}:\d{2}\s*(?:am|pm)?|\d{1,2}\s*(?:am|pm)?)/i);
     if (matchSalida) {
@@ -2071,6 +2106,7 @@ function procesarImportacion() {
   for (let nombre in empleadosConEntrada) {
     let horaEntrada = empleadosConEntrada[nombre];
     let horaSalida = salidaGeneral;
+    // Buscar excepción de salida
     for (let exNombre in excepcionesSalida) {
       if (normalizarNombre(nombre) === normalizarNombre(exNombre)) {
         horaSalida = excepcionesSalida[exNombre];
@@ -2142,7 +2178,6 @@ function mostrarResumenImportacion(fecha) {
   // Mostrar opciones de confirmación
   const opcionesDiv = document.getElementById('importarOpciones');
   opcionesDiv.style.display = 'block';
-  // Resetear selector de comidas
   document.getElementById('selectComidaImportacion').value = '0';
 
   logImportar(`📌 Se detectaron ${registrosDetectados.length} registros. Revisa el resumen y confirma.`, 'info');
@@ -2172,7 +2207,6 @@ function confirmarImportacion() {
       return;
     }
 
-    // Verificar si ya existe registro para este empleado en esta fecha
     const existente = registrosCache.find(r => r.empleadoId === emp.id && r.fecha === fecha);
     const datos = {
       empleadoId: emp.id,
@@ -2187,7 +2221,6 @@ function confirmarImportacion() {
     };
 
     if (existente) {
-      // Actualizar
       const id = existente.id;
       if (id && !id.startsWith('temp_')) {
         try {
@@ -2207,14 +2240,12 @@ function confirmarImportacion() {
           errores++;
         }
       } else {
-        // local
         Object.assign(existente, datos);
         guardarLocal();
         logImportar(`🔄 Actualizado localmente: ${emp.nombre}`, 'warning');
         importados++;
       }
     } else {
-      // Nuevo
       try {
         const docRef = await db.collection("jornada_registros").add(datos);
         datos.id = docRef.id;
@@ -2231,12 +2262,10 @@ function confirmarImportacion() {
       }
     }
 
-    // Cuando todos terminen, resumen final
     if (importados + errores === validos.length) {
       logImportar(`\n📊 Importación finalizada. ${importados} registros procesados, ${errores} errores.`, 'info');
       showToast(`Importación finalizada. ${importados} registros.`, importados > 0 ? 'success' : 'error');
       actualizarHistorial();
-      // Ocultar opciones y resumen
       document.getElementById('importarOpciones').style.display = 'none';
       document.getElementById('resumenImportacion').innerHTML = '';
       registrosDetectados = [];
