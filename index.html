@@ -14,7 +14,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 
   <style>
-    /* ===== TEMA CMI TOLEDO (se mantiene igual) ===== */
+    /* ===== TEMA CMI TOLEDO ===== */
     :root {
       --primary: #0A1C3A;
       --secondary: #1A3A6B;
@@ -567,21 +567,7 @@
   </div>
 </div>
 
-<div class="modal-overlay" id="modalEditarEmpleado">
-  <div class="modal-box">
-    <h3>✏️ Editar empleado</h3>
-    <div class="form-group"><label>Nombre</label><input type="text" id="editNombreEmp" /></div>
-    <div class="form-group"><label>Usuario</label><input type="text" id="editUsuarioEmp" /></div>
-    <div class="form-group"><label>Contraseña (dejar en blanco para no cambiar)</label><input type="text" id="editPassEmp" placeholder="Nueva contraseña" /></div>
-    <div class="form-group"><label>Salario/hora (Q)</label><input type="number" id="editSalarioEmp" step="0.01" placeholder="0.00" /></div>
-    <div class="botones-modal">
-      <button onclick="guardarEdicionEmpleado()" class="btn-success">💾 Guardar</button>
-      <button onclick="cerrarModalEmpleado()" class="btn-danger">❌ Cancelar</button>
-    </div>
-    <p id="modalMensajeEmp" style="margin-top:12px; color:var(--error); font-weight:500;"></p>
-  </div>
-</div>
-
+<!-- MODAL PARA COMIDA (salida) -->
 <div class="modal-comida" id="modalComidaSalida" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.3); backdrop-filter:blur(3px); z-index:1001; justify-content:center; align-items:center;">
   <div class="modal-box" style="max-width:400px; text-align:center;">
     <h3>🍽️ Tiempos de comida</h3>
@@ -636,7 +622,6 @@ function showToast(message, type = 'info') {
 // ============================================================
 let empleados = [];
 let feriados = [];
-let registrosCache = []; // Solo para lectura rápida, no se usa para escritura
 let editandoRegistroId = null;
 let editandoEmpleadoId = null;
 let editandoFecha = null;
@@ -750,7 +735,6 @@ async function init() {
     refrescarVistas();
   });
   db.collection("jornada_registros").onSnapshot(() => {
-    // Solo refrescar vistas, los datos se leen directamente
     refrescarVistas();
   });
 
@@ -832,7 +816,6 @@ async function cargarFeriados() {
     if (doc.exists && doc.data().lista) {
       feriados = doc.data().lista;
     } else {
-      // Si no existe, crearlo con los defectos
       await db.collection("jornada_config").doc("feriados").set({ lista: FERIADOS_POR_DEFECTO });
       feriados = [...FERIADOS_POR_DEFECTO];
     }
@@ -1075,7 +1058,7 @@ function llenarSelectEmpleados() {
 }
 
 // ============================================================
-// HISTORIAL (CON PAGINACIÓN)
+// HISTORIAL (CON PAGINACIÓN Y FILTRADO EN MEMORIA)
 // ============================================================
 function llenarSelectHistorial() {
   const sel = document.getElementById('mesHistorial');
@@ -1111,15 +1094,9 @@ function actualizarHistorial() {
   const fechaFin = new Date(year, month, 10);
   const inicioStr = fechaInicio.toISOString().split('T')[0];
   const finStr = fechaFin.toISOString().split('T')[0];
-  const dias = [];
-  let cursor = new Date(fechaInicio);
-  while (cursor <= fechaFin) {
-    dias.push(cursor.toISOString().split('T')[0]);
-    cursor.setDate(cursor.getDate() + 1);
-  }
 
   const tbody = document.getElementById('tablaHistorial');
-  tbody.innerHTML = '';
+  tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;">Cargando...</td></tr>';
   const nombreDias = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
 
   const emp = empleados.find(e => e.id === filtroEmpleadoActivo);
@@ -1128,15 +1105,24 @@ function actualizarHistorial() {
     return;
   }
 
-  // Obtener registros de Firestore para este empleado en el período
+  // 🔥 Obtener TODOS los registros del empleado (sin filtro de fecha)
   db.collection("jornada_registros")
     .where("empleadoId", "==", emp.id)
-    .where("fecha", ">=", inicioStr)
-    .where("fecha", "<=", finStr)
     .get()
     .then(snap => {
       const registros = [];
       snap.forEach(doc => registros.push({ id: doc.id, ...doc.data() }));
+
+      // Filtrar por rango de fechas en memoria
+      const registrosFiltrados = registros.filter(r => r.fecha >= inicioStr && r.fecha <= finStr);
+
+      // Generar todos los días del período
+      const dias = [];
+      let cursor = new Date(fechaInicio);
+      while (cursor <= fechaFin) {
+        dias.push(cursor.toISOString().split('T')[0]);
+        cursor.setDate(cursor.getDate() + 1);
+      }
 
       const semanaMap = {};
       dias.forEach(fecha => {
@@ -1152,7 +1138,7 @@ function actualizarHistorial() {
 
       const registrosMostrar = [];
       dias.forEach(fecha => {
-        let registro = registros.find(r => r.fecha === fecha);
+        let registro = registrosFiltrados.find(r => r.fecha === fecha);
         if (!registro) {
           registro = { empleadoId: emp.id, nombre: emp.nombre, fecha, entrada: null, salida: null, turno: 'Diurno', tiemposComida: 0, tipo: 'normal', id: null };
         }
@@ -1192,7 +1178,6 @@ function actualizarHistorial() {
         const extrasStr = (asistio && extras > 0) ? extras.toFixed(2)+'h' : '—';
         const descuentoStr = (descuento > 0) ? descuento.toFixed(2)+'h' : '—';
         const comidasStr = tiempos > 0 ? tiempos : '—';
-        // Todos pueden editar (sin roles)
         const accionesHtml = `<button class="btn-warning btn-sm" onclick="abrirModalEditar('${emp.id}','${fecha}')">✏️ Editar</button>`;
 
         registrosMostrar.push({
@@ -1208,9 +1193,10 @@ function actualizarHistorial() {
       paginaActual = 1;
       renderizarPagina();
     })
-    .catch(() => {
+    .catch(error => {
+      console.error("Error al cargar historial:", error);
+      tbody.innerHTML = `<tr><td colspan="12" style="text-align:center;color:var(--error);">Error al cargar datos: ${error.message}</td></tr>`;
       showToast('Error al cargar historial', 'error');
-      tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;color:var(--text-gray);">Error al cargar datos.</td></tr>';
     });
 }
 
@@ -1336,7 +1322,6 @@ function guardarEdicion() {
   };
 
   if (editandoRegistroId) {
-    // Actualizar existente
     db.collection("jornada_registros").doc(editandoRegistroId).update(datos)
       .then(() => {
         showToast('✅ Registro actualizado.', 'success');
@@ -1345,7 +1330,6 @@ function guardarEdicion() {
       })
       .catch(() => showToast('❌ Error al actualizar', 'error'));
   } else {
-    // Crear nuevo
     db.collection("jornada_registros").add(datos)
       .then(() => {
         showToast('✅ Registro creado.', 'success');
@@ -1473,7 +1457,7 @@ function generarReporte() {
 
       const mapa = {};
       registros.forEach(r => {
-        if (!r.entrada || !r.salida) return; // solo con entrada y salida
+        if (!r.entrada || !r.salida) return;
         const key = r.empleadoId;
         if (!mapa[key]) mapa[key] = { empleadoId: key, nombre: r.nombre || 'Desconocido', turno: r.turno || 'Diurno', registros: [] };
         mapa[key].registros.push(r);
