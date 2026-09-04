@@ -538,6 +538,7 @@
       <select id="mesReporte"><option value="">Selecciona mes</option></select>
       <button onclick="generarReporte()" class="btn-success">📊 Generar</button>
       <button onclick="generarPDF()" class="btn-warning">📄 PDF</button>
+      <button onclick="generarReporte()" class="btn-outline" style="flex:0 0 auto;">🔄 Forzar</button>
     </div>
     <p style="font-size:0.9rem; color:var(--text-gray);">Período: <span id="periodoReporte">—</span></p>
     <div id="contenedorReporte" class="table-wrap">
@@ -748,6 +749,8 @@ let empleados = [];
 let feriados = [];
 let registrosCache = [];
 const LS_KEY = 'jornada_local';
+const PENDING_KEY = 'jornada_pending';
+let pendingUploads = [];
 
 const FERIADOS_POR_DEFECTO = [
   "2026-01-01", "2026-04-02", "2026-04-03", "2026-05-01",
@@ -865,6 +868,15 @@ function cargarLocal() {
   } catch(e) {}
   return false;
 }
+function guardarPendientes() {
+  try { localStorage.setItem(PENDING_KEY, JSON.stringify(pendingUploads)); } catch(e) {}
+}
+function cargarPendientes() {
+  try {
+    const raw = localStorage.getItem(PENDING_KEY);
+    if (raw) pendingUploads = JSON.parse(raw);
+  } catch(e) { pendingUploads = []; }
+}
 async function sincronizarEmpleados() {
   try {
     const snap = await db.collection("jornada_empleados").orderBy("nombre").get();
@@ -885,13 +897,49 @@ async function sincronizarFeriados() {
     guardarLocal();
   } catch(e) {}
 }
+async function subirPendientes() {
+  cargarPendientes();
+  if (pendingUploads.length === 0) return;
+  console.log(`📤 Intentando subir ${pendingUploads.length} registros pendientes...`);
+  const nuevosPendientes = [];
+  for (let tempId of pendingUploads) {
+    const registro = registrosCache.find(r => r.id === tempId);
+    if (!registro) continue;
+    if (!registro.empleadoId || !registro.fecha || !registro.entrada) {
+      console.warn(`⚠️ Registro ${tempId} incompleto, omitiendo`);
+      continue;
+    }
+    try {
+      const { id, ...data } = registro;
+      const docRef = await db.collection("jornada_registros").add(data);
+      registro.id = docRef.id;
+      console.log(`✅ Registro ${tempId} subido a Firestore con ID ${docRef.id}`);
+    } catch (e) {
+      console.error(`❌ Error subiendo ${tempId}:`, e);
+      nuevosPendientes.push(tempId);
+    }
+  }
+  pendingUploads = nuevosPendientes;
+  guardarPendientes();
+  guardarLocal();
+  console.log(`📊 Pendientes restantes: ${pendingUploads.length}`);
+}
 async function sincronizarRegistros() {
   try {
     const snap = await db.collection("jornada_registros").orderBy("fecha","desc").orderBy("timestamp","desc").get();
     const temp = [];
     snap.forEach(d => temp.push({ id: d.id, ...d.data() }));
-    if (temp.length) { registrosCache = temp; guardarLocal(); }
-  } catch(e) {}
+    if (temp.length) {
+      registrosCache = temp;
+      guardarLocal();
+      console.log(`✅ Registros sincronizados: ${temp.length}`);
+    } else {
+      console.warn('⚠️ No hay registros en Firestore');
+    }
+    await subirPendientes();
+  } catch(e) {
+    console.error('❌ Error sincronizando registros:', e);
+  }
 }
 
 // ============================================================
@@ -1054,12 +1102,13 @@ function construirMenuInferior() {
 // ============================================================
 async function init() {
   cargarLocal();
+  cargarPendientes();
   await sincronizarFeriados();
   await sincronizarEmpleados();
   await sincronizarRegistros();
 
-  // Listeners con sincronización en tiempo real
   db.collection("jornada_empleados").onSnapshot(() => {
+    console.log('📡 Cambio en empleados detectado');
     sincronizarEmpleados();
     actualizarSelects();
     mostrarEmpleados();
@@ -1067,11 +1116,13 @@ async function init() {
     refrescarVistas();
   });
   db.collection("jornada_config").doc("feriados").onSnapshot(() => {
+    console.log('📡 Cambio en feriados detectado');
     sincronizarFeriados();
     actualizarTablaFeriados();
     refrescarVistas();
   });
   db.collection("jornada_registros").onSnapshot(() => {
+    console.log('📡 Cambio en registros detectado');
     sincronizarRegistros();
     refrescarVistas();
   });
@@ -1111,7 +1162,6 @@ async function init() {
     if (filtroEmpleadoActivo) renderizarPagina();
   });
 
-  // Refrescar al volver a la pestaña
   document.addEventListener('visibilitychange', function() {
     if (!document.hidden) {
       refrescarVistas();
@@ -1123,10 +1173,13 @@ async function init() {
 // REFRESCAR VISTAS (sincronización en tiempo real)
 // ============================================================
 function refrescarVistas() {
-  if (document.hidden) return;
   const pestañaActiva = document.querySelector('.tab-content.active');
-  if (!pestañaActiva) return;
+  if (!pestañaActiva) {
+    console.warn('⚠️ No hay pestaña activa');
+    return;
+  }
   const id = pestañaActiva.id;
+  console.log(`🔄 Refrescando vista: ${id}`);
   if (id === 'principal') {
     actualizarSelects();
     actualizarCalendario();
@@ -1273,7 +1326,12 @@ function marcarEntrada() {
       showToast(`✅ Entrada registrada para ${emp.nombre} a las ${entrada} (Turno: ${turno})`, 'success');
       actualizarHistorial();
     })
-    .catch(() => { nuevo.id = 'temp_'+Date.now(); registrosCache.push(nuevo); guardarLocal();
+    .catch(() => { 
+      nuevo.id = 'temp_'+Date.now()+'_'+Math.random(); 
+      registrosCache.push(nuevo); 
+      guardarLocal();
+      pendingUploads.push(nuevo.id);
+      guardarPendientes();
       showToast(`⚠️ Entrada guardada localmente para ${emp.nombre}`, 'warning');
       actualizarHistorial();
     });
@@ -1311,8 +1369,26 @@ function confirmarComidaSalida() {
         showToast(`✅ Salida registrada para ${emp.nombre} a las ${salida} (${tiempos} tiempo(s) de comida)`, 'success');
         actualizarHistorial(); cerrarComidaSalida();
       })
-      .catch(() => { guardarLocal(); showToast(`⚠️ Salida guardada localmente para ${emp.nombre}`, 'warning'); actualizarHistorial(); cerrarComidaSalida(); });
-  } else { guardarLocal(); showToast(`✅ Salida registrada localmente para ${emp.nombre}`, 'success'); actualizarHistorial(); cerrarComidaSalida(); }
+      .catch(() => { 
+        guardarLocal(); 
+        if (!registro.id.startsWith('temp_')) {
+          pendingUploads.push(registro.id);
+          guardarPendientes();
+        }
+        showToast(`⚠️ Salida guardada localmente para ${emp.nombre}`, 'warning'); 
+        actualizarHistorial(); 
+        cerrarComidaSalida(); 
+      });
+  } else { 
+    guardarLocal(); 
+    if (!registro.id.startsWith('temp_')) {
+      pendingUploads.push(registro.id);
+      guardarPendientes();
+    }
+    showToast(`✅ Salida registrada localmente para ${emp.nombre}`, 'success'); 
+    actualizarHistorial(); 
+    cerrarComidaSalida(); 
+  }
 }
 function cancelarComidaSalida() { cerrarComidaSalida(); showToast('❌ Salida cancelada.', 'error'); }
 function cerrarComidaSalida() { document.getElementById('modalComidaSalida').style.display = 'none'; salidaPendienteEmpleado = null; salidaPendienteHora = null; salidaPendienteRegistro = null; }
@@ -1706,13 +1782,32 @@ function guardarEdicion() {
   if (esNuevo) {
     db.collection("jornada_registros").add(datos)
       .then(docRef => { datos.id = docRef.id; registrosCache.push(datos); guardarLocal(); cerrarModal(); actualizarHistorial(); showToast('✅ Registro creado.', 'success'); })
-      .catch(() => { datos.id = 'temp_'+Date.now(); registrosCache.push(datos); guardarLocal(); cerrarModal(); actualizarHistorial(); showToast('⚠️ Guardado localmente.', 'warning'); });
+      .catch(() => { 
+        datos.id = 'temp_'+Date.now()+'_'+Math.random(); 
+        registrosCache.push(datos); 
+        guardarLocal();
+        pendingUploads.push(datos.id);
+        guardarPendientes();
+        cerrarModal(); 
+        actualizarHistorial(); 
+        showToast('⚠️ Guardado localmente.', 'warning'); 
+      });
   } else {
     const id = registro.id;
     if (id && !id.startsWith('temp_')) {
       db.collection("jornada_registros").doc(id).update({ entrada: entrada||null, salida: salida||null, turno, tiemposComida: tiempos, tipo, timestampSalida: new Date().toISOString() })
         .then(() => { Object.assign(registro, { entrada: entrada||null, salida: salida||null, turno, tiemposComida: tiempos, tipo }); guardarLocal(); cerrarModal(); actualizarHistorial(); showToast('✅ Registro actualizado.', 'success'); })
-        .catch(() => { Object.assign(registro, { entrada: entrada||null, salida: salida||null, turno, tiemposComida: tiempos, tipo }); guardarLocal(); cerrarModal(); actualizarHistorial(); showToast('⚠️ Guardado localmente.', 'warning'); });
+        .catch(() => { 
+          Object.assign(registro, { entrada: entrada||null, salida: salida||null, turno, tiemposComida: tiempos, tipo }); 
+          guardarLocal(); 
+          if (!registro.id.startsWith('temp_')) {
+            pendingUploads.push(registro.id);
+            guardarPendientes();
+          }
+          cerrarModal(); 
+          actualizarHistorial(); 
+          showToast('⚠️ Guardado localmente.', 'warning'); 
+        });
     } else {
       Object.assign(registro, { entrada: entrada||null, salida: salida||null, turno, tiemposComida: tiempos, tipo });
       guardarLocal(); cerrarModal(); actualizarHistorial(); showToast('✅ Registro actualizado localmente.', 'success');
@@ -1836,6 +1931,11 @@ function generarReporte() {
   document.getElementById('periodoReporte').innerText = `${inicioStr} al ${finStr}`;
 
   let registrosFiltrados = registrosCache.filter(r => r.fecha >= inicioStr && r.fecha <= finStr && r.entrada && r.salida);
+
+  if (registrosFiltrados.length === 0) {
+    document.getElementById('contenedorReporte').innerHTML = '<p style="color:var(--text-gray); text-align:center; padding:40px 0;">No hay registros con entrada y salida para este período.</p>';
+    return;
+  }
 
   const mapa = {};
   registrosFiltrados.forEach(r => {
@@ -2168,18 +2268,24 @@ function confirmarImportacion() {
   if (!esAdmin) { showToast('Solo administrador.', 'error'); return; }
   const fecha = document.getElementById('fechaImportar').value;
   const tiemposComida = parseInt(document.getElementById('selectComidaImportacion').value);
+
+  // Leer los inputs y actualizar SOLO si el usuario escribió algo
   registrosDetectados.forEach((item, index) => {
     const inputSalida = document.getElementById(`salida_${index}`);
-    if (inputSalida) {
-      item.salida = inputSalida.value || null;
+    if (inputSalida && inputSalida.value) {
+      item.salida = inputSalida.value; // Usar el valor editado
     }
+    // Si el input está vacío, NO cambiamos item.salida (se mantiene el detectado)
   });
+
   const validos = registrosDetectados.filter(item => item.encontrado && item.empleadoId && item.salida !== null);
   if (validos.length === 0) {
     showToast('No hay registros válidos para importar.', 'error');
     return;
   }
+
   logImportar(`⏳ Importando ${validos.length} registros con ${tiemposComida} tiempo(s) de comida...`, 'info');
+
   let importados = 0, errores = 0;
   validos.forEach(async (item) => {
     const emp = empleados.find(e => e.id === item.empleadoId);
@@ -2188,6 +2294,7 @@ function confirmarImportacion() {
       errores++;
       return;
     }
+
     const existente = registrosCache.find(r => r.empleadoId === emp.id && r.fecha === fecha);
     const datos = {
       empleadoId: emp.id, nombre: emp.nombre, fecha,
@@ -2196,6 +2303,7 @@ function confirmarImportacion() {
       tiemposComida, tipo: 'normal',
       timestamp: new Date().toISOString()
     };
+
     if (existente) {
       const id = existente.id;
       if (id && !id.startsWith('temp_')) {
@@ -2215,6 +2323,10 @@ function confirmarImportacion() {
       } else {
         Object.assign(existente, datos);
         guardarLocal();
+        if (!existente.id.startsWith('temp_')) {
+          pendingUploads.push(existente.id);
+          guardarPendientes();
+        }
         logImportar(`🔄 Actualizado localmente: ${emp.nombre}`, 'warning');
         importados++;
       }
@@ -2230,10 +2342,13 @@ function confirmarImportacion() {
         datos.id = 'temp_' + Date.now() + '_' + Math.random();
         registrosCache.push(datos);
         guardarLocal();
+        pendingUploads.push(datos.id);
+        guardarPendientes();
         logImportar(`⚠️ Importado localmente: ${emp.nombre} (sin conexión)`, 'warning');
         importados++;
       }
     }
+
     if (importados + errores === validos.length) {
       logImportar(`\n📊 Importación finalizada. ${importados} registros procesados, ${errores} errores.`, 'info');
       showToast(`Importación finalizada. ${importados} registros.`, importados > 0 ? 'success' : 'error');
@@ -2241,6 +2356,7 @@ function confirmarImportacion() {
       document.getElementById('importarOpciones').style.display = 'none';
       document.getElementById('resumenImportacion').innerHTML = '';
       registrosDetectados = [];
+      refrescarVistas();
     }
   });
 }
