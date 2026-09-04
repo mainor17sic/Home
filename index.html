@@ -769,7 +769,7 @@ let registrosDetectados = [];
 let paginaActual = 1;
 let filasPorPagina = 50;
 let registrosFiltradosGlobal = [];
-let filtroEmpleadoActivo = null; // ID del empleado seleccionado
+let filtroEmpleadoActivo = null;
 
 // ============================================================
 // FUNCIONES DE FECHA Y TURNOS
@@ -1022,7 +1022,7 @@ function construirMenuInferior() {
       } else if (tabId === 'historial') {
         llenarSelectHistorial();
         if (esAdmin) {
-          llenarSelectEmpleados(); // selecciona el primer empleado automáticamente
+          llenarSelectEmpleados();
           if (filtroEmpleadoActivo) {
             actualizarHistorial();
           } else {
@@ -1032,7 +1032,6 @@ function construirMenuInferior() {
             document.getElementById('btnPaginaSiguiente').disabled = true;
           }
         } else {
-          // Empleado normal: mostrar sus propios registros
           actualizarHistorial();
         }
       } else if (tabId === 'empleados') {
@@ -1059,14 +1058,23 @@ async function init() {
   await sincronizarEmpleados();
   await sincronizarRegistros();
 
+  // Listeners con sincronización en tiempo real
   db.collection("jornada_empleados").onSnapshot(() => {
     sincronizarEmpleados();
     actualizarSelects();
     mostrarEmpleados();
     if (esAdmin) llenarSelectEmpleados();
+    refrescarVistas();
   });
-  db.collection("jornada_config").doc("feriados").onSnapshot(() => { sincronizarFeriados(); actualizarTablaFeriados(); });
-  db.collection("jornada_registros").onSnapshot(() => { sincronizarRegistros(); actualizarHistorial(); });
+  db.collection("jornada_config").doc("feriados").onSnapshot(() => {
+    sincronizarFeriados();
+    actualizarTablaFeriados();
+    refrescarVistas();
+  });
+  db.collection("jornada_registros").onSnapshot(() => {
+    sincronizarRegistros();
+    refrescarVistas();
+  });
 
   actualizarSelects();
   mostrarEmpleados();
@@ -1102,6 +1110,37 @@ async function init() {
     paginaActual = 1;
     if (filtroEmpleadoActivo) renderizarPagina();
   });
+
+  // Refrescar al volver a la pestaña
+  document.addEventListener('visibilitychange', function() {
+    if (!document.hidden) {
+      refrescarVistas();
+    }
+  });
+}
+
+// ============================================================
+// REFRESCAR VISTAS (sincronización en tiempo real)
+// ============================================================
+function refrescarVistas() {
+  if (document.hidden) return;
+  const pestañaActiva = document.querySelector('.tab-content.active');
+  if (!pestañaActiva) return;
+  const id = pestañaActiva.id;
+  if (id === 'principal') {
+    actualizarSelects();
+    actualizarCalendario();
+  } else if (id === 'reporte') {
+    generarReporte();
+  } else if (id === 'historial') {
+    if (filtroEmpleadoActivo || !esAdmin) {
+      actualizarHistorial();
+    }
+  } else if (id === 'config') {
+    actualizarTablaFeriados();
+  } else if (id === 'empleados') {
+    mostrarEmpleados();
+  }
 }
 
 // ============================================================
@@ -1456,7 +1495,6 @@ function llenarSelectHistorial() {
   sel.value = valorInicio;
 }
 function actualizarHistorial() {
-  // Para empleado normal: mostrar sus propios registros
   if (!esAdmin) {
     const empId = usuarioActual.empleadoId;
     filtroEmpleadoActivo = empId;
@@ -1767,7 +1805,7 @@ async function eliminarFeriado(fecha) {
 }
 
 // ============================================================
-// REPORTE MENSUAL
+// REPORTE MENSUAL (SIN NÚMEROS NEGATIVOS EN SEMANAS SIN DATOS)
 // ============================================================
 function llenarSelectMeses() {
   const sel = document.getElementById('mesReporte');
@@ -1796,38 +1834,50 @@ function generarReporte() {
   const inicioStr = fechaInicio.toISOString().split('T')[0];
   const finStr = fechaFin.toISOString().split('T')[0];
   document.getElementById('periodoReporte').innerText = `${inicioStr} al ${finStr}`;
+
   let registrosFiltrados = registrosCache.filter(r => r.fecha >= inicioStr && r.fecha <= finStr && r.entrada && r.salida);
+
   const mapa = {};
   registrosFiltrados.forEach(r => {
     const key = r.empleadoId;
     if (!mapa[key]) mapa[key] = { empleadoId: key, nombre: r.nombre || 'Desconocido', turno: r.turno || 'Diurno', registros: [] };
     mapa[key].registros.push(r);
   });
+
   const todosLosDias = [];
   let cursor = new Date(fechaInicio);
   while (cursor <= fechaFin) {
     todosLosDias.push(cursor.toISOString().split('T')[0]);
     cursor.setDate(cursor.getDate() + 1);
   }
+
   for (let empId in mapa) {
     const emp = mapa[empId];
     const turno = emp.turno || 'Diurno';
+    const semanasConRegistro = new Set();
+    emp.registros.forEach(r => {
+      semanasConRegistro.add(getISOWeek(r.fecha));
+    });
     todosLosDias.forEach(fecha => {
       const dia = diaSemana(fecha);
       if (dia === 6 && !esNoLaborable(fecha)) {
-        const existe = emp.registros.some(r => r.fecha === fecha);
-        if (!existe) {
-          const jornada = getJornadaMaxima(fecha, turno);
-          if (jornada > 0) {
-            emp.registros.push({
-              fecha, entrada: null, salida: null, turno, tipo: 'normal', tiemposComida: 0,
-              _esDescuento: true, _descuento: jornada
-            });
+        const weekNum = getISOWeek(fecha);
+        if (semanasConRegistro.has(weekNum)) {
+          const existe = emp.registros.some(r => r.fecha === fecha);
+          if (!existe) {
+            const jornada = getJornadaMaxima(fecha, turno);
+            if (jornada > 0) {
+              emp.registros.push({
+                fecha, entrada: null, salida: null, turno, tipo: 'normal', tiemposComida: 0,
+                _esDescuento: true, _descuento: jornada
+              });
+            }
           }
         }
       }
     });
   }
+
   const semanasMap = {};
   let tempDate = new Date(fechaInicio);
   while (tempDate <= fechaFin) {
@@ -1840,19 +1890,26 @@ function generarReporte() {
   }
   const semanasOrdenadas = Object.keys(semanasMap).sort((a,b) => a-b);
   const semanasList = semanasOrdenadas.map(key => ({ label: `Semana ${key}`, inicio: semanasMap[key].inicio, fin: semanasMap[key].fin }));
+
   let html = '<table><thead><tr><th>Empleado (Turno)</th>';
   semanasList.forEach(s => { html += `<th>${s.label}</th>`; });
   html += `<th>Total Extras Netas</th></tr></thead><tbody>`;
+
   for (let empId in mapa) {
     const emp = mapa[empId];
     const nombre = emp.nombre;
     const turno = emp.turno || 'Diurno';
     html += `<tr><td><strong>${nombre}</strong> (${turno})</td>`;
     let totalExtrasNetas = 0;
+    let tieneDatosEnAlgunaSemana = false;
+
     semanasList.forEach(s => {
+      const registrosEnSemana = emp.registros.filter(r => r.fecha >= s.inicio && r.fecha <= s.fin);
       let extrasNetasSem = 0;
-      emp.registros.forEach(r => {
-        if (r.fecha >= s.inicio && r.fecha <= s.fin) {
+      const hayRegistros = registrosEnSemana.length > 0;
+
+      if (hayRegistros) {
+        registrosEnSemana.forEach(r => {
           if (r._esDescuento && r._descuento) {
             extrasNetasSem -= r._descuento;
             return;
@@ -1862,15 +1919,25 @@ function generarReporte() {
             const calc = calcularExtrasYDescuento(horas, r.fecha, turno, r.tipo || 'normal');
             extrasNetasSem += calc.extras - calc.descuento;
           }
-        }
-      });
-      extrasNetasSem = Math.round(extrasNetasSem * 100) / 100;
-      totalExtrasNetas += extrasNetasSem;
-      html += `<td>${extrasNetasSem.toFixed(2)}</td>`;
+        });
+        extrasNetasSem = Math.round(extrasNetasSem * 100) / 100;
+        totalExtrasNetas += extrasNetasSem;
+        tieneDatosEnAlgunaSemana = true;
+        html += `<td>${extrasNetasSem.toFixed(2)}</td>`;
+      } else {
+        html += `<td style="color:var(--text-gray);">—</td>`;
+      }
     });
+
     totalExtrasNetas = Math.round(totalExtrasNetas * 100) / 100;
-    html += `<td><strong>${totalExtrasNetas.toFixed(2)}</strong></td></tr>`;
+    if (!tieneDatosEnAlgunaSemana) {
+      html += `<td style="color:var(--text-gray);">—</td>`;
+    } else {
+      html += `<td><strong>${totalExtrasNetas.toFixed(2)}</strong></td>`;
+    }
+    html += `</tr>`;
   }
+
   html += '</tbody></table>';
   document.getElementById('contenedorReporte').innerHTML = html;
 }
