@@ -609,6 +609,7 @@
     <div class="form-row">
       <input type="date" id="fechaImportar" value="" style="flex:0 0 200px;" />
       <button onclick="procesarImportacion()" class="btn-success" style="flex:0 0 auto;">📥 Procesar</button>
+      <button onclick="subirPendientesManual()" class="btn-warning" style="flex:0 0 auto;">⬆️ Subir pendientes</button>
       <button onclick="document.getElementById('textoImportar').value=''; document.getElementById('resumenImportacion').innerHTML=''; document.getElementById('importarOpciones').style.display='none'; document.getElementById('logImportar').innerHTML='Esperando acción...';" class="btn-danger" style="flex:0 0 auto;">🗑️ Limpiar</button>
     </div>
     <div id="resumenImportacion" style="margin-top:16px;"></div>
@@ -1194,6 +1195,53 @@ function refrescarVistas() {
   } else if (id === 'empleados') {
     mostrarEmpleados();
   }
+}
+
+// ============================================================
+// SUBIR PENDIENTES MANUAL (BOTÓN)
+// ============================================================
+async function subirPendientesManual() {
+  if (!esAdmin) {
+    showToast('Solo el administrador puede realizar esta acción.', 'error');
+    return;
+  }
+  cargarPendientes();
+  if (pendingUploads.length === 0) {
+    logImportar('✅ No hay registros pendientes de subir.', 'info');
+    showToast('No hay registros pendientes de subir.', 'info');
+    return;
+  }
+  logImportar(`⏳ Iniciando subida manual de ${pendingUploads.length} registros...`, 'info');
+  let subidos = 0, errores = 0;
+  const nuevosPendientes = [];
+  for (let tempId of pendingUploads) {
+    const registro = registrosCache.find(r => r.id === tempId);
+    if (!registro) {
+      logImportar(`⚠️ Registro ${tempId} no encontrado en caché, omitiendo.`, 'warning');
+      continue;
+    }
+    if (!registro.empleadoId || !registro.fecha || !registro.entrada) {
+      logImportar(`⚠️ Registro ${tempId} incompleto, omitiendo.`, 'warning');
+      continue;
+    }
+    try {
+      const { id, ...data } = registro;
+      const docRef = await db.collection("jornada_registros").add(data);
+      registro.id = docRef.id;
+      logImportar(`✅ Registro ${tempId} subido exitosamente.`, 'success');
+      subidos++;
+    } catch (e) {
+      logImportar(`❌ Error subiendo ${tempId}: ${e.message}`, 'error');
+      errores++;
+      nuevosPendientes.push(tempId);
+    }
+  }
+  pendingUploads = nuevosPendientes;
+  guardarPendientes();
+  guardarLocal();
+  logImportar(`📊 Subida manual finalizada: ${subidos} subidos, ${errores} errores, ${pendingUploads.length} pendientes.`, 'info');
+  showToast(`Subida manual: ${subidos} registros subidos.`, subidos > 0 ? 'success' : 'error');
+  refrescarVistas();
 }
 
 // ============================================================
