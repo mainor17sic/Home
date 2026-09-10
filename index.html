@@ -640,6 +640,35 @@ const FERIADOS_POR_DEFECTO = [
   "2026-11-01", "2026-12-25"
 ];
 
+ ============================================================
+const PESOS_SABADO = {
+  'Diurno':   { 1: 1.0, 2: 1.0, 3: 1.0, 4: 1.0, 5: 0.0 },
+  'Mixto':    { 1: 1.5, 2: 1.5, 3: 1.5, 4: 1.5, 5: 1.0 },
+  'Nocturno': { 1: 1.0, 2: 1.0, 3: 1.0, 4: 1.5, 5: 1.5 }
+};
+
+function calcularDescuentoSabado(fechaSabado, inicioStr, finStr, turno) {
+  const sabadoObj = new Date(fechaSabado + 'T00:00:00');
+  const lunes = new Date(sabadoObj);
+  lunes.setDate(sabadoObj.getDate() - 5); // Lunes de esa semana ISO
+
+  const pesos = PESOS_SABADO[turno] || PESOS_SABADO['Diurno'];
+  let totalDescuento = 0;
+
+  for (let i = 0; i < 5; i++) {
+    const dia = new Date(lunes);
+    dia.setDate(lunes.getDate() + i);
+    const fechaStr = dia.toISOString().split('T')[0];
+    const diaSemanaNum = dia.getDay(); // 1=Lunes ... 5=Viernes
+
+    // Solo sumamos el peso si el día cae dentro del período evaluado
+    if (fechaStr >= inicioStr && fechaStr <= finStr) {
+      totalDescuento += pesos[diaSemanaNum] || 0;
+    }
+  }
+  return Math.round(totalDescuento * 10) / 10;
+}
+
 // ============================================================
 // FUNCIONES DE FECHA Y TURNOS
 // ============================================================
@@ -673,7 +702,7 @@ function calcularHorasBrutas(entrada, salida, tiemposComida) {
   if (s < e) s += 24;
   const brutas = s - e;
   const descComida = (tiemposComida || 0) * 0.5;
-  return Math.round((brutas - descComida) * 100) / 100; // mantiene 2 decimales internamente
+  return Math.round((brutas - descComida) * 100) / 100;
 }
 function determinarTurno(horaEntrada) {
   if (!horaEntrada) return 'Diurno';
@@ -703,19 +732,16 @@ function calcularExtrasYDescuento(horasBrutas, fecha, turno, tipo) {
   if (tipo && tipo !== 'normal') return { extras: 0, descuento: 0, asistio: true };
   const jornada = getJornadaMaxima(fecha, turno);
   let extras = 0, descuento = 0;
-  
-  if (jornada === 0) { 
-    // Domingos o feriados: todo lo trabajado es extra y no hay descuento
-    extras = horasBrutas; 
+
+  if (jornada === 0) {
+    // Domingos o feriados: todo lo trabajado es extra
+    extras = horasBrutas;
   } else {
-    // Días laborables (Lunes a Sábado)
+    // Días laborables (Lunes a Sábado): descuento si no completa la jornada
     extras = Math.max(0, horasBrutas - jornada);
-    
-    // CAMBIO: Calcular descuento siempre que las horas sean menores a la jornada
-    // (ya no solo para sábados)
     descuento = Math.max(0, jornada - horasBrutas);
   }
-  
+
   extras = Math.round(extras * 100) / 100;
   descuento = Math.round(descuento * 100) / 100;
   return { extras, descuento, asistio: horasBrutas > 0 || (tipo && tipo !== 'normal') };
@@ -1122,7 +1148,7 @@ function actualizarHistorial() {
         cursor.setDate(cursor.getDate() + 1);
       }
 
-      // ===== NUEVO: Calcular turno por semana (basado en registros reales) =====
+      // Turno por semana (basado en registros reales)
       const turnoPorSemana = {};
       registrosFiltrados.forEach(r => {
         if (r.entrada && r.salida) {
@@ -1133,7 +1159,6 @@ function actualizarHistorial() {
           if (!turnoPorSemana[weekKey]) {
             turnoPorSemana[weekKey] = r.turno || 'Diurno';
           }
-          // Si ya existe, no sobrescribimos (podríamos tomar el más frecuente)
         }
       });
 
@@ -1185,28 +1210,21 @@ function actualizarHistorial() {
           if (dia === 0) { tipoLabel = 'Domingo (no laborable)'; badgeClass = 'badge-gris'; }
           else if (esFeriado(fecha)) { tipoLabel = 'Feriado (no laborable)'; badgeClass = 'badge-gris'; }
           else if (dia === 6) {
-            // SÁBADO NO TRABAJADO: calcular descuento según turno de esa semana
+            // SÁBADO NO TRABAJADO: descuento proporcional según días L-V dentro del período
             const fechaObj = new Date(fecha + 'T00:00:00');
             const weekNum = getISOWeek(fechaObj);
             const year = fechaObj.getFullYear();
             const weekKey = `${year}-${weekNum}`;
             const turnoSemana = turnoPorSemana[weekKey];
             if (turnoSemana) {
-              const jornada = getJornadaMaxima(fecha, turnoSemana);
-              if (jornada > 0) {
-                descuento = jornada;
-              } else {
-                descuento = 0;
-              }
+              descuento = calcularDescuentoSabado(fecha, inicioStr, finStr, turnoSemana);
             } else {
-              // Si no hay actividad en esa semana, no descuenta
-              descuento = 0;
+              descuento = 0; // Sin actividad en la semana, no se descuenta
             }
             tipoLabel = 'Sábado no trabajado';
             badgeClass = 'badge-rojo';
           } else { tipoLabel = 'Falta'; badgeClass = 'badge-rojo'; }
         }
-        // Mostrar con un solo decimal (redondeo a décimas)
         const horasStr = (asistio && horasBrutas > 0) ? horasBrutas.toFixed(1)+'h' : '—';
         const extrasStr = (asistio && extras > 0) ? extras.toFixed(1)+'h' : '—';
         const descuentoStr = (descuento > 0) ? descuento.toFixed(1)+'h' : '—';
@@ -1289,7 +1307,7 @@ function cambiarPagina(delta) {
 }
 
 // ============================================================
-// MODAL DE EDICIÓN DE REGISTROS (todos pueden editar)
+// MODAL DE EDICIÓN DE REGISTROS
 // ============================================================
 function abrirModalEditar(empleadoId, fecha) {
   const emp = empleados.find(e => e.id === empleadoId);
@@ -1447,7 +1465,7 @@ async function eliminarFeriado(fecha) {
 }
 
 // ============================================================
-// REPORTE MENSUAL (mejorado por semana y detalle)
+// REPORTE MENSUAL
 // ============================================================
 function llenarSelectMeses() {
   const sel = document.getElementById('mesReporte');
@@ -1478,7 +1496,6 @@ function generarReporte() {
   const finStr = fechaFin.toISOString().split('T')[0];
   document.getElementById('periodoReporte').innerText = `${inicioStr} al ${finStr}`;
 
-  // Obtener todos los registros del período
   db.collection("jornada_registros")
     .where("fecha", ">=", inicioStr)
     .where("fecha", "<=", finStr)
@@ -1545,13 +1562,11 @@ function generarReporte() {
         });
       }
 
-      // Construir datos de cada empleado por semana
       const empleadoSemanaData = [];
       for (let empId in mapa) {
         const emp = mapa[empId];
         const nombre = emp.nombre;
         const turnoGeneral = emp.turno || 'Diurno';
-        // Inicializar acumuladores por semana
         const semanaAcum = {};
         semanasOrdenadas.forEach(weekKey => {
           semanaAcum[weekKey] = {
@@ -1564,20 +1579,17 @@ function generarReporte() {
           };
         });
 
-        // Procesar cada día del período
         todosLosDias.forEach(fecha => {
           const fechaObj = new Date(fecha + 'T00:00:00');
           const weekNum = getISOWeek(fechaObj);
           const year = fechaObj.getFullYear();
           const weekKey = `${year}-${weekNum}`;
-          if (!semanasMap[weekKey]) return; // no debería pasar
+          if (!semanasMap[weekKey]) return;
 
           const dia = diaSemana(fecha);
           const esNoLab = esNoLaborable(fecha);
-          // Buscar registro para este empleado y fecha
           let registro = emp.registros.find(r => r.fecha === fecha);
           if (registro && registro.entrada && registro.salida) {
-            // Día trabajado
             const tiempos = registro.tiemposComida || 0;
             const horasBrutas = calcularHorasBrutas(registro.entrada, registro.salida, tiempos);
             const turno = turnoPorSemanaEmp[empId][weekKey] || registro.turno || 'Diurno';
@@ -1588,21 +1600,18 @@ function generarReporte() {
             semanaAcum[weekKey].comidas += tiempos;
             semanaAcum[weekKey].diasTrabajados += 1;
           } else {
-            // Si es sábado no trabajado y hay actividad en esa semana (turno definido)
+            // Sábado no trabajado: descuento proporcional según días L-V dentro del período
             if (dia === 6 && !esNoLab) {
               const turnoSemana = turnoPorSemanaEmp[empId][weekKey];
               if (turnoSemana) {
-                const jornada = getJornadaMaxima(fecha, turnoSemana);
-                if (jornada > 0) {
-                  semanaAcum[weekKey].descuentos += jornada;
-                  semanaAcum[weekKey].descuentosSabado += jornada;
-                }
+                const descuentoSabado = calcularDescuentoSabado(fecha, inicioStr, finStr, turnoSemana);
+                semanaAcum[weekKey].descuentos += descuentoSabado;
+                semanaAcum[weekKey].descuentosSabado += descuentoSabado;
               }
             }
           }
         });
 
-        // Redondear a 1 decimal
         semanasOrdenadas.forEach(weekKey => {
           const s = semanaAcum[weekKey];
           s.horas = Math.round(s.horas * 10) / 10;
@@ -1619,7 +1628,6 @@ function generarReporte() {
         });
       }
 
-      // Construir HTML de la tabla
       let html = '<table><thead><tr>';
       html += '<th>Empleado (Turno)</th>';
       semanasOrdenadas.forEach(weekKey => {
@@ -1629,7 +1637,6 @@ function generarReporte() {
       });
       html += '<th>Total Extras</th><th>Total Horas</th><th>Total Descuentos</th><th>Neto</th></tr></thead><tbody>';
 
-      // Totales por semana (suma de todos los empleados)
       const totalesSemana = {};
       semanasOrdenadas.forEach(weekKey => {
         totalesSemana[weekKey] = { horas: 0, extras: 0, descuentos: 0, comidas: 0 };
@@ -1647,7 +1654,6 @@ function generarReporte() {
           totalHorasEmp += s.horas;
           totalDescuentosEmp += s.descuentos;
           totalNetoEmp += neto;
-          // acumular totales por semana
           totalesSemana[weekKey].horas += s.horas;
           totalesSemana[weekKey].extras += s.extras;
           totalesSemana[weekKey].descuentos += s.descuentos;
@@ -1668,7 +1674,7 @@ function generarReporte() {
         html += '</tr>';
       });
 
-      // Fila de totales por semana (todos los empleados)
+      // Fila de totales por semana
       html += '<tr style="background-color:var(--bg-light); font-weight:600;"><td>TOTALES</td>';
       let totalExtrasSemGlobal = 0, totalHorasSemGlobal = 0, totalDescuentosSemGlobal = 0;
       semanasOrdenadas.forEach(weekKey => {
@@ -1689,7 +1695,6 @@ function generarReporte() {
                <td><strong>${totalNetoGlobalCalc.toFixed(1)}</strong></td>`;
       html += '</tr>';
 
-      // Fila resumen final
       totalExtrasGlobal = Math.round(totalExtrasGlobal * 10) / 10;
       totalHorasGlobal = Math.round(totalHorasGlobal * 10) / 10;
       totalDescuentosGlobal = Math.round(totalDescuentosGlobal * 10) / 10;
@@ -1722,7 +1727,6 @@ function generarPDF() {
   const totalSem = document.getElementById('totalSemanas').innerText;
   pdf.text(`Período: ${periodo}  |  Total de semanas: ${totalSem}`, 14, 22);
 
-  // Extraer encabezados
   const headers = [];
   const headRow = tabla.querySelector('thead tr');
   headRow.querySelectorAll('th').forEach(th => {
@@ -1730,7 +1734,6 @@ function generarPDF() {
     headers.push(text);
   });
 
-  // Extraer filas del cuerpo
   const rows = [];
   tabla.querySelectorAll('tbody tr').forEach(tr => {
     const row = [];
