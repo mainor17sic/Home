@@ -703,13 +703,19 @@ function calcularExtrasYDescuento(horasBrutas, fecha, turno, tipo) {
   if (tipo && tipo !== 'normal') return { extras: 0, descuento: 0, asistio: true };
   const jornada = getJornadaMaxima(fecha, turno);
   let extras = 0, descuento = 0;
-  if (jornada === 0) { extras = horasBrutas; }
-  else {
+  
+  if (jornada === 0) { 
+    // Domingos o feriados: todo lo trabajado es extra y no hay descuento
+    extras = horasBrutas; 
+  } else {
+    // Días laborables (Lunes a Sábado)
     extras = Math.max(0, horasBrutas - jornada);
-    if (diaSemana(fecha) === 6 && !esNoLaborable(fecha)) {
-      descuento = Math.max(0, jornada - horasBrutas);
-    }
+    
+    // CAMBIO: Calcular descuento siempre que las horas sean menores a la jornada
+    // (ya no solo para sábados)
+    descuento = Math.max(0, jornada - horasBrutas);
   }
+  
   extras = Math.round(extras * 100) / 100;
   descuento = Math.round(descuento * 100) / 100;
   return { extras, descuento, asistio: horasBrutas > 0 || (tipo && tipo !== 'normal') };
