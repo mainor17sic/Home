@@ -640,16 +640,46 @@ const FERIADOS_POR_DEFECTO = [
   "2026-11-01", "2026-12-25"
 ];
 
+// ============================================================
+// PESOS PARA DESCUENTO PROPORCIONAL DEL SÁBADO
+// Los pesos de L-V suman la jornada máxima del sábado del turno.
+// Diurno: 1.0*4 + 0.0 = 4.0h | Mixto: 1.5*4 + 1.0 = 7.0h | Nocturno: 1.0*3 + 1.5*2 = 6.0h
+// ============================================================
 const PESOS_SABADO = {
   'Diurno':   { 1: 1.0, 2: 1.0, 3: 1.0, 4: 1.0, 5: 0.0 },
   'Mixto':    { 1: 1.5, 2: 1.5, 3: 1.5, 4: 1.5, 5: 1.0 },
   'Nocturno': { 1: 1.0, 2: 1.0, 3: 1.0, 4: 1.5, 5: 1.5 }
 };
 
+// ============================================================
+// OPCIÓN A: Solo se prorratea el PRIMER sábado del período.
+// Los sábados de semanas intermedias usan la jornada completa.
+// Si el sábado de la última semana queda fuera del período,
+// NO se evalúa aquí; se evaluará en el siguiente período.
+// ============================================================
+function esPrimerSabadoDelPeriodo(fechaSabado, inicioStr) {
+  let cursor = new Date(inicioStr + 'T00:00:00');
+  const limite = new Date(fechaSabado + 'T00:00:00');
+  while (cursor <= limite) {
+    if (cursor.getDay() === 6) {
+      return cursor.toISOString().split('T')[0] === fechaSabado;
+    }
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return false;
+}
+
 function calcularDescuentoSabado(fechaSabado, inicioStr, finStr, turno) {
+  // Si NO es el primer sábado del período → jornada completa del sábado
+  if (!esPrimerSabadoDelPeriodo(fechaSabado, inicioStr)) {
+    const jornadaSabado = getJornadaMaxima(fechaSabado, turno);
+    return Math.round(jornadaSabado * 10) / 10;
+  }
+
+  // Es el primer sábado del período → prorratear según días L-V dentro del período
   const sabadoObj = new Date(fechaSabado + 'T00:00:00');
   const lunes = new Date(sabadoObj);
-  lunes.setDate(sabadoObj.getDate() - 5); // Lunes de esa semana ISO
+  lunes.setDate(sabadoObj.getDate() - 5);
 
   const pesos = PESOS_SABADO[turno] || PESOS_SABADO['Diurno'];
   let totalDescuento = 0;
@@ -658,9 +688,8 @@ function calcularDescuentoSabado(fechaSabado, inicioStr, finStr, turno) {
     const dia = new Date(lunes);
     dia.setDate(lunes.getDate() + i);
     const fechaStr = dia.toISOString().split('T')[0];
-    const diaSemanaNum = dia.getDay(); // 1=Lunes ... 5=Viernes
+    const diaSemanaNum = dia.getDay();
 
-    // Solo sumamos el peso si el día cae dentro del período evaluado
     if (fechaStr >= inicioStr && fechaStr <= finStr) {
       totalDescuento += pesos[diaSemanaNum] || 0;
     }
