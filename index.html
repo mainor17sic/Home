@@ -1119,8 +1119,15 @@ function llenarSelectHistorial() {
   const sel = document.getElementById('mesHistorial');
   sel.innerHTML = '';
   const ahora = new Date();
+
+  // Calcular el mes del período activo (si es día <= 10, pertenece al mes anterior)
+  let mesActivo = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
+  if (ahora.getDate() <= 10) {
+    mesActivo = new Date(ahora.getFullYear(), ahora.getMonth() - 1, 1);
+  }
+
   for (let i = 0; i < 12; i++) {
-    const d = new Date(ahora.getFullYear(), ahora.getMonth() - i - 1, 1);
+    const d = new Date(mesActivo.getFullYear(), mesActivo.getMonth() - i, 1);
     const val = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
     const label = d.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
     const opt = document.createElement('option');
@@ -1128,9 +1135,9 @@ function llenarSelectHistorial() {
     opt.textContent = label.charAt(0).toUpperCase() + label.slice(1);
     sel.appendChild(opt);
   }
-  const mesInicio = new Date(ahora.getFullYear(), ahora.getMonth() - 1, 1);
-  const valorInicio = mesInicio.getFullYear() + '-' + String(mesInicio.getMonth() + 1).padStart(2, '0');
-  sel.value = valorInicio;
+
+  const valorActivo = mesActivo.getFullYear() + '-' + String(mesActivo.getMonth() + 1).padStart(2, '0');
+  sel.value = valorActivo;
 }
 
 function actualizarHistorial() {
@@ -1499,8 +1506,15 @@ function llenarSelectMeses() {
   const sel = document.getElementById('mesReporte');
   sel.innerHTML = '';
   const ahora = new Date();
+
+  // Calcular el mes del período activo (si es día <= 10, pertenece al mes anterior)
+  let mesActivo = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
+  if (ahora.getDate() <= 10) {
+    mesActivo = new Date(ahora.getFullYear(), ahora.getMonth() - 1, 1);
+  }
+
   for (let i = 0; i < 12; i++) {
-    const d = new Date(ahora.getFullYear(), ahora.getMonth() - i - 1, 1);
+    const d = new Date(mesActivo.getFullYear(), mesActivo.getMonth() - i, 1);
     const val = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
     const label = d.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
     const opt = document.createElement('option');
@@ -1508,9 +1522,9 @@ function llenarSelectMeses() {
     opt.textContent = label.charAt(0).toUpperCase() + label.slice(1);
     sel.appendChild(opt);
   }
-  const mesInicio = new Date(ahora.getFullYear(), ahora.getMonth() - 1, 1);
-  const valorInicio = mesInicio.getFullYear() + '-' + String(mesInicio.getMonth() + 1).padStart(2, '0');
-  sel.value = valorInicio;
+
+  const valorActivo = mesActivo.getFullYear() + '-' + String(mesActivo.getMonth() + 1).padStart(2, '0');
+  sel.value = valorActivo;
   generarReporte();
 }
 
