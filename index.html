@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=2.0, user-scalable=yes" />
-  <title>Control de Jornada - CMI Toledo</title>
+  <title>Control de Jornada - Toledo</title>
 
   <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -431,7 +431,7 @@
 <!-- ===== APLICACIÓN PRINCIPAL (sin login) ===== -->
 <div id="app-container">
   <div class="app-header">
-    <h1>⏱️ Control de Jornada</h1>
+    <h1>⏱️ Control de horas</h1>
     <div class="user-info">
       <span>👤 Usuario: <span id="nombreUsuario">Todos</span></span>
     </div>
@@ -556,7 +556,7 @@
       <select id="modalTurno"><option value="Diurno">Diurno</option><option value="Mixto">Mixto</option><option value="Nocturno">Nocturno</option></select>
     </div>
     <div class="form-group"><label>Tipo de día</label>
-      <select id="modalTipo"><option value="normal">Normal</option><option value="vacaciones">Vacaciones</option><option value="personal">Personal</option><option value="incapacidad">Incapacidad</option></select>
+      <select id="modalTipo"><option value="normal">Normal</option><option value="vacaciones">Vacaciones</option><option value="personal">Personal</option><option value="incapacidad">Susp. Clinica</option></select>
     </div>
     <div class="botones-modal">
       <button onclick="guardarEdicion()" class="btn-success">💾 Guardar</button>
@@ -1239,7 +1239,7 @@ function actualizarHistorial() {
           asistio = true;
           if (tipo === 'vacaciones') { tipoLabel = 'Vacaciones'; badgeClass = 'badge-azul'; }
           else if (tipo === 'personal') { tipoLabel = 'Personal'; badgeClass = 'badge-naranja'; }
-          else if (tipo === 'incapacidad') { tipoLabel = 'Incapacidad'; badgeClass = 'badge-gris'; }
+          else if (tipo === 'incapacidad') { tipoLabel = 'Susp. Clinica'; badgeClass = 'badge-gris'; }
         } else {
           asistio = false;
           if (dia === 0) { tipoLabel = 'Domingo (no laborable)'; badgeClass = 'badge-gris'; }
