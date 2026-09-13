@@ -556,7 +556,13 @@
       <select id="modalTurno"><option value="Diurno">Diurno</option><option value="Mixto">Mixto</option><option value="Nocturno">Nocturno</option></select>
     </div>
     <div class="form-group"><label>Tipo de día</label>
-      <select id="modalTipo"><option value="normal">Normal</option><option value="vacaciones">Vacaciones</option><option value="personal">Personal</option><option value="incapacidad">Susp. Clinica</option></select>
+      <select id="modalTipo">
+        <option value="normal">Normal</option>
+        <option value="vacaciones">Vacaciones</option>
+        <option value="personal">Personal</option>
+        <option value="incapacidad">Susp. Clinica</option>
+        <option value="soloExtras">Solo horas extras</option>
+      </select>
     </div>
     <div class="botones-modal">
       <button onclick="guardarEdicion()" class="btn-success">💾 Guardar</button>
@@ -757,6 +763,11 @@ function getJornadaMaxima(fecha, turno) {
   return 0;
 }
 function calcularExtrasYDescuento(horasBrutas, fecha, turno, tipo) {
+  // ⭐ NUEVO: "Solo horas extras" → todo lo trabajado cuenta como extra (ya viene sin comida)
+  if (tipo === 'soloExtras') {
+    const extras = Math.round(horasBrutas * 100) / 100;
+    return { extras, descuento: 0, asistio: horasBrutas > 0 };
+  }
   if (tipo && tipo !== 'normal') return { extras: 0, descuento: 0, asistio: true };
   const jornada = getJornadaMaxima(fecha, turno);
   let extras = 0, descuento = 0;
@@ -1234,12 +1245,18 @@ function actualizarHistorial() {
           horasBrutas = calcularHorasBrutas(registro.entrada, registro.salida, tiempos);
           const calc = calcularExtrasYDescuento(horasBrutas, fecha, turno, tipo);
           extras = calc.extras; descuento = calc.descuento; asistio = true;
-          tipoLabel = 'Trabajado'; badgeClass = 'badge-verde';
+          // ⭐ NUEVO: etiqueta para "Solo horas extras"
+          if (tipo === 'soloExtras') {
+            tipoLabel = 'Solo horas extras'; badgeClass = 'badge-naranja';
+          } else {
+            tipoLabel = 'Trabajado'; badgeClass = 'badge-verde';
+          }
         } else if (tipo !== 'normal') {
           asistio = true;
           if (tipo === 'vacaciones') { tipoLabel = 'Vacaciones'; badgeClass = 'badge-azul'; }
           else if (tipo === 'personal') { tipoLabel = 'Personal'; badgeClass = 'badge-naranja'; }
           else if (tipo === 'incapacidad') { tipoLabel = 'Susp. Clinica'; badgeClass = 'badge-gris'; }
+          else if (tipo === 'soloExtras') { tipoLabel = 'Solo horas extras'; badgeClass = 'badge-naranja'; }
         } else {
           asistio = false;
           if (dia === 0) { tipoLabel = 'Domingo (no laborable)'; badgeClass = 'badge-gris'; }
@@ -1394,6 +1411,11 @@ function guardarEdicion() {
 
   if (tipo === 'normal' && (!entrada || !salida)) {
     document.getElementById('modalMensaje').textContent = '⚠️ Para tipo "normal" debe tener entrada y salida.';
+    return;
+  }
+  // ⭐ NUEVO: también exigir entrada y salida para "Solo horas extras"
+  if (tipo === 'soloExtras' && (!entrada || !salida)) {
+    document.getElementById('modalMensaje').textContent = '⚠️ Para "Solo horas extras" debe tener entrada y salida.';
     return;
   }
   const emp = empleados.find(e => e.id === editandoEmpleadoId);
