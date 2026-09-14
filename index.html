@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=2.0, user-scalable=yes" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Control de Jornada - Toledo</title>
 
   <!-- Firebase -->
@@ -31,13 +31,22 @@
       --shadow: 0 4px 20px rgba(10, 28, 58, 0.12);
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * { 
+      box-sizing: border-box; 
+      margin: 0; 
+      padding: 0; 
+      -webkit-tap-highlight-color: transparent; /* Quita el resaltado azul al tocar */
+    }
+    
     html, body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       background: var(--bg-light);
       color: var(--text-dark);
       min-height: 100vh;
       padding-bottom: 80px;
+      overflow-x: hidden; /* Evita scroll horizontal no deseado */
+      touch-action: manipulation; /* Evita el doble tap zoom */
+      -webkit-text-size-adjust: 100%; /* Evita que el texto cambie de tamaño al girar */
     }
 
     #app-container {
@@ -269,6 +278,7 @@
       width: 100%;
       border-collapse: collapse;
       font-size: 0.85rem;
+      min-width: 600px; /* Evita que las columnas se aplasten en móviles */
     }
     th, td {
       padding: 8px 10px;
@@ -311,7 +321,7 @@
       padding: 10px 14px;
       border: 1px solid #cbd5e1;
       border-radius: 8px;
-      font-size: 0.95rem;
+      font-size: 1rem; /* 16px previene el zoom automático en iOS */
       background: white;
       transition: 0.2s;
     }
@@ -357,7 +367,7 @@
     .modal-box h3 { color: var(--primary); margin-bottom: 16px; }
     .modal-box .form-group { margin-bottom: 14px; }
     .modal-box label { display: block; font-weight: 600; margin-bottom: 4px; color: var(--text-dark); }
-    .modal-box input, .modal-box select { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; }
+    .modal-box input, .modal-box select { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 1rem; }
     .modal-box .botones-modal {
       display: flex;
       gap: 12px;
@@ -420,6 +430,8 @@
       .form-row > * { flex: 1 1 100%; }
       .modal-box { padding: 20px; }
       .toast-container { top: 10px; right: 10px; max-width: 90%; }
+      /* Ajuste para que la tabla no se aplaste en pantallas muy pequeñas */
+      table { min-width: 700px; }
     }
     @media (min-width: 641px) {
       .bottom-nav .nav-item .label { display: inline-block; }
