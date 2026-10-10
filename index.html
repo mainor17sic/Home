@@ -35,18 +35,18 @@
       box-sizing: border-box; 
       margin: 0; 
       padding: 0; 
-      -webkit-tap-highlight-color: transparent; /* Quita el resaltado azul al tocar */
+      -webkit-tap-highlight-color: transparent;
     }
-    
+
     html, body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       background: var(--bg-light);
       color: var(--text-dark);
       min-height: 100vh;
       padding-bottom: 80px;
-      overflow-x: hidden; /* Evita scroll horizontal no deseado */
-      touch-action: manipulation; /* Evita el doble tap zoom */
-      -webkit-text-size-adjust: 100%; /* Evita que el texto cambie de tamaño al girar */
+      overflow-x: hidden;
+      touch-action: manipulation;
+      -webkit-text-size-adjust: 100%;
     }
 
     #app-container {
@@ -278,7 +278,7 @@
       width: 100%;
       border-collapse: collapse;
       font-size: 0.85rem;
-      min-width: 600px; /* Evita que las columnas se aplasten en móviles */
+      min-width: 600px;
     }
     th, td {
       padding: 8px 10px;
@@ -321,7 +321,7 @@
       padding: 10px 14px;
       border: 1px solid #cbd5e1;
       border-radius: 8px;
-      font-size: 1rem; /* 16px previene el zoom automático en iOS */
+      font-size: 1rem;
       background: white;
       transition: 0.2s;
     }
@@ -430,7 +430,6 @@
       .form-row > * { flex: 1 1 100%; }
       .modal-box { padding: 20px; }
       .toast-container { top: 10px; right: 10px; max-width: 90%; }
-      /* Ajuste para que la tabla no se aplaste en pantallas muy pequeñas */
       table { min-width: 700px; }
     }
     @media (min-width: 641px) {
@@ -673,7 +672,7 @@ const PESOS_SABADO = {
 // OPCIÓN A: Solo se prorratea el PRIMER sábado del período.
 // Los sábados de semanas intermedias usan la jornada completa.
 // Si el sábado de la última semana queda fuera del período,
-// NO se evalúa aquí; se evaluará en el siguiente período.
+// se calcula el descuento "fantasma" prorrateado con PESOS_SABADO.
 // ============================================================
 function esPrimerSabadoDelPeriodo(fechaSabado, inicioStr) {
   let cursor = new Date(inicioStr + 'T00:00:00');
@@ -774,13 +773,30 @@ function getJornadaMaxima(fecha, turno) {
   if (turno === 'Nocturno') return 6;
   return 0;
 }
-function calcularExtrasYDescuento(horasBrutas, fecha, turno, tipo) {
-  // ⭐ NUEVO: "Solo horas extras" → todo lo trabajado cuenta como extra (ya viene sin comida)
+
+// ============================================================
+// ⭐ CALCULAR EXTRAS Y DESCUENTO (con soporte para descuento
+// forzado del sábado cuando el sábado se trabaja)
+// ============================================================
+function calcularExtrasYDescuento(horasBrutas, fecha, turno, tipo, descuentoSabadoForzado) {
+  // ⭐ "Solo horas extras" → todo lo trabajado cuenta como extra (sin descuento)
   if (tipo === 'soloExtras') {
     const extras = Math.round(horasBrutas * 100) / 100;
     return { extras, descuento: 0, asistio: horasBrutas > 0 };
   }
   if (tipo && tipo !== 'normal') return { extras: 0, descuento: 0, asistio: true };
+
+  const dia = diaSemana(fecha);
+  const esNoLab = esNoLaborable(fecha);
+
+  // ⭐ SÁBADO: el descuento de la jornada L-V del turno SIEMPRE se aplica.
+  // Si se trabaja el sábado → TODAS las horas trabajadas cuentan como EXTRAS.
+  if (dia === 6 && !esNoLab && descuentoSabadoForzado !== undefined && descuentoSabadoForzado !== null) {
+    const extras = Math.round(horasBrutas * 100) / 100;
+    const descuento = Math.round(descuentoSabadoForzado * 100) / 100;
+    return { extras, descuento, asistio: true };
+  }
+
   const jornada = getJornadaMaxima(fecha, turno);
   let extras = 0, descuento = 0;
 
@@ -788,7 +804,7 @@ function calcularExtrasYDescuento(horasBrutas, fecha, turno, tipo) {
     // Domingos o feriados: todo lo trabajado es extra
     extras = horasBrutas;
   } else {
-    // Días laborables (Lunes a Sábado): descuento si no completa la jornada
+    // Días laborables (Lunes a Viernes): descuento si no completa la jornada
     extras = Math.max(0, horasBrutas - jornada);
     descuento = Math.max(0, jornada - horasBrutas);
   }
@@ -1143,7 +1159,6 @@ function llenarSelectHistorial() {
   sel.innerHTML = '';
   const ahora = new Date();
 
-  // Calcular el mes del período activo (si es día <= 10, pertenece al mes anterior)
   let mesActivo = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
   if (ahora.getDate() <= 10) {
     mesActivo = new Date(ahora.getFullYear(), ahora.getMonth() - 1, 1);
@@ -1253,13 +1268,28 @@ function actualizarHistorial() {
         const tipo = registro.tipo || 'normal';
         let horasBrutas = 0, extras = 0, descuento = 0, asistio = false;
         let tipoLabel = 'Normal', badgeClass = 'badge-verde';
+
         if (registro.entrada && registro.salida) {
           horasBrutas = calcularHorasBrutas(registro.entrada, registro.salida, tiempos);
-          const calc = calcularExtrasYDescuento(horasBrutas, fecha, turno, tipo);
+
+          // ⭐ Si es sábado laborable, forzamos el descuento de sábado (jornada L-V del turno)
+          let descSabForzado = null;
+          if (dia === 6 && !esNoLaborable(fecha)) {
+            const fechaObj = new Date(fecha + 'T00:00:00');
+            const weekNum = getISOWeek(fechaObj);
+            const year = fechaObj.getFullYear();
+            const weekKey = `${year}-${weekNum}`;
+            const turnoSemana = turnoPorSemana[weekKey] || turno;
+            descSabForzado = calcularDescuentoSabado(fecha, inicioStr, finStr, turnoSemana);
+          }
+
+          const calc = calcularExtrasYDescuento(horasBrutas, fecha, turno, tipo, descSabForzado);
           extras = calc.extras; descuento = calc.descuento; asistio = true;
-          // ⭐ NUEVO: etiqueta para "Solo horas extras"
+
           if (tipo === 'soloExtras') {
             tipoLabel = 'Solo horas extras'; badgeClass = 'badge-naranja';
+          } else if (dia === 6 && descSabForzado !== null) {
+            tipoLabel = 'Sábado trabajado'; badgeClass = 'badge-verde';
           } else {
             tipoLabel = 'Trabajado'; badgeClass = 'badge-verde';
           }
@@ -1283,7 +1313,7 @@ function actualizarHistorial() {
             if (turnoSemana) {
               descuento = calcularDescuentoSabado(fecha, inicioStr, finStr, turnoSemana);
             } else {
-              descuento = 0; // Sin actividad en la semana, no se descuenta
+              descuento = 0;
             }
             tipoLabel = 'Sábado no trabajado';
             badgeClass = 'badge-rojo';
@@ -1425,7 +1455,6 @@ function guardarEdicion() {
     document.getElementById('modalMensaje').textContent = '⚠️ Para tipo "normal" debe tener entrada y salida.';
     return;
   }
-  // ⭐ NUEVO: también exigir entrada y salida para "Solo horas extras"
   if (tipo === 'soloExtras' && (!entrada || !salida)) {
     document.getElementById('modalMensaje').textContent = '⚠️ Para "Solo horas extras" debe tener entrada y salida.';
     return;
@@ -1541,7 +1570,6 @@ function llenarSelectMeses() {
   sel.innerHTML = '';
   const ahora = new Date();
 
-  // Calcular el mes del período activo (si es día <= 10, pertenece al mes anterior)
   let mesActivo = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
   if (ahora.getDate() <= 10) {
     mesActivo = new Date(ahora.getFullYear(), ahora.getMonth() - 1, 1);
@@ -1669,24 +1697,76 @@ function generarReporte() {
             const tiempos = registro.tiemposComida || 0;
             const horasBrutas = calcularHorasBrutas(registro.entrada, registro.salida, tiempos);
             const turno = turnoPorSemanaEmp[empId][weekKey] || registro.turno || 'Diurno';
-            const calc = calcularExtrasYDescuento(horasBrutas, fecha, turno, registro.tipo || 'normal');
+
+            // ⭐ Si es sábado laborable, forzamos el descuento de sábado (jornada L-V del turno)
+            let descSabForzado = null;
+            if (dia === 6 && !esNoLab) {
+              const turnoSemana = turnoPorSemanaEmp[empId][weekKey] || turno;
+              descSabForzado = calcularDescuentoSabado(fecha, inicioStr, finStr, turnoSemana);
+            }
+
+            const calc = calcularExtrasYDescuento(horasBrutas, fecha, turno, registro.tipo || 'normal', descSabForzado);
             semanaAcum[weekKey].horas += horasBrutas;
             semanaAcum[weekKey].extras += calc.extras;
             semanaAcum[weekKey].descuentos += calc.descuento;
             semanaAcum[weekKey].comidas += tiempos;
             semanaAcum[weekKey].diasTrabajados += 1;
+
+            // Registramos también el descuento de sábado trabajado
+            if (dia === 6 && !esNoLab && descSabForzado !== null) {
+              semanaAcum[weekKey].descuentosSabado += descSabForzado;
+            }
           } else {
-            // Sábado no trabajado: descuento proporcional según días L-V dentro del período
+            // Sábado NO trabajado: el descuento SIEMPRE se aplica
             if (dia === 6 && !esNoLab) {
-              const turnoSemana = turnoPorSemanaEmp[empId][weekKey];
-              if (turnoSemana) {
-                const descuentoSabado = calcularDescuentoSabado(fecha, inicioStr, finStr, turnoSemana);
-                semanaAcum[weekKey].descuentos += descuentoSabado;
-                semanaAcum[weekKey].descuentosSabado += descuentoSabado;
-              }
+              const turnoSemana = turnoPorSemanaEmp[empId][weekKey] || emp.turno || 'Diurno';
+              const descuentoSabado = calcularDescuentoSabado(fecha, inicioStr, finStr, turnoSemana);
+              semanaAcum[weekKey].descuentos += descuentoSabado;
+              semanaAcum[weekKey].descuentosSabado += descuentoSabado;
             }
           }
         });
+
+        // ⭐ NUEVA LÓGICA: Descuento del sábado "fantasma"
+        // Si el período termina antes del sábado de la última semana,
+        // reflejar el descuento prorrateado con PESOS_SABADO por los L-V que sí están dentro.
+        const ultimoDiaP = new Date(finStr + 'T00:00:00');
+        const diaUltP = ultimoDiaP.getDay(); // 0=Dom, 6=Sab
+        if (diaUltP >= 1 && diaUltP <= 5) {
+          const sabadoFantasma = new Date(ultimoDiaP);
+          sabadoFantasma.setDate(ultimoDiaP.getDate() + (6 - diaUltP));
+          const sabadoFantasmaStr = sabadoFantasma.toISOString().split('T')[0];
+
+          if (sabadoFantasmaStr > finStr) {
+            const weekNumSab = getISOWeek(sabadoFantasma);
+            const yearSab = sabadoFantasma.getFullYear();
+            const weekKeySab = `${yearSab}-${weekNumSab}`;
+
+            if (semanasMap[weekKeySab] && semanaAcum[weekKeySab]) {
+              const turnoSemana = turnoPorSemanaEmp[empId][weekKeySab] || emp.turno || 'Diurno';
+              const pesos = PESOS_SABADO[turnoSemana] || PESOS_SABADO['Diurno'];
+
+              const lunes = new Date(sabadoFantasma);
+              lunes.setDate(sabadoFantasma.getDate() - 5);
+              let descFantasma = 0;
+              for (let i = 0; i < 5; i++) {
+                const d = new Date(lunes);
+                d.setDate(lunes.getDate() + i);
+                const fechaStr = d.toISOString().split('T')[0];
+                const dNum = d.getDay();
+                if (fechaStr >= inicioStr && fechaStr <= finStr) {
+                  descFantasma += pesos[dNum] || 0;
+                }
+              }
+              descFantasma = Math.round(descFantasma * 10) / 10;
+
+              if (descFantasma > 0) {
+                semanaAcum[weekKeySab].descuentos += descFantasma;
+                semanaAcum[weekKeySab].descuentosSabado += descFantasma;
+              }
+            }
+          }
+        }
 
         semanasOrdenadas.forEach(weekKey => {
           const s = semanaAcum[weekKey];
